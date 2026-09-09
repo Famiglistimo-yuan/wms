@@ -1,0 +1,20 @@
+target/
+logs/
+*.log
+
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.DS_Store
+
+### 本地敏感配置不入库（开发规范 §8.4） ###
+**/application-local.yml
+**/application-local.yaml
+
+### Maven wrapper jar ###
+.mvn/wrapper/maven-wrapper.jar
+
+### OS ###
+Thumbs.db

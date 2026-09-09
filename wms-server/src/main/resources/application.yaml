@@ -1,0 +1,40 @@
+server:
+  port: 8080
+
+# Spring Boot 4：servlet 编码配置路径由 server.servlet.encoding.* 改为 spring.servlet.encoding.*
+# 默认 charset=UTF-8、enabled=true，不显式设也能 UTF-8；保留显式声明以避免 Windows 队友踩编码坑
+spring:
+  application:
+    name: wms-server
+  # 默认激活 local profile，从 application-local.yaml 加载数据库密码等敏感配置
+  profiles:
+    active: local
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# MyBatis-Plus 配置（按技术方案 §5.1 驼峰映射）
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      # 课题命名规范要求表名以「班级＋座号」为前缀；实际前缀由组长公布后填入（开发规范 §7.1）
+      # table-prefix: wms_
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+# 日志
+logging:
+  level:
+    root: INFO
+    com.wms: DEBUG
+    com.wms.wmsserver.mapper: DEBUG  # SQL 输出，配合 mybatis-plus log-impl 看完整 SQL
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

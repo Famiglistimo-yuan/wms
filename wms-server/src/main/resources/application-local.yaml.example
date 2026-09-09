@@ -1,0 +1,22 @@
+# application-local.yaml.example — 本地配置模板
+# 复制一份为 application-local.yaml 并填实际值；application-local.yaml 已被 .gitignore 排除，不会入库
+# 启动方式：mvn spring-boot:run（自动激活 spring.profiles.active=local）
+
+spring:
+  datasource:
+    # 数据库名 wms_dev；按需改名（如 hmdp 风格用 hmdp_db）
+    url: jdbc:mysql://127.0.0.1:3306/wms_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 你的本地MySQL密码
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # 连接池调优（课程场景 10 足够）
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      connection-timeout: 30000
+
+# JWT 密钥（本地随便起，提交前不要入库；选做功能 R5 实现时再用）
+# jwt:
+#   secret: dev-only-please-replace-with-32-bytes-random-string
+#   expire-minutes: 60
