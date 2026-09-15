@@ -207,7 +207,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 ## 5. 客户端专项规范（FXML）
 
-1. **文件命名**：`resources/fxml/` 下按功能小写中划线：`login.fxml`、`material-manage.fxml`、`stock-order.fxml`。
+1. **文件命名（承载课题「程序名」前缀）**：`resources/fxml/` 下文件名 = 前缀 `rg2402_11_12_13_` + 功能名小写中划线，如 `rg2402_11_12_13_login.fxml`、`rg2402_11_12_13_material-manage.fxml`。课题的「程序名」硬性要求以 FXML 文件名承载——每个功能窗口即一个程序单元，打开 resources 目录即可逐个核对前缀；Java 类名保持标准驼峰、不加前缀（映射口径见需求文档 §6）。
 2. **Controller 命名**：与 FXML 对应：`LoginController`、`MaterialManageController`。
 3. **fx:id 命名**：控件类型缩写 + 用途驼峰：`tfKeyword`（TextField）、`tvMaterial`（TableView）、`btnSearch`、`dpDate`（DatePicker）。
 4. **FXML 只放结构**：不写 `onAction="#handle"` 以外的任何逻辑；事件方法名 `on + 动作`：`onSearchClicked()`、`onSubmitClicked()`。
@@ -224,8 +224,8 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 ## 7. 数据库规范
 
-1. **命名规范（课题硬性要求，见需求文档 §6）**：程序、数据表、存储过程均以「班级名＋座号」为前缀，格式如 `xxx122-126-101main`（主界面程序）；实际前缀字串开工前由组长统一公布，客户端程序名、服务端接口路径、数据库表、存储过程全部沿用，避免集成期返工。
-2. 表名 `wms_` 前缀 + 小写下划线（实际前缀开工前由组长公布后全局替换）；字段小写下划线，靠 MyBatis-Plus 驼峰映射对接 Java。
+1. **命名规范（课题硬性要求，见需求文档 §6）**：程序、数据表、存储过程均以「班级名＋座号」为前缀。本组前缀已定为 **`rg2402_11_12_13_`**（班级 rg2402，成员座号 11/12/13；含尾部下划线，与对象名分隔）。主界面程序对应 `rg2402_11_12_13_main.fxml`（映射口径见 §5.1）；存储过程名在 `schema.sql` 中直接带前缀；Java 类名不加。
+2. 表名前缀 `rg2402_11_12_13_`（已定，与 MyBatis-Plus `table-prefix` 一致）+ 小写下划线；字段小写下划线，靠 MyBatis-Plus 驼峰映射对接 Java。
 3. 每张表必备 `id BIGINT AUTO_INCREMENT PRIMARY KEY`；业务唯一键（人员代码、物料代码、单号）加唯一索引。
 4. 建表脚本入库：`docs/sql/schema.sql`（结构）与 `docs/sql/data.sql`（初始数据），**禁止只在本地 Navicat 里改表**——他人无法复现你的环境。
 5. 改表结构 = 提交 `schema.sql` 变更 + 在群里同步一次，避免他人拉代码后启动报错。

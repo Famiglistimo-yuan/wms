@@ -27,7 +27,7 @@ cd wms-client && mvn javafx:run    # 启动客户端
 - **JavaFX 线程规则**：HTTP 请求放后台 Task，UI 更新必须 `Platform.runLater`
 - **Lombok**：用法与禁用清单见 docs/CONTRIBUTING.md §3.5（`@Data` 不上 Entity/Controller/Service/Mapper）
 - **REST 路径、错误码、分页/时间格式**：一律以 docs/TECHNICAL_DESIGN.md §6 为准，不得私造
-- **命名前缀**：数据表/程序/存储过程需「班级+座号」前缀（docs/REQUIREMENTS.md §6）
+- **命名前缀**：前缀已定为 `rg2402_11_12_13_`（已配置 MyBatis-Plus table-prefix）——数据表/存储过程名直接拼前缀；「程序名」以 FXML 视图文件名承载（docs/CONTRIBUTING.md §5.1），Java 类名不加前缀
 
 ## 禁区（不要做）
 
