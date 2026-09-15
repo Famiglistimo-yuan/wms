@@ -60,11 +60,7 @@
             <configuration>
               <mainClass>com.wms.wmsclient.HelloApplication</mainClass>
               <launcher>app</launcher>
-              <jlinkZipName>app</jlinkZipName>
-              <jlinkImageName>app</jlinkImageName>
-              <noManPages>true</noManPages>
-              <stripDebug>true</stripDebug>
-              <noHeaderFiles>true</noHeaderFiles>
+              <!-- 项目为 classpath 模式（无 module-info.java），jlink 不可用；打包走 jpackage 非模块化路径 -->
             </configuration>
           </execution>
         </executions>
