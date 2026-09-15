@@ -31,6 +31,7 @@ cd wms-client && mvn javafx:run    # 启动客户端
 
 ## 禁区（不要做）
 
+- **git 写操作必须先经人工确认**：commit、push、merge、rebase、分支创建/删除、`git reset` 等一律先向人说明将要执行的命令并获得同意；只读命令（status/log/diff/branch）不受限
 - **不要修改/提交** `application-local.yaml`（含个人密码，已被 .gitignore 排除）；模板是 `application-local.yaml.example`
 - **不要引入新依赖**：技术栈清单见 docs/TECHNICAL_DESIGN.md §3，新增依赖需团队共识
 - **不要提交** `target/`、`.idea/`、`.workbuddy/`（后两者不在公有 .gitignore，靠 .git/info/exclude 本地排除）
