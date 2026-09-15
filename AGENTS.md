@@ -32,6 +32,7 @@ cd wms-client && mvn javafx:run    # 启动客户端
 ## 禁区（不要做）
 
 - **git 写操作必须先经人工确认**：commit、push、merge、rebase、分支创建/删除、`git reset` 等一律先向人说明将要执行的命令并获得同意；只读命令（status/log/diff/branch）不受限
+- **创建或修改项目文件前必须先展示内容并获得同意**：新文件（含配置、工作流、脚本）先给出完整内容与放置位置，修改现有文件先给出 diff 预览，经确认后才写入磁盘；纯咨询、讲解类回答除外
 - **提交/推送前必须自查敏感信息**：暂存区不得含密码、令牌、个人日志或本机路径；本仓库为 **public**，内容一旦推入即永久公开（git 历史不可撤回）。已知排除项（application-local.yaml / .workbuddy/ / HANDOFF.md）之外，凡新增文件先 `git diff --staged` 过目再提交
 - **不要修改/提交** `application-local.yaml`（含个人密码，已被 .gitignore 排除）；模板是 `application-local.yaml.example`
 - **不要引入新依赖**：技术栈清单见 docs/TECHNICAL_DESIGN.md §3，新增依赖需团队共识
