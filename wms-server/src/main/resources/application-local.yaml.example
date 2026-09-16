@@ -4,7 +4,7 @@
 
 spring:
   datasource:
-    # 数据库名 wms_dev；按需改名（如 hmdp 风格用 hmdp_db）
+    # 数据库名 wms_dev；按需改名
     url: jdbc:mysql://127.0.0.1:3306/wms_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: 你的本地MySQL密码

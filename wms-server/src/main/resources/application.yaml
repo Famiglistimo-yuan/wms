@@ -26,8 +26,8 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
-      # 课题命名规范要求表名以「班级＋座号」为前缀；实际前缀由组长公布后填入（开发规范 §7.1）
-      # table-prefix: wms_
+      # 课题命名规范：表名以「班级＋座号」为前缀（开发规范 §7.1）；前缀含尾部下划线，MP 纯拼接
+      table-prefix: rg2402_11_12_13_
   mapper-locations: classpath*:/mapper/**/*.xml
 
 # 日志
