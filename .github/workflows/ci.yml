@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:   # 不限定目标分支：所有 PR 均触发 CI
+  workflow_dispatch:   # 手动触发（Actions 页面 Run workflow 按钮；需工作流文件合入 main 后可见）
+
+# 最小权限：CI 只需读取仓库内容
+permissions:
+  contents: read
+
+# 同一 PR / 分支新推送自动取消旧运行，省额度
+# PR 事件用 PR 号分组、push 事件用 ref 分组，互不误伤
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20   # 保险丝：正常最坏约 9 分钟（依赖全量下载 5min + 容器启动 1min + verify 3min），卡死时不空转 6 小时
+    services:
+      # 测试用 MySQL，版本与本机开发环境（8.4.5）对齐
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wms_dev
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build & Test
+        run: mvn -B -ntp verify
+        env:
+          # 环境变量覆盖数据源配置（CI 中无 application-local.yaml）
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/wms_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+          SPRING_DATASOURCE_USERNAME: root
+          SPRING_DATASOURCE_PASSWORD: root
+
+      - name: Upload test reports (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/target/surefire-reports/**'
+          retention-days: 7
