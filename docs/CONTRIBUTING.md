@@ -160,7 +160,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 | 层 | 允许做 | 禁止做 |
 |----|--------|--------|
 | Controller | 参数接收、`@Valid` 校验、DTO ↔ VO 转换、调 Service | 业务逻辑、SQL、直接操作 Mapper |
-| Service | 业务规则、事务边界、单号生成 | 拼 SQL 字符串、操作 `HttpRequest` |
+| Service | 业务规则、单号生成、组装并调用存储过程 | 拼 SQL 字符串、操作 `HttpRequest` |
 | Mapper | SQL / MyBatis-Plus CRUD | 业务判断（if 扣库存逻辑不写在 SQL 里） |
 
 ### 3.3 客户端分层职责（强制）
@@ -200,7 +200,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 1. **统一响应**：所有接口返回 `Result<T>`（技术方案 §6.1 的 code/message/data），禁止 Controller 直接返回裸对象或裸 Map。
 2. **异常**：业务异常统一抛 `BusinessException(code, message)`，由 `@RestControllerAdvice` 全局处理；禁止在 Controller 里 try-catch 后自己拼 JSON。
-3. **事务**：涉及多表写入的方法必须显式标注 `@Transactional(rollbackFor = Exception.class)`，单表简单 CRUD 可不标。
+3. **事务**：进出仓等多表写入走存储过程，事务在 SP 内；其余应用层多表写入的方法必须显式标注 `@Transactional(rollbackFor = Exception.class)`，单表简单 CRUD 可不标。
 4. **DTO 命名**：入参 `XxxCreateDTO` / `XxxQueryDTO`，出参 `XxxVO`；实体类（`Xxx`）不得直接作为接口出参。
 5. **日志**：类上加 `@Slf4j`（Lombok，见 §3.5）即可使用 `log.info` / `log.error`，无需手写 `private static final Logger`；关键业务动作记 info（下单成功、登录成功），异常记 error 带上下文；**禁止 `System.out.println` 提交入库**。
 6. **接口鉴权**：新增接口默认加 `@RequirePermission("menu.xxx")`，公开接口需在组内说明原因。
@@ -246,7 +246,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 - [ ] 分层职责没有越界（Controller 无业务逻辑、客户端无 SQL）
 - [ ] 无硬编码密码 / IP / 调试输出
 - [ ] 新增接口有权限注解、有 SpringDoc 文档
-- [ ] 涉及写库的方法有事务注解
+- [ ] 涉及写库的方法有事务注解或走存储过程
 - [ ] 界面更新没有阻塞 UI 线程
 - [ ] `schema.sql` 与代码实体一致（若涉及改表）
 - [ ] `main` 合入后本地能编译启动

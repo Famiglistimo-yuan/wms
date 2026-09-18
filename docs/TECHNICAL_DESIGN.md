@@ -56,7 +56,7 @@
 │           Web 服务端（Spring Boot 4.0.8，内嵌 Tomcat）  │
 │  ┌──────────────────────────────────────────────┐   │
 │  │ Controller 层：参数校验、DTO 转换、统一响应     │   │
-│  │ Service 层：业务逻辑、@Transactional 事务边界   │   │
+│  │ Service 层：业务逻辑、调用存储过程（事务在SP）  │   │
 │  │ Mapper 层（MyBatis-Plus）：SQL 与ORM 映射      │   │
 │  └──────────────────────────────────────────────┘   │
 │  横切：全局异常处理 / JWT 鉴权过滤器 / 日志 AOP       │
@@ -87,13 +87,13 @@
 |------|------|------|------|
 | 客户端 UI | JavaFX | 21.0.x（LTS） | Maven 依赖引入，无需单独安装 SDK |
 | 客户端 HTTP | java.net.http.HttpClient | JDK 内置 | 无第三方依赖 |
-| JSON 序列化 | Jackson | 2.16.x | 客户端服务端同库，DTO 结构两端一致 |
+| JSON 序列化 | Jackson | 3.x | Spring Boot 4 默认（包名 `tools.jackson`，annotations 仍为 `com.fasterxml`）；客户端服务端同库，DTO 结构两端一致 |
 | 服务端框架 | Spring Boot | 4.0.8 | 内嵌 Tomcat 10.1，JDK 21 基线（IDEA 向导无 3.x 可选故上调 4.0.8；MyBatis-Plus/JJWT 配套可用） |
 | 持久层 | MyBatis-Plus | 3.5.17 | 通用 CRUD + 分页插件；用 `mybatis-plus-spring-boot4-starter`（3.5.13+ 支持 Spring Boot 4，**不可**同时引 mybatis-spring-boot-starter） |
 | 数据库 | MySQL | 8.x（≥ 8.0.16） | 本地 3306 开发，服务端独占访问；本机与 CI 实测 8.4 |
 | 连接池 | HikariCP | Spring Boot 默认 | — |
 | 鉴权 | JJWT | 0.12.x | 无状态 token |
-| 口令加密 | spring-security-crypto（BCrypt） | 6.2.x | 单独引入 crypto 模块，不引入全家桶 |
+| 口令加密 | spring-security-crypto（BCrypt） | 7.x | 单独引入 crypto 模块，不引入全家桶（随 Spring Boot 4 配套） |
 | 报表导出 | EasyExcel / iText | 3.x / 7.x | Excel 用 EasyExcel，PDF 用 iText |
 | 构建 | Maven | 3.9.x | 客户端、服务端各自独立模块 |
 | 打包 | jpackage | JDK 21 内置 | Windows 队友机器上出 exe/msi |
@@ -279,7 +279,7 @@
 - 流量统计：服务端聚合查询返回 JSON，客户端用 JavaFX 自带 `BarChart`/`LineChart` 渲染；分析流动量最小物料直接在统计结果中排序得出。
 - 月度进出仓单：EasyExcel 生成，含报表头（标题行、生成时间、制表人）、表格边框、按单号排序。
 - 仓库账本：给定年份 + 物料，按日期行列出进仓、出仓、结存，iText 输出 PDF。
-- 三个导出均带表头样式与边框，排版对照课题「规范的报表」样例自查。
+- 两个文件导出（月度单、账本）均带报表头与边框，排版对照课题「规范的报表」样例自查。
 
 ### 7.5 自动升级（补充功能，分工必选项）
 
@@ -349,7 +349,7 @@ wms/
 1. **JavaFX 界面美观度**：默认控件朴素，需投入统一 CSS 样式（`resources/styles.css` 全局美化）；接受「工整清晰」而非「炫酷」的定位。
 2. **存储过程要求**：课题原文硬性要求进出仓走存储过程（FR-2-8 / FR-3-6），本方案**以存储过程为默认实现**（事务提交/回滚与乐观锁均在 SP 内，锁与事务不分离），应用层事务版本仅作为报告中的方案对比素材（§5.2 第 5 条）。
 3. **RSA 选做的工期风险**：优先级排在所有必选功能之后，第 6 周仍未有余力则只保留 HTTPS 部署演示。
-4. **打包只限 Windows**：jpackage 不支持交叉编译，最终打包绑定在 Windows 成员机器；提前在第 6 周预演一次打包，避免期末单点故障。
+4. **打包只限 Windows**：jpackage 不支持交叉编译，最终打包绑定在 Windows 成员机器；打包预演提前到骨架期完成一次，避免期末单点故障。
 5. **适用边界**：本方案面向课程场景（2-3 人团队、单库单服务、几十并发以内）；若扩展到真实生产（高并发、多仓库、云端部署），需引入网关、缓存与消息队列，报告中作为「可扩展性」讨论素材。
 
 ## 元信息
