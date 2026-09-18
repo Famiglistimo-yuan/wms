@@ -2,7 +2,7 @@
 
 > 《应用软件开发》课程课题三 · 客户机/服务器（C/S）架构桌面应用
 
-JavaFX 桌面客户端 + Spring Boot REST 服务端 + MySQL 8 存储，实现人员/物料档案、进出仓（含一单多料）、RBAC 权限、报表与自动升级。
+JavaFX 桌面客户端 + Spring Boot REST 服务端 + MySQL 8.x 存储，实现人员/物料档案、进出仓（含一单多料）、RBAC 权限、报表与自动升级。
 
 ---
 
@@ -14,7 +14,7 @@ JavaFX 桌面客户端 + Spring Boot REST 服务端 + MySQL 8 存储，实现人
 | 客户端 UI | JavaFX + FXML + Scene Builder | 21.0.x LTS |
 | 服务端框架 | Spring Boot（内嵌 Tomcat） | 4.0.8 |
 | 持久层 | MyBatis-Plus（通用 CRUD + 分页） | 3.5.17（boot4 starter） |
-| 数据库 | MySQL | 8.0.x |
+| 数据库 | MySQL | 8.x（≥ 8.0.16） |
 | 构建 | Maven 多模块 | — |
 | 鉴权 | JWT（jjwt）+ Spring Security crypto | — |
 
