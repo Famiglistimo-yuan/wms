@@ -88,7 +88,7 @@
 | 客户端 UI | JavaFX | 21.0.x（LTS） | Maven 依赖引入，无需单独安装 SDK |
 | 客户端 HTTP | java.net.http.HttpClient | JDK 内置 | 无第三方依赖 |
 | JSON 序列化 | Jackson | 2.16.x | 客户端服务端同库，DTO 结构两端一致 |
-| 服务端框架 | Spring Boot | 4.0.8 | 内嵌 Tomcat 10.1，JDK 21 基线（2026-09 IDEA Spring Boot 向导下拉无 3.x 可选，3.2.x 上调至 4.0.8；MyBatis-Plus/JJWT 配套已在添加依赖中验证可用） |
+| 服务端框架 | Spring Boot | 4.0.8 | 内嵌 Tomcat 10.1，JDK 21 基线（IDEA 向导无 3.x 可选故上调 4.0.8；MyBatis-Plus/JJWT 配套可用） |
 | 持久层 | MyBatis-Plus | 3.5.17 | 通用 CRUD + 分页插件；用 `mybatis-plus-spring-boot4-starter`（3.5.13+ 支持 Spring Boot 4，**不可**同时引 mybatis-spring-boot-starter） |
 | 数据库 | MySQL | 8.x（≥ 8.0.16） | 本地 3306 开发，服务端独占访问；本机与 CI 实测 8.4 |
 | 连接池 | HikariCP | Spring Boot 默认 | — |
@@ -173,7 +173,7 @@
 
 ### 5.1 表清单
 
-按课题命名规范，所有表名以「班级＋座号」为前缀。本组实际前缀为 **`rg2402_11_12_13_`**（已配置到 MyBatis-Plus `table-prefix`，实体/Mapper 层零感知）；下表以 `wms_` 简写代替实际前缀以便阅读，建表时全局替换：
+按课题命名规范，所有表名以「班级＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（配置于 MyBatis-Plus `table-prefix`，实体/Mapper 层零感知）；下表以 `wms_` 简写代替实际前缀以便阅读，建表时全局替换：
 
 | 表名 | 用途 | 关键字段 |
 |------|------|---------|
@@ -333,7 +333,7 @@ wms/
 
 ## 10. 开发计划与分工
 
-按「每人一个子系统纵向负责（界面 + 接口 + 表）」分工，避免按层横向切分导致的集成地狱（分工 2026-09-17 组内确定）：
+按「每人一个子系统纵向负责（界面 + 接口 + 表）」分工，避免按层横向切分导致的集成地狱：
 
 | 阶段 | 周次 | 内容 |
 |------|------|------|
