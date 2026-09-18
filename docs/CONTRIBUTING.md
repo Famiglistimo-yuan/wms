@@ -1,7 +1,7 @@
 # WMS 开发规范
 
 > 适用于《应用软件开发》课题三仓库管理系统（JavaFX 客户端 + Spring Boot 服务端）。
-> 本文档与《docs/TECHNICAL_DESIGN.md》配套：技术方案定「做什么」，本文档定「怎么写」。冲突时以技术方案为准，技术方案未覆盖的以本文档为准。
+> 本文档与《docs/TECHNICAL_DESIGN.md》配套：技术方案定「做什么」，本文档定「怎么写、怎么协作」。技术内容冲突时以技术方案为准，协作规范以本文档为准。
 
 ---
 
@@ -14,7 +14,7 @@
 | 工具 | 版本 | Mac | Windows |
 |------|------|-----|---------|
 | JDK | 21（LTS，任意发行版） | Oracle OpenJDK / Temurin aarch64 dmg | Oracle OpenJDK / Temurin x64 msi |
-| MySQL | 8.0.x | Homebrew 或官网 dmg | 官网 msi |
+| MySQL | 8.x（≥ 8.0.16） | Homebrew 或官网 dmg | 官网 msi |
 | IntelliJ IDEA | Ultimate 或 Community | 官网 dmg | 官网 msi |
 | Scene Builder | 21+（仅客户端开发需要） | Gluon 官网 dmg | Gluon 官网 msi |
 | Git | 任意近期版本 | 官网 pkg 或 `brew install git` | 官网安装器 |
@@ -68,9 +68,11 @@ mvn -DskipTests clean compile
 ### 0.6 启动验证
 
 - **服务端**：IDEA 里打开 `wms-server/src/main/java/com/wms/wmsserver/WmsServerApplication.java`，点左侧绿箭头 Run。期望看到 Spring Boot 横幅 + `Tomcat started on port 8080` + HikariCP 连上 MySQL。
-- **客户端**：`wms-client` 模块下执行 `mvn javafx:run`，或 IDEA 里配置 JavaFX 应用运行（mainClass = `com.wms.wmsclient.HelloApplication`）。
+- **客户端**：`wms-client` 模块下执行 `mvn javafx:run`，或 IDEA 里运行入口类 `com.wms.wmsclient.Launcher`（不要 Run `HelloApplication`，它没有 main 方法；直接 `java -cp` 会报 `JavaFX runtime components are missing`）。
 
 两端都跑通即环境就绪，可以开始按子系统分工开发了。
+
+> 期末交付：在 Windows 机器上用 `jpackage` 打包 exe/msi（需下载一次 JavaFX SDK 解压供 jlink 组装运行时）。
 
 ## 1. Git 提交规范（Conventional Commits）
 
@@ -122,12 +124,10 @@ feat(client): 物料档案界面支持分页与模糊查询
 1. **subject 用中文**，一行不超过 50 字；type、scope 保持英文。
 2. **一个提交只做一件事**：功能 + 格式化 + 改配置混在一个提交里会导致 review 困难，拆开提交。
 3. **破坏性变更**在 type 后加 `!` 并在正文说明，如 `feat(client)!: 登录态存储从文件迁移到 Preferences`。
-4. **禁止提交**：`target/`、`.idea/`、`application-local.yml`、日志文件（已被 .gitignore 覆盖，误提交时用 `git rm --cached` 移除）。
+4. **禁止提交**：`target/`、`.idea/`、`application-local.yaml`、日志文件（已被 .gitignore 覆盖，误提交时用 `git rm --cached` 移除）。
 5. 提交前 `git status` + `git diff --staged` 自查一遍，避免误带调试代码（`System.out.println`、写死的密码、注释掉的整段代码）。
 
 ## 2. 分支与合并规范
-
-（继承技术方案 §9.2，此处细化操作约定）
 
 | 分支 | 用途 | 规则 |
 |------|------|------|
@@ -139,10 +139,10 @@ feat(client): 物料档案界面支持分页与模糊查询
 操作约定：
 
 1. **PR 前自测**：服务端改动要能 `mvn spring-boot:run` 启动；客户端改动要能 `mvn javafx:run` 打开对应界面。
-2. **PR 由另一名成员审查合并**，禁止自己合并自己的 PR（既是课程 git 实践要求，也互相兜底）。
+2. **合并方式一律 Squash and merge**（仓库设置已限定为唯一方式）；允许合并自己的 PR，质量由 CI 必需检查（`build` 通过才能合并）兜底；涉及事务、权限等核心逻辑的 PR 仍建议交叉 review。
 3. **PR 标题即最终 squash 合并的提交标题**，按 Conventional Commits 格式写。
-4. 每周至少一次把 `main` 合回自己的 feature 分支（`git merge main`），避免期末集成地狱——对应技术方案 §10 第 6 周联调风险。
-5. 里程碑打 tag：`v0.1.0`（登录跑通）、`v0.5.0`（三大子系统完成）、`v1.0.0`（交付版）。
+4. 每周至少一次把 `main` 合回自己的 feature 分支（`git merge main`），避免期末集成地狱——对应技术方案 §10 集成联调阶段。
+5. 里程碑打 tag：`v0.1.0`（第 3 周末登录跑通）、`v0.5.0`（第 5 周末必选功能完成）、`v1.0.0`（第 6 周交付版）。
 
 ## 3. Java 代码规范
 
@@ -160,7 +160,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 | 层 | 允许做 | 禁止做 |
 |----|--------|--------|
 | Controller | 参数接收、`@Valid` 校验、DTO ↔ VO 转换、调 Service | 业务逻辑、SQL、直接操作 Mapper |
-| Service | 业务规则、事务边界、单号生成 | 拼 SQL 字符串、操作 `HttpRequest` |
+| Service | 业务规则、单号生成、组装并调用存储过程 | 拼 SQL 字符串、操作 `HttpRequest` |
 | Mapper | SQL / MyBatis-Plus CRUD | 业务判断（if 扣库存逻辑不写在 SQL 里） |
 
 ### 3.3 客户端分层职责（强制）
@@ -180,7 +180,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 ### 3.5 Lombok 使用约定
 
-服务端、客户端模块统一引入 Lombok（2026-09-09 增补），常用注解与适用对象如下：
+服务端、客户端模块统一引入 Lombok，常用注解与适用对象如下：
 
 | 注解 | 用在哪 | 不用的场景 |
 |------|-------|----------|
@@ -200,7 +200,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 1. **统一响应**：所有接口返回 `Result<T>`（技术方案 §6.1 的 code/message/data），禁止 Controller 直接返回裸对象或裸 Map。
 2. **异常**：业务异常统一抛 `BusinessException(code, message)`，由 `@RestControllerAdvice` 全局处理；禁止在 Controller 里 try-catch 后自己拼 JSON。
-3. **事务**：涉及多表写入的方法必须显式标注 `@Transactional(rollbackFor = Exception.class)`，单表简单 CRUD 可不标。
+3. **事务**：进出仓等多表写入走存储过程，事务在 SP 内；其余应用层多表写入的方法必须显式标注 `@Transactional(rollbackFor = Exception.class)`，单表简单 CRUD 可不标。
 4. **DTO 命名**：入参 `XxxCreateDTO` / `XxxQueryDTO`，出参 `XxxVO`；实体类（`Xxx`）不得直接作为接口出参。
 5. **日志**：类上加 `@Slf4j`（Lombok，见 §3.5）即可使用 `log.info` / `log.error`，无需手写 `private static final Logger`；关键业务动作记 info（下单成功、登录成功），异常记 error 带上下文；**禁止 `System.out.println` 提交入库**。
 6. **接口鉴权**：新增接口默认加 `@RequirePermission("menu.xxx")`，公开接口需在组内说明原因。
@@ -224,21 +224,19 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 ## 7. 数据库规范
 
-1. **命名规范（课题硬性要求，见需求文档 §6）**：程序、数据表、存储过程均以「班级名＋座号」为前缀。本组前缀已定为 **`rg2402_11_12_13_`**（班级 rg2402，成员座号 11/12/13；含尾部下划线，与对象名分隔）。主界面程序对应 `rg2402_11_12_13_main.fxml`（映射口径见 §5.1）；存储过程名在 `schema.sql` 中直接带前缀；Java 类名不加。
-2. 表名前缀 `rg2402_11_12_13_`（已定，与 MyBatis-Plus `table-prefix` 一致）+ 小写下划线；字段小写下划线，靠 MyBatis-Plus 驼峰映射对接 Java。
+1. **命名规范（课题硬性要求，见需求文档 §6）**：程序、数据表、存储过程均以「班级名＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（班级 rg2402，成员座号 11/12/13；含尾部下划线，与对象名分隔）。主界面程序对应 `rg2402_11_12_13_main.fxml`（映射口径见 §5.1）；存储过程名在 `schema.sql` 中直接带前缀；Java 类名不加。
+2. 表名前缀 `rg2402_11_12_13_`（与 MyBatis-Plus `table-prefix` 一致）+ 小写下划线；字段小写下划线，靠 MyBatis-Plus 驼峰映射对接 Java。
 3. 每张表必备 `id BIGINT AUTO_INCREMENT PRIMARY KEY`；业务唯一键（人员代码、物料代码、单号）加唯一索引。
 4. 建表脚本入库：`docs/sql/schema.sql`（结构）与 `docs/sql/data.sql`（初始数据），**禁止只在本地 Navicat 里改表**——他人无法复现你的环境。
 5. 改表结构 = 提交 `schema.sql` 变更 + 在群里同步一次，避免他人拉代码后启动报错。
 6. 10 万条测试数据脚本单独放 `docs/sql/test-data.sql`，不与初始数据混放。
 
-## 8. 跨平台协作规范
-
-（要点与技术方案 §9.2 一致，此处为速查）
+## 8. 跨平台协作规范（Mac + Windows 混合团队）
 
 1. 换行符：Mac `core.autocrlf=input`，Windows `core.autocrlf=true`，仓库根 `.gitattributes`（`* text=auto`）。
-2. 编码：一律 UTF-8；MySQL 连接串带 `characterEncoding=utf8`。
+2. 编码：一律 UTF-8（Maven `project.build.sourceEncoding=UTF-8`）；MySQL 连接串带 `characterEncoding=utf8`。
 3. 路径：代码中用 `Path` / `ClassLoader.getResource()`，禁止拼盘符和写死正斜杠分隔符。
-4. 敏感配置：本地数据库密码只放 `application-local.yml`（不入库），模板 `application-local.yml.example` 入库供队友复制。
+4. 敏感配置：本地数据库密码只放 `application-local.yaml`（不入库），模板 `application-local.yaml.example` 入库供队友复制。
 
 ## 9. Code Review 检查清单
 
@@ -248,7 +246,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 - [ ] 分层职责没有越界（Controller 无业务逻辑、客户端无 SQL）
 - [ ] 无硬编码密码 / IP / 调试输出
 - [ ] 新增接口有权限注解、有 SpringDoc 文档
-- [ ] 涉及写库的方法有事务注解
+- [ ] 涉及写库的方法有事务注解或走存储过程
 - [ ] 界面更新没有阻塞 UI 线程
 - [ ] `schema.sql` 与代码实体一致（若涉及改表）
 - [ ] `main` 合入后本地能编译启动
