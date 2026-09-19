@@ -92,7 +92,7 @@ CREATE TABLE rg2402_11_12_13_material (
   updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_material_code (material_code),
   KEY idx_material_name (name),
-  CONSTRAINT chk_material_stock CHECK (stock >= 0) COMMENT '乐观锁之外的最后一道防线'
+  CONSTRAINT chk_material_stock CHECK (stock >= 0)  -- 乐观锁之外的最后一道防线
 ) COMMENT '物料档案';
 
 -- ---------- 进出仓单主表（FR-2 / FR-3，主表+明细支撑一单多料） ----------
