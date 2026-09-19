@@ -57,7 +57,7 @@ CREATE DATABASE wms_dev DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 在 IDEA 终端或 Maven 面板跑：
 
 ```bash
-mvn -DskipTests clean compile
+./mvnw -DskipTests clean compile
 ```
 
 期望末尾出现 `BUILD SUCCESS`。失败常见原因：
