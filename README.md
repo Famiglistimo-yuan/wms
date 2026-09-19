@@ -22,7 +22,7 @@ JavaFX 桌面客户端 + Spring Boot REST 服务端 + MySQL 8.x 存储，实现�
 
 ```
 wms/
-├── pom.xml               # 父 pom（聚合三模块）
+├── pom.xml               # 根 pom（挂 SB parent，聚合三模块并统一版本管理）
 ├── wms-common/           # 共享 DTO / 常量 / 错误码 / Result<T>
 ├── wms-server/           # Spring Boot 服务端（REST API）
 └── wms-client/           # JavaFX 桌面客户端（FXML + Controller）
