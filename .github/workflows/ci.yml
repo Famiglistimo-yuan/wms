@@ -38,6 +38,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Init database (schema + seed)
+        run: |
+          mysql --host 127.0.0.1 --port 3306 -u root -proot wms_dev < docs/sql/schema.sql
+          mysql --host 127.0.0.1 --port 3306 -u root -proot wms_dev < docs/sql/data.sql
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
