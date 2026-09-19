@@ -15,9 +15,9 @@
 ## 常用命令
 
 ```bash
-mvn -DskipTests clean compile      # 构建验证（改完代码必须跑）
-cd wms-server && mvn spring-boot:run   # 启动服务端
-cd wms-client && mvn javafx:run    # 启动客户端
+./mvnw -DskipTests clean compile      # 构建验证（改完代码必须跑）
+cd wms-server && ./mvnw spring-boot:run   # 启动服务端
+cd wms-client && ./mvnw javafx:run    # 启动客户端
 ```
 
 ## 代码规则（强制）

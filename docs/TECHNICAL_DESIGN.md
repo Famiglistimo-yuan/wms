@@ -95,7 +95,7 @@
 | 鉴权 | JJWT | 0.12.x | 无状态 token |
 | 口令加密 | spring-security-crypto（BCrypt） | 7.x | 单独引入 crypto 模块，不引入全家桶（随 Spring Boot 4 配套） |
 | 报表导出 | EasyExcel / iText | 3.x / 7.x | Excel 用 EasyExcel，PDF 用 iText |
-| 构建 | Maven | 3.9.x | 客户端、服务端各自独立模块 |
+| 构建 | Maven | 3.9.x | 三模块反应堆构建，根 pom 挂 SB starter parent 统一版本与插件配置 |
 | 打包 | jpackage | JDK 21 内置 | Windows 队友机器上出 exe/msi |
 | 版本控制 | Git | — | GitHub 公开仓库（Collaborator 模式） |
 
@@ -317,6 +317,7 @@
 
 ```
 wms/
+├── pom.xml               # 根 pom（SB parent 继承链 + 聚合）
 ├── wms-server/          # Spring Boot 服务端（独立 Maven 模块）
 │   ├── pom.xml
 │   └── src/main/java/...
