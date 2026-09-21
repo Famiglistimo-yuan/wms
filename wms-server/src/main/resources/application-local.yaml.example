@@ -16,7 +16,7 @@ spring:
       idle-timeout: 30000
       connection-timeout: 30000
 
-# JWT 密钥（本地随便起，提交前不要入库；选做功能 R5 实现时再用）
+# JWT 密钥（本地随便起，提交前不要入库；FR-4 登录实现时再用）
 # jwt:
 #   secret: dev-only-please-replace-with-32-bytes-random-string
 #   expire-minutes: 60

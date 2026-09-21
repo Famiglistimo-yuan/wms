@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.BorderPane?>
+<BorderPane stylesheets="@../styles.css" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.wms.wmsclient.controller.MainController">
+  <top>
+    <MenuBar>
+      <Menu fx:id="menuPerson" text="人员档案">
+        <MenuItem text="查询" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="增加" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="修改" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="删除" onAction="#onPlaceholderClicked"/>
+      </Menu>
+      <Menu fx:id="menuMaterial" text="物料档案">
+        <MenuItem text="查询" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="增加" onAction="#onPlaceholderClicked"/>
+      </Menu>
+      <Menu fx:id="menuStock" text="进出仓">
+        <MenuItem text="进仓录入" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="出仓录入" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="单据查询" onAction="#onPlaceholderClicked"/>
+      </Menu>
+      <Menu fx:id="menuAuth" text="系统管理">
+        <MenuItem text="用户管理" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="权限授予" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="退出登录" onAction="#onLogoutClicked"/>
+      </Menu>
+    </MenuBar>
+  </top>
+  <center>
+    <Label fx:id="lblUser" styleClass="subtle"/>
+  </center>
+</BorderPane>

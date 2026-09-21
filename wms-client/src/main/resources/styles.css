@@ -1,0 +1,18 @@
+/* 全局样式唯一来源（CONTRIBUTING §5.5）：FXML 禁止内联样式值 */
+.root {
+    -fx-font-family: "System";
+    -fx-font-size: 13px;
+}
+
+.title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.subtle {
+    -fx-text-fill: #666666;
+}
+
+.primary-btn {
+    -fx-min-width: 88px;
+}
