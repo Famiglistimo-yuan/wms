@@ -52,6 +52,15 @@ CREATE DATABASE wms_dev DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 
 `utf8mb4` 是必须的（开发规范 §8.2：避免 Windows 默认 GBK 中文乱码，比 `utf8` 更全）。
 
+建库完成后执行仓库自带的建表与种子脚本（**先 schema 后 data，顺序不能反**）——IDEA Database 面板直接运行这两个文件，或在仓库根目录执行：
+
+```bash
+mysql -u root -p wms_dev < docs/sql/schema.sql   # 11 张表（含存储过程契约注释）
+mysql -u root -p wms_dev < docs/sql/data.sql     # 13 项菜单权限 + 初始管理员 admin / admin123
+```
+
+脚本入库规则见 §7.4；schema 变更须提交 PR 并在群里同步（§7.5）。
+
 ### 0.5 验证编译
 
 在 IDEA 终端或 Maven 面板跑：
