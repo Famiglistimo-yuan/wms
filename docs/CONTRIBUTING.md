@@ -184,8 +184,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 1. **JavaFX 线程规则**：所有界面更新必须在 JavaFX Application Thread（`Platform.runLater`）；HTTP 请求放在 `Task`/后台线程，禁止在 UI 线程发请求卡死界面。
 2. **不写魔法数字/字符串**：错误码、权限码、单位列表统一定义在 `wms-common` 常量类。
 3. **注释**：解释「为什么」，不复述代码；删除即删干净，**不留大段注释掉的死代码入库**（本地调试时可临时注释）。
-4. 每个类头保留作者注释 `@author 姓名`，方便课程评分追溯分工。
-5. 方法超过 80 行考虑拆分；类超过 400 行考虑拆职责。
+4. 方法超过 80 行考虑拆分；类超过 400 行考虑拆职责。
 
 ### 3.5 Lombok 使用约定
 
@@ -210,7 +209,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 1. **统一响应**：所有接口返回 `Result<T>`（技术方案 §6.1 的 code/message/data），禁止 Controller 直接返回裸对象或裸 Map。
 2. **异常**：业务异常统一抛 `BusinessException(code, message)`，由 `@RestControllerAdvice` 全局处理；禁止在 Controller 里 try-catch 后自己拼 JSON。
 3. **事务**：进出仓等多表写入走存储过程，事务在 SP 内；其余应用层多表写入的方法必须显式标注 `@Transactional(rollbackFor = Exception.class)`，单表简单 CRUD 可不标。
-4. **DTO 命名**：入参 `XxxCreateDTO` / `XxxQueryDTO`，出参 `XxxVO`；实体类（`Xxx`）不得直接作为接口出参。
+4. **DTO 命名**：入参 `XxxCreateDTO` / `XxxQueryDTO`，出参 `XxxVO`；实体类（`Xxx`）不得直接作为接口出参。wms-common 中两端共享的契约 DTO（如 `LoginRequest`/`LoginResponse`）不受此约束，命名以两端复用语义为准。
 5. **日志**：类上加 `@Slf4j`（Lombok，见 §3.5）即可使用 `log.info` / `log.error`，无需手写 `private static final Logger`；关键业务动作记 info（下单成功、登录成功），异常记 error 带上下文；**禁止 `System.out.println` 提交入库**。
 6. **接口鉴权**：新增接口默认加 `@RequirePermission("menu.xxx")`，公开接口需在组内说明原因。
 
@@ -222,6 +221,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 4. **FXML 只放结构**：不写 `onAction="#handle"` 以外的任何逻辑；事件方法名 `on + 动作`：`onSearchClicked()`、`onSubmitClicked()`。
 5. **样式统一**：颜色、间距、字号只写在 `resources/styles.css`，FXML 禁止内联写死样式值（技术方案 §11 界面美观度风险的应对）。
 6. **动态内容在 Controller 里填**：表格列、图表数据等运行期数据用 Java 代码填充，不硬编码进 FXML。
+7. **窗口形态（ADR-007）**：全应用单窗口——菜单点击经 `App.showPanel(fxmlName)` 在主界面 center 区切换子程序面板，不新建顶层 Stage；面板 Controller 须提供公共 `(App)` 构造器（工厂注入导航入口）；「定位 → 修改」等二级表单用 `Dialog`/`Alert`，`showAndWait` 取结果后由调用方刷新列表。
 
 ## 6. REST API 规范
 
@@ -232,8 +232,9 @@ feat(client): 物料档案界面支持分页与模糊查询
 5. 错误码沿用技术方案 §6.1 的 0/400/401/403/409/500，不得私造新码；需要新码先在本文档登记。
 6. 存储过程内部出口码 409xx（40901 物料不存在 / 40902 库存不足 / 40903 人员不存在 /
    40904 参数无效 / 40905 单据不存在，见 `docs/sql/schema.sql` SP 契约）属数据库层业务码，
-   不是新 HTTP 错误码：Service 层统一将 409xx 映射为 HTTP 409，message 原样透传客户端弹窗；
-   新增 SP 出口码时在 schema.sql 契约注释中登记，不改 HTTP 码表。
+   不是新的接口业务码：Service 层统一将 409xx 映射为错误码 409（HTTP 状态恒 200，
+   见技术方案 §6.1），message 原样透传客户端弹窗；新增 SP 出口码时在 schema.sql
+   契约注释中登记，不改业务码表。
 
 ## 7. 数据库规范
 

@@ -156,7 +156,7 @@ CREATE TABLE rg2402_11_12_13_op_log (
 -- 故以注释承载）；事务体实现属 Phase 2（进出仓子系统），届时以完整
 -- CREATE PROCEDURE 落盘（本文件此节或独立 docs/sp_orders.sql，由实现者定）。
 --
--- 统一出口：OUT p_code / p_message，Service 层将 409xx 映射为 HTTP 409，
+-- 统一出口：OUT p_code / p_message，Service 层将 409xx 映射为错误码 409（HTTP 状态恒 200），
 -- message 原样透传客户端弹窗：
 --   0     成功
 --   40901 物料不存在
