@@ -10,8 +10,6 @@ import javafx.scene.control.TextField;
 /**
  * 登录界面：正则预校验（FR-4-5，与服务端共用 RegexPatterns）。
  * 登录业务（HTTP 调用、token、权限获取、进入主界面）由 zheng-qifan 随 FR-4 实现。
- *
- * @author 已按规范移除类级署名（CONTRIBUTING §3.4）
  */
 public class LoginController {
 

@@ -18,6 +18,8 @@
       <Menu fx:id="menuMaterial" text="物料档案">
         <MenuItem text="查询" onAction="#onPlaceholderClicked"/>
         <MenuItem text="增加" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="修改" onAction="#onPlaceholderClicked"/>
+        <MenuItem text="删除" onAction="#onPlaceholderClicked"/>
       </Menu>
       <Menu fx:id="menuStock" text="进出仓">
         <MenuItem text="进仓录入" onAction="#onPlaceholderClicked"/>
