@@ -221,6 +221,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 4. **FXML 只放结构**：不写 `onAction="#handle"` 以外的任何逻辑；事件方法名 `on + 动作`：`onSearchClicked()`、`onSubmitClicked()`。
 5. **样式统一**：颜色、间距、字号只写在 `resources/styles.css`，FXML 禁止内联写死样式值（技术方案 §11 界面美观度风险的应对）。
 6. **动态内容在 Controller 里填**：表格列、图表数据等运行期数据用 Java 代码填充，不硬编码进 FXML。
+7. **窗口形态（ADR-007）**：全应用单窗口——菜单点击经 `App.showPanel(fxmlName)` 在主界面 center 区切换子程序面板，不新建顶层 Stage；「定位 → 修改」等二级表单用 `Dialog`/`Alert`，`showAndWait` 取结果后由调用方刷新列表。
 
 ## 6. REST API 规范
 
