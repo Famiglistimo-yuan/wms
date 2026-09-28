@@ -29,6 +29,7 @@ public class MainController {
 
     @FXML
     protected void onPlaceholderClicked() {
+        // 阶段 2 接入示例：app.showPanel("rg2402_11_12_13_person-manage");
         new Alert(Alert.AlertType.INFORMATION, "该功能将在对应子系统开发中开放").showAndWait();
     }
 
