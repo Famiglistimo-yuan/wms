@@ -15,10 +15,11 @@ import java.io.IOException;
  */
 public class App extends Application {
 
-    private final Stage stage = new Stage();
+    private Stage stage;
 
     @Override
     public void start(Stage primaryStage) throws IOException {
+        this.stage = primaryStage;
         showLogin();
         stage.setTitle("仓库管理系统");
         stage.show();
