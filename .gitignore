@@ -14,7 +14,7 @@ logs/
 **/application-local.yaml
 
 ### Maven wrapper jar ###
-.mvn/wrapper/maven-wrapper.jar
+**/.mvn/wrapper/maven-wrapper.jar
 
 ### OS ###
 Thumbs.db

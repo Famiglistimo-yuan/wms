@@ -8,7 +8,6 @@ import java.util.List;
 
 /**
  * 分页响应（page 从 1 起，size 默认 20 上限 100，技术方案 §6.3）。
- *
  */
 @Data
 @NoArgsConstructor
