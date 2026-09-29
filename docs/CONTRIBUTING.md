@@ -77,7 +77,7 @@ mysql -u root -p wms_dev < docs/sql/data.sql     # 13 项菜单权限 + 初始�
 ### 0.6 启动验证
 
 - **服务端**：IDEA 里打开 `wms-server/src/main/java/com/wms/wmsserver/WmsServerApplication.java`，点左侧绿箭头 Run。期望看到 Spring Boot 横幅 + `Tomcat started on port 8080` + HikariCP 连上 MySQL。
-- **客户端**：`wms-client` 模块下执行 `mvn javafx:run`，或 IDEA 里运行入口类 `com.wms.wmsclient.Launcher`（不要 Run `HelloApplication`，它没有 main 方法；直接 `java -cp` 会报 `JavaFX runtime components are missing`）。
+- **客户端**：`wms-client` 模块下执行 `mvn javafx:run`，或 IDEA 里运行入口类 `com.wms.wmsclient.Launcher`（`App` 没有 main 方法，入口就是 `Launcher`；直接 `java -cp` 会报 `JavaFX runtime components are missing`）。
 
 两端都跑通即环境就绪，可以开始按子系统分工开发了。
 
