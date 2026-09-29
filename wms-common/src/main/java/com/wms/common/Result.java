@@ -4,7 +4,6 @@ import lombok.Data;
 
 /**
  * 统一响应封装（技术方案 §6.1：code/message/data）。
- *
  */
 @Data
 public class Result<T> {

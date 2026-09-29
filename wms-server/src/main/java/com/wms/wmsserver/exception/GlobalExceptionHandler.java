@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
  * 全局异常处理：统一转 Result（code/message），客户端按 code 分类弹窗（CONTRIBUTING §4.2）。
- *
  */
 @Slf4j
 @RestControllerAdvice
