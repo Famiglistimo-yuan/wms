@@ -4,6 +4,7 @@ import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
 import com.wms.common.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,6 +31,12 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("参数校验失败");
         return Result.fail(ErrorCode.BAD_REQUEST, message);
+    }
+
+    /** 请求体不可读（JSON 畸形/类型不匹配）：400，属客户端请求问题，不进 500 兜底 */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public Result<Void> handleUnreadable(HttpMessageNotReadableException e) {
+        return Result.fail(ErrorCode.BAD_REQUEST, "请求体格式错误");
     }
 
     /** 兜底：500，不向前端泄露堆栈 */
