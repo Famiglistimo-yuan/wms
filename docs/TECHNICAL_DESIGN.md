@@ -198,7 +198,7 @@
 | 编辑后列表刷新 | 同一场景树内重查/回填即得 | 需窗口间通信（回调/监听），每对窗口一套胶水 |
 | 窗口管理成本 | 零（复用 primaryStage） | 每窗 initOwner/initModality/关闭处理 |
 | 三人并行冲突面 | 共享点仅 App.showPanel 注册，每人约 1 行 | 窗口工厂＋刷新协议需全组约定 |
-| 「程序名」承载（§5.1） | 满足：每功能仍有独立前缀 FXML＋Controller | 满足 |
+| 「程序名」承载（CONTRIBUTING §5.1） | 满足：每功能仍有独立前缀 FXML＋Controller | 满足 |
 | 演示形态 | 集中，管理后台风格 | 多窗口层叠，投影易乱 |
 
 - **决策**：方案 A——全客户端单一顶层窗口：菜单点击经统一的 `App.showPanel(fxmlName)` 在主界面 center 区切换子程序面板；「记录定位 → 修改」等二级交互用 `Dialog`/`Alert` 承载（`showAndWait` 取结果后由调用方刷新列表），不新建顶层 Stage。每个功能仍对应独立的 `rg2402_11_12_13_*.fxml` ＋ Controller，「程序名」承载不变。
