@@ -30,6 +30,13 @@ mybatis-plus:
       table-prefix: rg2402_11_12_13_
   mapper-locations: classpath*:/mapper/**/*.xml
 
+# 自动升级发布信息（FR-6）：发版时改 version/md5 并将新主 jar 放入 static/download/，
+# 客户端启动时经 /api/version 比对（发布流程见 static/download/README.md）
+wms-update:
+  version: 0.1.0-SNAPSHOT
+  download-url: /download/wms-client.jar
+  md5: ""
+
 # 日志
 logging:
   level:
