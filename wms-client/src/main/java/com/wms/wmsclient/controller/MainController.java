@@ -1,6 +1,7 @@
 package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
+import com.wms.wmsclient.update.UpdateService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -40,5 +41,11 @@ public class MainController {
         } catch (Exception e) {
             new Alert(Alert.AlertType.ERROR, "返回登录失败：" + e.getMessage()).showAndWait();
         }
+    }
+
+    /** FR-6：手动触发升级检查（后台执行，「已是最新/失败」均弹窗反馈） */
+    @FXML
+    protected void onCheckUpdateClicked() {
+        UpdateService.checkAsync(true);
     }
 }

@@ -3,6 +3,7 @@ package com.wms.wmsclient;
 import javafx.application.Application;
 import com.wms.wmsclient.controller.LoginController;
 import com.wms.wmsclient.controller.MainController;
+import com.wms.wmsclient.update.UpdateService;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
@@ -27,6 +28,8 @@ public class App extends Application {
         showLogin();
         stage.setTitle("仓库管理系统");
         stage.show();
+        // FR-6：后台检查新版本（失败静默，不阻塞登录；确有新版弹窗征求同意）
+        UpdateService.checkAsync(false);
     }
 
     /** 登录窗 */
