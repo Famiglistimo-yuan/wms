@@ -19,6 +19,7 @@
         <module>wms-common</module>
         <module>wms-server</module>
         <module>wms-client</module>
+        <module>wms-updater</module>
     </modules>
 
     <properties>

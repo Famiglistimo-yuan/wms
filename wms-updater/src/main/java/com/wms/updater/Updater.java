@@ -1,0 +1,59 @@
+package com.wms.updater;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * FR-6 升级执行器（课题方法二）：主程序在退出前以 app-image 自带 runtime 的 java 启动本程序，
+ * 传入 --url/--md5/--target/--pid/--launch 五参数（见 {@link Params}）。
+ * 流程：等主程序退出 → 下载 → MD5 校验 → 备份替换 → 重启主程序 → 退出。
+ * 任何一步失败都保持旧文件原样（宁可不升级，不升级坏文件）。
+ */
+public class Updater {
+
+    public static void main(String[] args) {
+        Params p;
+        try {
+            p = Params.parse(args);
+        } catch (IllegalArgumentException e) {
+            SwingProgress.errorExit("升级参数无效：" + e.getMessage());
+            return;
+        }
+        try {
+            waitForMainExit(p.pid());
+            Path downloaded = download(p.url());
+            if (!FileUtil.md5Matches(downloaded, p.md5())) {
+                Files.deleteIfExists(downloaded);
+                SwingProgress.errorExit("下载文件校验失败，已放弃升级（原程序未受影响）");
+                return;
+            }
+            FileUtil.replaceWithBackup(p.target(), downloaded);
+            new ProcessBuilder(p.launch().toString()).start();
+            System.exit(0);
+        } catch (Exception e) {
+            SwingProgress.errorExit("升级失败，已放弃：" + e.getMessage());
+        }
+    }
+
+    /** 轮询等待主程序进程消失（每 300ms 一次，30 秒超时则中止——主程序卡死时不动文件） */
+    private static void waitForMainExit(long pid) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 30_000;
+        while (System.currentTimeMillis() < deadline) {
+            if (ProcessHandle.of(pid).isEmpty()) {
+                return;
+            }
+            Thread.sleep(300);
+        }
+        SwingProgress.errorExit("等待主程序退出超时，升级中止");
+    }
+
+    /** 下载升级包到系统临时目录（不落在目标位置——验货前不碰现有文件），边下边刷进度条 */
+    private static Path download(String url) throws Exception {
+        Path temp = Files.createTempFile("wms-update-", ".jar");
+        java.net.http.HttpClient http = java.net.http.HttpClient.newHttpClient();
+        java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
+        java.net.http.HttpResponse<Path> response = http.send(request,
+                java.net.http.HttpResponse.BodyHandlers.ofFile(temp));
+        return response.body();
+    }
+}
