@@ -16,5 +16,8 @@ logs/
 ### Maven wrapper jar ###
 **/.mvn/wrapper/maven-wrapper.jar
 
+### FR-6 客户端运行数据（dev 模式数据根在项目根 ./data/，打包产物内为 appRoot/data/） ###
+/data/
+
 ### OS ###
 Thumbs.db
