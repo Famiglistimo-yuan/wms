@@ -17,12 +17,20 @@ rm -rf "$DIST" target/jpackage
 mkdir -p "$DIST"
 
 # 依赖平铺到 DIST 顶层（jpackage 只对顶层 jar 登记 classpath，子目录不递归）：
-# shade 已把 wms-common 打入主 jar，排除之；JavaFX 等作为 lib 随 app/ 分发、不随升级变更
+# shade 已把 wms-common、Jackson（tools.jackson.core:jackson-core/databind、
+# com.fasterxml.jackson.core:jackson-annotations）打入主 jar，此处逐一剔除防重复装载与版本错位；
+# JavaFX 等 native lib 依赖仍随 app/ 分发、不随升级变更（ADR-008 边界）
 ./mvnw -q -pl wms-client dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="$DIST"
-rm -f "$DIST/wms-common"*.jar
+rm -f "$DIST/wms-common"*.jar \
+      "$DIST/jackson-core"*.jar \
+      "$DIST/jackson-databind"*.jar \
+      "$DIST/jackson-annotations"*.jar
 
-# 主 jar 固定名（ADR-008：WMS.cfg 写死 main-jar 文件名，带版本号升级后启动器找不到）
-cp wms-client/target/wms-client-*.jar "$DIST/wms-client.jar"
+# 主 jar 固定名（ADR-008：WMS.cfg 写死 main-jar 文件名，带版本号升级后启动器找不到）。
+# 排除 sources/javadoc/original 等（防未来构建变体加入后 cp 多参报错）
+MAIN_JAR_SOURCE="$(find wms-client/target -maxdepth 1 -name 'wms-client-*.jar' \
+  ! -name '*-sources.jar' ! -name '*-javadoc.jar' ! -name 'original-*' | head -1)"
+cp "$MAIN_JAR_SOURCE" "$DIST/wms-client.jar"
 # Updater 同住 app/（不参与升级替换）
 cp wms-updater/target/updater.jar "$DIST/updater.jar"
 

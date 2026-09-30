@@ -20,15 +20,20 @@ public class Updater {
             return;
         }
         try {
-            waitForMainExit(p.pid());
-            Path downloaded = download(p.url());
-            if (!FileUtil.md5Matches(downloaded, p.md5())) {
-                Files.deleteIfExists(downloaded);
-                SwingProgress.errorExit("下载文件校验失败，已放弃升级（原程序未受影响）");
-                return;
+            javax.swing.JDialog progress = SwingProgress.showProgress("正在升级，请稍候…");
+            try {
+                waitForMainExit(p.pid());
+                Path downloaded = download(p.url());
+                if (!FileUtil.md5Matches(downloaded, p.md5())) {
+                    Files.deleteIfExists(downloaded);
+                    SwingProgress.errorExit("下载文件校验失败，已放弃升级（原程序未受影响）");
+                    return;
+                }
+                FileUtil.replaceWithBackup(p.target(), downloaded);
+                new ProcessBuilder(p.launch().toString()).start();
+            } finally {
+                SwingProgress.hideProgress(progress);
             }
-            FileUtil.replaceWithBackup(p.target(), downloaded);
-            new ProcessBuilder(p.launch().toString()).start();
             System.exit(0);
         } catch (Exception e) {
             SwingProgress.errorExit("升级失败，已放弃：" + e.getMessage());
@@ -47,11 +52,20 @@ public class Updater {
         SwingProgress.errorExit("等待主程序退出超时，升级中止");
     }
 
-    /** 下载升级包到系统临时目录（不落在目标位置——验货前不碰现有文件），边下边刷进度条 */
+    /**
+     * 下载升级包到系统临时目录（不落在目标位置——验货前不碰现有文件）。
+     * 显式设置连接与请求超时：默认无超时时，服务端半连接会让 Updater 静默挂死，
+     * 用户看到的是「主程序已退出、新的没起来、也没弹窗」。
+     */
     private static Path download(String url) throws Exception {
         Path temp = Files.createTempFile("wms-update-", ".jar");
-        java.net.http.HttpClient http = java.net.http.HttpClient.newHttpClient();
-        java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
+        java.net.http.HttpClient http = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(10))
+                .build();
+        java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url))
+                .timeout(java.time.Duration.ofMinutes(5))
+                .GET()
+                .build();
         java.net.http.HttpResponse<Path> response = http.send(request,
                 java.net.http.HttpResponse.BodyHandlers.ofFile(temp));
         return response.body();

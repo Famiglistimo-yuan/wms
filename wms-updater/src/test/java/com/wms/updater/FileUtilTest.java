@@ -40,14 +40,17 @@ class FileUtilTest {
     void replaceRollsBackupAndSwapsFile() throws Exception {
         Path target = Files.writeString(dir.resolve("wms-client.jar"), "OLD");
         Path downloaded = Files.writeString(dir.resolve("new.jar"), "NEW");
-        // 预置一个上次升级留下的旧备份，验证滚动清理
-        Files.writeString(dir.resolve("wms-client-0.9.0.jar.bak"), "ANCIENT");
+        // 预置上次升级留下的同名 .bak，验证滚动清理
+        Files.writeString(dir.resolve("wms-client.jar.bak"), "ANCIENT");
+        // 无关的第三方 .jar.bak（例如 JavaFX 手动备份）不应被误删
+        Path unrelated = Files.writeString(dir.resolve("javafx-controls.jar.bak"), "UNRELATED");
 
         FileUtil.replaceWithBackup(target, downloaded);
 
         assertEquals("NEW", Files.readString(target));                              // 新文件就位
         assertEquals("OLD", Files.readString(dir.resolve("wms-client.jar.bak")));    // 旧版已备份
         assertFalse(Files.exists(dir.resolve("new.jar")));                           // 下载件已消费
-        assertFalse(Files.exists(dir.resolve("wms-client-0.9.0.jar.bak")));          // 只留一个备份
+        assertFalse(Files.exists(dir.resolve("wms-client.jar.new")));                // 中转文件已消费
+        assertEquals("UNRELATED", Files.readString(unrelated));                      // 只清同名 .bak，其他不动
     }
 }

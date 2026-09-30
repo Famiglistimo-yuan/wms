@@ -13,8 +13,12 @@ import java.time.Duration;
  */
 public final class ApiClient {
 
-    /** 服务端地址：开发期固定本机；FR-4 落地时改为可配置（如 data/ 下配置文件） */
-    public static final String BASE_URL = "http://localhost:8080";
+    /**
+     * 服务端地址：默认本机开发；可用系统属性覆盖（-Dwms.server.url=http://192.168.x.x:8080），
+     * 局域网演示时另一台机器当服务端无需重打包。FR-4 落地时改 data/ 配置文件。
+     */
+    public static final String BASE_URL =
+            System.getProperty("wms.server.url", "http://localhost:8080");
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))

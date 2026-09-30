@@ -41,7 +41,7 @@ public final class UpdateService {
             if (remote == null || local == null || !isNewer(remote.getVersion(), local)) {
                 if (manual) {
                     String msg = remote == null || local == null
-                            ? "升级检查失败（服务端不可达或本地版本缺失），已跳过"
+                            ? "升级检查未通过（服务端不可达、发布配置不完整或本地版本缺失），已跳过"
                             : "当前已是最新版本";
                     Platform.runLater(() -> info(msg));
                 }
@@ -88,6 +88,10 @@ public final class UpdateService {
                     "--launch=" + appRoot.resolve(launcher))
                     .start();
             Platform.exit();
+            // Platform.exit() 只关 JavaFX；若存在其他非 daemon 用户线程，JVM 会残留导致
+            // Updater 的 ProcessHandle.of(pid) 一直看到「主程序还活着」而 30s 超时中止升级。
+            // 显式 exit(0) 确保进程消失，让 Updater 立刻进入下载阶段。
+            System.exit(0);
         } catch (IOException e) {
             info("启动升级程序失败：" + e.getMessage());
         }
@@ -102,14 +106,25 @@ public final class UpdateService {
         }
     }
 
-    /** 查询服务端最新版本；任何失败返回 null（调用方静默降级） */
+    /** 查询服务端最新版本；任何失败或发布配置不完整（version/md5 空白）返回 null，调用方静默降级 */
     static VersionInfo fetchRemote() {
         try {
             String body = ApiClient.get("/api/version");
             // 泛型包装需显式构造参数化类型，否则 data 反序列化为 LinkedHashMap
             Result<VersionInfo> result = JSON.readValue(body,
                     JSON.getTypeFactory().constructParametricType(Result.class, VersionInfo.class));
-            return result.getCode() == ErrorCode.SUCCESS ? result.getData() : null;
+            if (result.getCode() != ErrorCode.SUCCESS) {
+                return null;
+            }
+            VersionInfo info = result.getData();
+            // 服务端 application.yaml 默认 md5=""，若发版时忘了填就下发，会让客户端下载完 6MB
+            // 主 jar 才在 MD5 校验时弹错。这里提前短路，视为「无有效发布」。
+            if (info == null
+                    || info.getVersion() == null || info.getVersion().isBlank()
+                    || info.getMd5() == null || info.getMd5().isBlank()) {
+                return null;
+            }
+            return info;
         } catch (Exception e) {
             return null;
         }
