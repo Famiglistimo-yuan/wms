@@ -11,7 +11,9 @@ cd "$(dirname "$0")/.."
 DIST="$PWD/target/dist"   # 绝对路径：-pl wms-client 时 maven 的相对路径基准是模块 basedir，会拷错位置
 APP_VERSION="${1:-1.0.0}"
 
-./mvnw -q -DskipTests package
+# clean 必须：jar 插件 up-to-date 跳过会让 shade 把上一次的 fat jar 误当输入，
+# original 滚雪球（多次无 clean 构建后 original 越来越胖）
+./mvnw -q -DskipTests clean package
 
 rm -rf "$DIST" target/jpackage
 mkdir -p "$DIST"
