@@ -20,5 +20,8 @@ logs/
 ### 故不带前导斜杠匹配任意层级；打包产物内为 appRoot/data/） ###
 data/
 
+### FR-6 升级包（服务端外置下载目录，二进制构建产物不入库） ###
+downloads/
+
 ### OS ###
 Thumbs.db

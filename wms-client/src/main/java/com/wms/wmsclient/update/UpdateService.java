@@ -13,9 +13,9 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 自动升级（FR-6，课题方法二）：启动后台检查 + 菜单手动检查。
@@ -26,6 +26,9 @@ public final class UpdateService {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    /** 重入保护：连点「检查更新」不并发起两个检查线程（否则两个确认弹窗叠加） */
+    private static final AtomicBoolean CHECKING = new AtomicBoolean(false);
+
     private UpdateService() {
     }
 
@@ -35,19 +38,29 @@ public final class UpdateService {
      * @param manual true = 菜单手动触发，「已是最新/检查失败」也给用户反馈；false = 启动自动检查，静默降级
      */
     public static void checkAsync(boolean manual) {
-        new Thread(() -> {
-            VersionInfo remote = fetchRemote();
-            String local = localVersion();
-            if (remote == null || local == null || !isNewer(remote.getVersion(), local)) {
-                if (manual) {
-                    String msg = remote == null || local == null
-                            ? "升级检查未通过（服务端不可达、发布配置不完整或本地版本缺失），已跳过"
-                            : "当前已是最新版本";
-                    Platform.runLater(() -> info(msg));
-                }
-                return;
+        if (!CHECKING.compareAndSet(false, true)) {
+            if (manual) {
+                Platform.runLater(() -> info("已在检查中，请稍候"));
             }
-            Platform.runLater(() -> askAndUpgrade(remote));
+            return;
+        }
+        new Thread(() -> {
+            try {
+                VersionInfo remote = fetchRemote();
+                String local = localVersion();
+                if (remote == null || local == null || !isNewer(remote.getVersion(), local)) {
+                    if (manual) {
+                        String msg = remote == null || local == null
+                                ? "升级检查未通过（服务端不可达、发布配置不完整或本地版本缺失），已跳过"
+                                : "当前已是最新版本";
+                        Platform.runLater(() -> info(msg));
+                    }
+                    return;
+                }
+                Platform.runLater(() -> askAndUpgrade(remote));
+            } finally {
+                CHECKING.set(false);
+            }
         }, "version-check").start();
     }
 

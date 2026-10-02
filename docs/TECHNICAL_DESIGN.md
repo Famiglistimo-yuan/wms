@@ -219,9 +219,9 @@
 | 演示直观性 | 换一个文件即完成 | — | 覆盖大量文件 | msiexec 细节多 |
 | Updater 运行环境 | 复用 app-image 自带 runtime | — | 需自带 | 需自带 |
 
-- **决策**：主 jar 用 maven-shade 打成 fat jar（打入 wms-common、排除 JavaFX——平台相关且不随升级变更，由 app/ 目录提供），**固定文件名 `wms-client.jar`**；版本号由 jar 内 `version.txt`（打包期注入）承载，jpackage 的 `--app-version` 由打包脚本参数传入。Updater 由主程序用 `appRoot/runtime/bin/java` 启动，免二次 jpackage。
-- **理由**：固定名是「升级后能启动」的硬约束（cfg 不随升级更新）；fat jar 是「只换一个文件就能完成升级」的前提（共享模块版本随主 jar 走，杜绝新旧混载的 ClassNotFoundException）；复用 runtime 让用户机器彻底免装 Java。
-- **后果**：JavaFX 版本升级时需整包重装（升级仅覆盖业务与共享代码变更，报告说明此边界）；.bak 备份滚动保留一个版本，回滚为手动改名。
+- **决策**：主 jar 用 maven-shade 打成 fat jar（打入 wms-common 与 Jackson 等纯 Java 依赖、**排除 JavaFX**——含 native lib 平台相关且不随升级变更，由 app/ 目录提供），**固定文件名 `wms-client.jar`**；版本号由 jar 内 `version.txt`（打包期注入）承载，jpackage 的 `--app-version` 由打包脚本参数传入。Updater 由主程序用 `appRoot/runtime/bin/java` 启动，免二次 jpackage。
+- **理由**：固定名是「升级后能启动」的硬约束（cfg 不随升级更新）；fat jar 是「只换一个文件就能完成升级」的前提（共享模块与业务代码依赖版本随主 jar 走，杜绝新旧混载的 ClassNotFoundException）；复用 runtime 让用户机器彻底免装 Java。
+- **后果**：**升级粒度**——业务代码、wms-common 契约 DTO、Jackson 等纯 Java 依赖随主 jar 升级；JavaFX 及其 native lib 不随升级变更，需整包重装（报告说明此边界）。打包脚本负责把已被 shade 的坐标从 `dependency:copy-dependencies` 平铺产物中剔除，避免 app/ 目录同时存在「主 jar 内嵌版本」与「独立 jar 版本」造成类加载二义性。.bak 备份滚动保留一个版本，回滚为手动改名。
 
 ## 5. 数据库设计
 
@@ -361,7 +361,7 @@
 3. 主 jar（固定名 `wms-client.jar`）拷入服务端 `static/download/`
 4. 版本号与 MD5 填入 `application.yaml` 的 `wms-update` 块，重启服务端。客户端下次启动即检测到新版本
 
-**升级包的替换粒度与文件名（实现约束，详见 ADR-008）**：主 jar 为 shade fat jar（含 wms-common）且**固定名 `wms-client.jar` 不带版本号**——jpackage 启动配置 `WMS.cfg` 写死 classpath 文件名，带版本号会导致升级后启动器找不到文件；版本信息由 jar 内 `version.txt` 承载。JavaFX 及第三方依赖 jar 不随升级变更（由打包的 `app/` 目录提供）。
+**升级包的替换粒度与文件名（实现约束，详见 ADR-008）**：主 jar 为 shade fat jar（含 wms-common 与 Jackson 等纯 Java 依赖）且**固定名 `wms-client.jar` 不带版本号**——jpackage 启动配置 `WMS.cfg` 写死 classpath 文件名，带版本号会导致升级后启动器找不到文件；版本信息由 jar 内 `version.txt` 承载。JavaFX 及其 native lib 不随升级变更（由打包的 `app/` 目录提供，升级需整包重装）。
 
 ### 7.6 RSA 加密通信（选做）
 
