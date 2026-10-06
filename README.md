@@ -1,5 +1,7 @@
 # WMS — 仓库管理系统
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 > 《应用软件开发》课程课题三 · 客户机/服务器（C/S）架构桌面应用
 
 JavaFX 桌面客户端 + Spring Boot REST 服务端 + MySQL 8.x 存储，实现人员/物料档案、进出仓（含一单多料）、RBAC 权限、报表与自动升级。
