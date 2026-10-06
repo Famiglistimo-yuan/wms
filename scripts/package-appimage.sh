@@ -13,7 +13,9 @@ APP_VERSION="${1:-1.0.0}"
 
 # clean 必须：jar 插件 up-to-date 跳过会让 shade 把上一次的 fat jar 误当输入，
 # original 滚雪球（多次无 clean 构建后 original 越来越胖）
-./mvnw -q -DskipTests clean package
+# install 必须：下一步 copy-dependencies 单跑 -pl wms-client（无 -am），要从 .m2
+# 解析 wms-common；versions:set 到新版本号后 .m2 无对应 artifact，package 不入库会解析失败
+./mvnw -q -DskipTests clean install
 
 rm -rf "$DIST" target/jpackage
 mkdir -p "$DIST"
