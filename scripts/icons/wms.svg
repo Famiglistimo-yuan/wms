@@ -1,0 +1,25 @@
+<!--
+  WMS 应用图标唯一矢量源（app-image 打包图标 + 客户端窗口图标的母版）。
+  衍生文件再生成方法（任一尺寸 S 用 rsvg-convert -w S -h S wms.svg -o out.png）：
+  - scripts/icons/wms.icns ：iconset 10 档 16/32/64/128/256/512/1024（含 @2x 命名），iconutil -c icns 打包
+  - scripts/icons/wms.ico  ：16/24/32/48/64/128/256 七档 PNG 条目打包成 ICO
+  - wms-client/src/main/resources/icons/wms.png ：256 档，客户端 Stage.getIcons 用
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <!-- 包裹箱体 -->
+  <rect x="286" y="380" width="452" height="332" rx="40" fill="#FFFFFF"/>
+  <!-- 竖向封箱带 -->
+  <rect x="486" y="380" width="52" height="332" fill="#1D4ED8"/>
+  <!-- 顶部翻盖折线 -->
+  <path d="M 302 446 L 512 386 L 722 446" stroke="#1D4ED8" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- 对勾徽标 -->
+  <circle cx="706" cy="676" r="132" fill="#F59E0B"/>
+  <path d="M 650 676 L 694 722 L 776 626" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

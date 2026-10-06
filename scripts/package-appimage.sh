@@ -38,6 +38,13 @@ cp "$MAIN_JAR_SOURCE" "$DIST/wms-client.jar"
 # Updater 同住 app/（不参与升级替换）
 cp wms-updater/target/updater.jar "$DIST/updater.jar"
 
+# 应用图标按平台选格式（jpackage 校验后缀）：macOS 收 .icns，Windows 收 .ico，其余不传走默认
+case "$(uname -s)" in
+  Darwin)               ICON_ARGS=(--icon scripts/icons/wms.icns) ;;
+  MINGW*|MSYS*|CYGWIN*) ICON_ARGS=(--icon scripts/icons/wms.ico) ;;
+  *)                    ICON_ARGS=() ;;
+esac
+
 jpackage \
   --type app-image \
   --name WMS \
@@ -46,6 +53,7 @@ jpackage \
   --input "$DIST" \
   --main-jar "wms-client.jar" \
   --main-class com.wms.wmsclient.Launcher \
+  "${ICON_ARGS[@]}" \
   --dest target/jpackage
 
 # 发布辅助：打印主 jar MD5（发版时填入 application.yaml 的 wms-update.md5）
