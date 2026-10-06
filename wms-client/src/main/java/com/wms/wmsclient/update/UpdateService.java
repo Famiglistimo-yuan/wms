@@ -13,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -86,13 +87,16 @@ public final class UpdateService {
         }
         try {
             Path appDir = appRoot.resolve("app");
-            String javaExe = System.getProperty("os.name", "").toLowerCase().contains("win")
-                    ? "runtime/bin/java.exe" : "runtime/bin/java";
-            String launcher = System.getProperty("os.name", "").toLowerCase().contains("win")
-                    ? "WMS.exe" : "MacOS/WMS";
+            Path javaExe = resolveRuntimeJava(appRoot);
+            if (javaExe == null) {
+                info("应用目录中找不到可用的 Java 运行时，无法启动升级程序");
+                return;
+            }
+            String os = System.getProperty("os.name", "").toLowerCase();
+            String launcher = os.contains("win") ? "WMS.exe" : "MacOS/WMS";
 
             new ProcessBuilder(
-                    appRoot.resolve(javaExe).toString(),
+                    javaExe.toString(),
                     "-jar", appDir.resolve("updater.jar").toString(),
                     "--url=" + ApiClient.BASE_URL + remote.getDownloadUrl(),
                     "--md5=" + remote.getMd5(),
@@ -108,6 +112,25 @@ public final class UpdateService {
         } catch (IOException e) {
             info("启动升级程序失败：" + e.getMessage());
         }
+    }
+
+    /**
+     * 解析应用自带 runtime 的 java 可执行文件（平台差异，ADR-008 补充）：
+     * Windows = runtime/bin/java.exe（交付形态，用户机器免装 Java）；
+     * macOS = jpackage runtime 是「内嵌运行时」，不含 bin/java（libjli 仅供启动器
+     * 进程内加载），故回退系统 java——Mac 是开发演示机，本机已装 JDK；
+     * Linux = runtime/bin/java。找不到返回 null（调用方提示并中止）。
+     */
+    private static Path resolveRuntimeJava(Path appRoot) {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("win")) {
+            return appRoot.resolve("runtime/bin/java.exe");
+        }
+        if (os.contains("mac")) {
+            Path embedded = appRoot.resolve("runtime/Contents/Home/bin/java");
+            return Files.exists(embedded) ? embedded : Path.of("java");
+        }
+        return appRoot.resolve("runtime/bin/java");
     }
 
     /** 读本地版本：打包时经 resources filtering 烧进 jar 的 version.txt（FR-6 版本单一来源） */
