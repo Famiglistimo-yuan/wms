@@ -31,6 +31,9 @@
         <MenuItem text="权限授予" onAction="#onPlaceholderClicked"/>
         <MenuItem text="退出登录" onAction="#onLogoutClicked"/>
       </Menu>
+      <Menu fx:id="menuHelp" text="帮助">
+        <MenuItem text="检查更新" onAction="#onCheckUpdateClicked"/>
+      </Menu>
     </MenuBar>
   </top>
   <center>

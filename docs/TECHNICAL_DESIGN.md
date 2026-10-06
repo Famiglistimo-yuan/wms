@@ -120,7 +120,7 @@
 
 - **决策**：采用 JavaFX 21 LTS。
 - **理由**：唯一同时满足「桌面程序无争议 + Mac/Win 双平台开发 + 零语言切换成本」的选项；Electron 的界面效率优势不足以抵消答辩争议风险与生态引入成本。
-- **后果**：界面美观度上限低于 Web 技术（用 CSS 可弥补大部分）；自动升级需自行实现（约一天工作量，方案见 §7.6）。
+- **后果**：界面美观度上限低于 Web 技术（用 CSS 可弥补大部分）；自动升级需自行实现（约一天工作量，方案见 §7.5）。
 
 ### ADR-002：通信协议采用 REST + JSON
 
@@ -204,6 +204,24 @@
 - **决策**：方案 A——全客户端单一顶层窗口：菜单点击经统一的 `App.showPanel(fxmlName)` 在主界面 center 区切换子程序面板；「记录定位 → 修改」等二级交互用 `Dialog`/`Alert` 承载（`showAndWait` 取结果后由调用方刷新列表），不新建顶层 Stage。每个功能仍对应独立的 `rg2402_11_12_13_*.fxml` ＋ Controller，「程序名」承载不变。
 - **理由**：CRUD 应用核心循环是「列表 → 编辑 → 列表」，A 的数据刷新天然一致；排期无缓冲，A 的样板代码最少；B 的解耦优势可用轻量路由约定补齐，其窗口间刷新成本却无法用约定消除。
 - **后果**：`App.showPanel` 是全组共享的导航入口，阶段 2 各界面骨架从该模板复制；二级表单一律 Dialog，确需独立顶层窗口时先在组内说明；本对比直接用于报告「复杂问题多方案比较择优」章节。
+
+### ADR-008：升级包为「固定名 fat jar」，Updater 复用主程序自带 runtime
+
+- **状态**：已采纳
+- **上下文**：FR-6 自动升级（方法二）需明确「下载并替换」的对象与方式。约束有三：① jpackage 启动配置 `WMS.cfg` 将 classpath 文件名写死于打包时刻；② wms-common 作为两端共享模块会持续演进（VersionInfo 等契约 DTO 随 FR-4/FR-5 落地），仅替换主 jar 时其旧版本仍留在 app/ 目录；③ 用户机器不装 Java，Updator 自身也需要运行环境。
+- **候选方案对比**：
+
+| 维度 | A 主 jar 固定名 fat jar（已选） | B 主 jar 带版本号 | C 整包 zip 覆盖 | D msi 静默重装 |
+|------|-------------------------------|------------------|----------------|---------------|
+| 升级后可启动性 | ✓（cfg 的 classpath 名不变） | ✗ cfg 找不到新文件名，新版起不来 | ✓ | ✓ |
+| 共享模块（wms-common）演进 | 随 fat jar 一并升级 | 同左 | 随整包 | 随整包 |
+| 贴合课题「下载主程序文件并替换」 | ✓ 单文件 | ✓ | ✗ 更近重装 | ✗ 重装 |
+| 演示直观性 | 换一个文件即完成 | — | 覆盖大量文件 | msiexec 细节多 |
+| Updater 运行环境 | 复用 app-image 自带 runtime | — | 需自带 | 需自带 |
+
+- **决策**：主 jar 用 maven-shade 打成 fat jar（打入 wms-common 与 Jackson 等纯 Java 依赖、**排除 JavaFX**——含 native lib 平台相关且不随升级变更，由 app/ 目录提供），**固定文件名 `wms-client.jar`**；版本号由 jar 内 `version.txt`（打包期注入）承载，jpackage 的 `--app-version` 由打包脚本参数传入。Updater 由主程序用 `appRoot/runtime/bin/java` 启动，免二次 jpackage。
+- **理由**：固定名是「升级后能启动」的硬约束（cfg 不随升级更新）；fat jar 是「只换一个文件就能完成升级」的前提（共享模块与业务代码依赖版本随主 jar 走，杜绝新旧混载的 ClassNotFoundException）；复用 runtime 让用户机器彻底免装 Java。
+- **后果**：**升级粒度**——业务代码、wms-common 契约 DTO、Jackson 等纯 Java 依赖随主 jar 升级；JavaFX 及其 native lib 不随升级变更，需整包重装（报告说明此边界）。打包脚本负责把已被 shade 的坐标从 `dependency:copy-dependencies` 平铺产物中剔除，避免 app/ 目录同时存在「主 jar 内嵌版本」与「独立 jar 版本」造成类加载二义性。.bak 备份滚动保留一个版本，回滚为手动改名。
 
 ## 5. 数据库设计
 
@@ -335,6 +353,15 @@
 
 - 版本号与下载地址由服务端 `/api/version` 下发，服务端改动即可控制发布节奏。
 - Updater 是一个不含业务逻辑的极小 Java 程序，单独打包；主程序被占用无法自替换的问题由「先退主程序再替换」解决。
+
+**发布流程（运维视角）**：
+
+1. `./mvnw versions:set -DnewVersion=x.y.z -DgenerateBackupPoms=false`（版本单一来源，`version.txt` 经 resources filtering 随之注入主 jar）
+2. `./scripts/package-appimage.sh x.y.z`——产物 `target/jpackage/WMS.app`（Windows 同参数），末尾打印主 jar 的 MD5
+3. 主 jar（固定名 `wms-client.jar`）拷入服务端 `static/download/`
+4. 版本号与 MD5 填入 `application.yaml` 的 `wms-update` 块，重启服务端。客户端下次启动即检测到新版本
+
+**升级包的替换粒度与文件名（实现约束，详见 ADR-008）**：主 jar 为 shade fat jar（含 wms-common 与 Jackson 等纯 Java 依赖）且**固定名 `wms-client.jar` 不带版本号**——jpackage 启动配置 `WMS.cfg` 写死 classpath 文件名，带版本号会导致升级后启动器找不到文件；版本信息由 jar 内 `version.txt` 承载。JavaFX 及其 native lib 不随升级变更（由打包的 `app/` 目录提供，升级需整包重装）。
 
 ### 7.6 RSA 加密通信（选做）
 

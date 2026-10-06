@@ -12,13 +12,14 @@
 
     <groupId>com.wms</groupId>
     <artifactId>wms-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.1</version>
     <packaging>pom</packaging>
 
     <modules>
         <module>wms-common</module>
         <module>wms-server</module>
         <module>wms-client</module>
+        <module>wms-updater</module>
     </modules>
 
     <properties>

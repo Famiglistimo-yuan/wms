@@ -17,6 +17,8 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
+  # 升级包目录外置（FR-6）走 WebMvcConfig 代码映射（/download/** → ./downloads/，
+  # 绝对路径见启动日志），不用 static-locations 属性——相对 file: 依赖进程 CWD 不可靠
 
 # MyBatis-Plus 配置（按技术方案 §5.1 驼峰映射）
 mybatis-plus:
@@ -29,6 +31,13 @@ mybatis-plus:
       # 课题命名规范：表名以「班级＋座号」为前缀（开发规范 §7.1）；前缀含尾部下划线，MP 纯拼接
       table-prefix: rg2402_11_12_13_
   mapper-locations: classpath*:/mapper/**/*.xml
+
+# 自动升级发布信息（FR-6）：发版时改 version/md5 并将新主 jar 放入升级包目录（见 download-url），
+# 客户端启动时经 /api/version 比对（发布流程见 static/download/README.md）
+wms-update:
+  version: 1.0.1
+  download-url: /download/wms-client.jar
+  md5: 1001f1c761e030c60ec7e6f34cf6ccf1
 
 # 日志
 logging:

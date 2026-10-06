@@ -7,7 +7,7 @@
   <parent>
     <groupId>com.wms</groupId>
     <artifactId>wms-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.1</version>
   </parent>
 
   <artifactId>wms-client</artifactId>
@@ -32,6 +32,11 @@
       <artifactId>javafx-fxml</artifactId>
       <version>21.0.6</version>
     </dependency>
+    <!-- JSON 反序列化（FR-6 升级检查；与 SB4 服务端对齐 Jackson 3，版本由 SB parent 链托管） -->
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
@@ -47,6 +52,24 @@
   </dependencies>
 
   <build>
+    <resources>
+      <!-- version.txt 走 filtering 注入 ${project.version}（FR-6 本地版本来源，发版时 versions:set 统一改），
+           其余资源原样拷贝（防 FXML/CSS 中 ${} 被意外替换） -->
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>version.txt</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>version.txt</include>
+        </includes>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <groupId>org.openjfx</groupId>
@@ -60,6 +83,32 @@
               <mainClass>com.wms.wmsclient.Launcher</mainClass>
               <launcher>app</launcher>
               <!-- 项目为 classpath 模式（无 module-info.java），jlink 不可用；打包走 jpackage 非模块化路径 -->
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- FR-6 主 jar（fat，ADR-008）：打入 wms-common 与 Jackson（两端共享契约与序列化，随主 jar 升级）、
+             排除 JavaFX（平台相关且不随升级变更，由 jpackage 的 input 目录提供）。
+             固定名见打包脚本（WMS.cfg 写死 main-jar 文件名，不可带版本号） -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <filters>
+                <filter>
+                  <artifact>org.openjfx:*</artifact>
+                  <excludes>
+                    <exclude>**</exclude>
+                  </excludes>
+                </filter>
+              </filters>
             </configuration>
           </execution>
         </executions>
