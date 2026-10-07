@@ -51,33 +51,40 @@ public final class UpdateService {
             return;
         }
         new Thread(() -> {
-            VersionInfo remote = fetchRemote();
-            String local = localVersion();
-            if (remote == null || local == null || !isNewer(remote.getVersion(), local)) {
-                if (manual) {
-                    String msg = remote == null || local == null
-                            ? "升级检查未通过（服务端不可达、发布配置无效或本地版本缺失），已跳过"
-                            : "当前已是最新版本";
-                    Platform.runLater(() -> {
-                        try {
-                            info(msg);
-                        } finally {
-                            CHECKING.set(false);   // 弹窗关闭后才释放（见 CHECKING 注释）
-                        }
-                    });
-                } else {
-                    CHECKING.set(false);   // 自动检查静默降级，无弹窗，直接释放
+            try {
+                VersionInfo remote = fetchRemote();
+                String local = localVersion();
+                if (remote == null || local == null || !isNewer(remote.getVersion(), local)) {
+                    if (manual) {
+                        String msg = remote == null || local == null
+                                ? "升级检查未通过（服务端不可达、发布配置无效或本地版本缺失），已跳过"
+                                : "当前已是最新版本";
+                        Platform.runLater(() -> {
+                            try {
+                                info(msg);
+                            } finally {
+                                CHECKING.set(false);   // 弹窗关闭后才释放（见 CHECKING 注释）
+                            }
+                        });
+                    } else {
+                        CHECKING.set(false);   // 自动检查静默降级，无弹窗，直接释放
+                    }
+                    return;
                 }
-                return;
+                // 确认弹窗 showAndWait 期间锁保持持有，弹窗关闭（含确认后启动失败的提示）才释放
+                Platform.runLater(() -> {
+                    try {
+                        askAndUpgrade(remote);
+                    } finally {
+                        CHECKING.set(false);
+                    }
+                });
+            } catch (Throwable t) {
+                // 兜底：runLater 未成功 post（如 fetchRemote/localVersion 抛未捕获异常、FX 工具包已退出）
+                // 时，锁必须在此释放，否则后续所有手动检查都会「已在检查中」死锁
+                CHECKING.set(false);
+                throw t;
             }
-            // 确认弹窗 showAndWait 期间锁保持持有，弹窗关闭（含确认后启动失败的提示）才释放
-            Platform.runLater(() -> {
-                try {
-                    askAndUpgrade(remote);
-                } finally {
-                    CHECKING.set(false);
-                }
-            });
         }, "version-check").start();
     }
 
