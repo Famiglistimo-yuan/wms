@@ -6,6 +6,7 @@ import com.wms.wmsclient.controller.MainController;
 import com.wms.wmsclient.update.UpdateService;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
@@ -25,6 +26,8 @@ public class App extends Application {
     @Override
     public void start(Stage primaryStage) throws IOException {
         this.stage = primaryStage;
+        // 窗口图标（Windows/Linux 任务栏；macOS 的 Dock 图标由 jpackage 的 .icns 提供）
+        stage.getIcons().add(new Image(getClass().getResource("/icons/wms.png").toExternalForm()));
         showLogin();
         stage.setTitle("仓库管理系统");
         stage.show();
