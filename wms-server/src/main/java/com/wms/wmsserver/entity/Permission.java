@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
-@TableName("permission")
+@TableName("rg2402_11_12_13_permission")
 public class Permission {
     @TableId(type = IdType.AUTO)
     private Long id;

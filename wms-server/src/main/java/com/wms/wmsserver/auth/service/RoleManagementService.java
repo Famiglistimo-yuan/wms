@@ -36,8 +36,8 @@ public class RoleManagementService {
         List<Role> roles = roleMapper.selectList(Wrappers.<Role>lambdaQuery().orderByAsc(Role::getId));
         return roles.stream().map(r -> {
             List<String> codes = jdbc.queryForList(
-                    "SELECT p.perm_code FROM role_permission rp " +
-                    "JOIN permission p ON p.id = rp.perm_id WHERE rp.role_id = ?",
+                    "SELECT p.perm_code FROM rg2402_11_12_13_role_permission rp " +
+                    "JOIN rg2402_11_12_13_permission p ON p.id = rp.perm_id WHERE rp.role_id = ?",
                     String.class, r.getId());
             return RoleVO.builder()
                     .id(r.getId())
@@ -64,7 +64,7 @@ public class RoleManagementService {
     /** 给角色分配权限（全量覆盖） */
     @Transactional
     public void assignPermissions(Long roleId, List<Long> permIds) {
-        jdbc.update("DELETE FROM role_permission WHERE role_id = ?", roleId);
+        jdbc.update("DELETE FROM rg2402_11_12_13_role_permission WHERE role_id = ?", roleId);
         if (permIds != null) {
             for (Long pid : permIds) {
                 RolePermission rp = new RolePermission();
@@ -78,7 +78,7 @@ public class RoleManagementService {
     /** 查询角色已分配的权限 id 列表 */
     public List<Long> listPermIds(Long roleId) {
         return jdbc.queryForList(
-                "SELECT perm_id FROM role_permission WHERE role_id = ?",
+                "SELECT perm_id FROM rg2402_11_12_13_role_permission WHERE role_id = ?",
                 Long.class, roleId);
     }
 }

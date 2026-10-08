@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-@TableName("user_role")
+@TableName("rg2402_11_12_13_user_role")
 public class UserRole {
     private Long userId;
     private Long roleId;

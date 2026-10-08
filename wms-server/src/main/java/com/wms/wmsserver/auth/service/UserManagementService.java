@@ -42,7 +42,7 @@ public class UserManagementService {
         return jdbc.query("""
                 SELECT u.id, u.username, u.status,
                        u.person_id, p.person_code, p.name AS real_name
-                FROM user u LEFT JOIN person p ON p.id = u.person_id
+                FROM rg2402_11_12_13_user u LEFT JOIN rg2402_11_12_13_person p ON p.id = u.person_id
                 ORDER BY u.id
                 """, (rs, i) -> UserVO.builder()
                 .id(rs.getLong("id"))
@@ -115,7 +115,7 @@ public class UserManagementService {
     /** 查询用户已分配角色 id 列表 */
     public List<Long> listRoleIds(Long userId) {
         return jdbc.queryForList(
-                "SELECT role_id FROM user_role WHERE user_id = ?",
+                "SELECT role_id FROM rg2402_11_12_13_user_role WHERE user_id = ?",
                 Long.class, userId);
     }
 }

@@ -9,6 +9,6 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface UserRoleMapper extends BaseMapper<UserRole> {
 
-    @Delete("DELETE FROM user_role WHERE user_id = #{userId}")
+    @Delete("DELETE FROM rg2402_11_12_13_user_role WHERE user_id = #{userId}")
     int deleteByUserId(@Param("userId") Long userId);
 }

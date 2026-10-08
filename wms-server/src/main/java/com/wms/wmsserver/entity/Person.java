@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
-@TableName("person")
+@TableName("rg2402_11_12_13_person")
 public class Person {
 
     @TableId(type = IdType.AUTO)

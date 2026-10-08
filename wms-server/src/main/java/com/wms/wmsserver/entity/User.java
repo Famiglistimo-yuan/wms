@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 登录用户实体（对应 rg2402_11_12_13_user，前缀由 MP table-prefix 自动拼接）。
  */
 @NoArgsConstructor
-@TableName("user")
+@TableName("rg2402_11_12_13_user")
 public class User {
 
     @TableId(type = IdType.AUTO)

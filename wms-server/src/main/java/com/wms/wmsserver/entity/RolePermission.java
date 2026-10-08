@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-@TableName("role_permission")
+@TableName("rg2402_11_12_13_role_permission")
 public class RolePermission {
     private Long roleId;
     private Long permId;
