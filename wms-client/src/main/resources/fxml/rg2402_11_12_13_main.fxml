@@ -10,28 +10,28 @@
   <top>
     <MenuBar>
       <Menu fx:id="menuPerson" text="人员档案">
-        <MenuItem text="查询" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="增加" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="修改" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="删除" onAction="#onPlaceholderClicked"/>
+        <MenuItem fx:id="miPersonView" text="查询" onAction="#onPersonView"/>
+        <MenuItem fx:id="miPersonAdd" text="增加" onAction="#onPersonAdd"/>
+        <MenuItem fx:id="miPersonEdit" text="修改" onAction="#onPersonEdit"/>
+        <MenuItem fx:id="miPersonDelete" text="删除" onAction="#onPersonDelete"/>
       </Menu>
       <Menu fx:id="menuMaterial" text="物料档案">
-        <MenuItem text="查询" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="增加" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="修改" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="删除" onAction="#onPlaceholderClicked"/>
+        <MenuItem fx:id="miMaterialView" text="查询" onAction="#onMaterialView"/>
+        <MenuItem fx:id="miMaterialAdd" text="增加" onAction="#onMaterialAdd"/>
+        <MenuItem fx:id="miMaterialEdit" text="修改" onAction="#onMaterialEdit"/>
+        <MenuItem fx:id="miMaterialDelete" text="删除" onAction="#onMaterialDelete"/>
       </Menu>
       <Menu fx:id="menuStock" text="进出仓">
-        <MenuItem text="进仓录入" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="出仓录入" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="单据查询" onAction="#onPlaceholderClicked"/>
+        <MenuItem fx:id="miStockIn" text="进仓录入" onAction="#onStockIn"/>
+        <MenuItem fx:id="miStockOut" text="出仓录入" onAction="#onStockOut"/>
+        <MenuItem fx:id="miStockQuery" text="单据查询" onAction="#onStockQuery"/>
       </Menu>
       <Menu fx:id="menuAuth" text="系统管理">
-        <MenuItem text="用户管理" onAction="#onPlaceholderClicked"/>
-        <MenuItem text="权限授予" onAction="#onPlaceholderClicked"/>
+        <MenuItem fx:id="miAuthUser" text="用户管理" onAction="#onAuthUser"/>
+        <MenuItem fx:id="miAuthGrant" text="权限授予" onAction="#onAuthGrant"/>
         <MenuItem text="退出登录" onAction="#onLogoutClicked"/>
       </Menu>
-      <Menu fx:id="menuHelp" text="帮助">
+      <Menu text="帮助">
         <MenuItem text="检查更新" onAction="#onCheckUpdateClicked"/>
       </Menu>
     </MenuBar>
