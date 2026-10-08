@@ -19,12 +19,11 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
-        <!-- jakarta.validation-api：纯注解 API，两端共享 DTO 使用，不引 Spring 实现 -->
+        <!-- jakarta.validation-api：纯注解 API，两端共享 DTO 使用，不引 Spring 实现；
+             版本由 spring-boot-starter-parent BOM 托管，作用域 compile（client 编译注解需传递可见） -->
         <dependency>
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
-            <version>3.1.1</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

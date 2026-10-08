@@ -11,12 +11,12 @@
       stylesheets="@../styles.css"
       spacing="8">
   <ToolBar>
-    <Button text="刷新" onAction="#onRefresh"/>
-    <Button text="新增用户" onAction="#onCreateUser"/>
-    <Button text="启/停用" onAction="#onToggleStatus"/>
-    <Button text="分配角色" onAction="#onAssignRoles"/>
+    <Button text="刷新" onAction="#onRefreshClicked"/>
+    <Button text="新增用户" onAction="#onCreateUserClicked"/>
+    <Button text="启/停用" onAction="#onToggleStatusClicked"/>
+    <Button text="分配角色" onAction="#onAssignRolesClicked"/>
   </ToolBar>
-  <TableView fx:id="tblUsers" VBox.vgrow="ALWAYS" editable="false"/>
+  <TableView fx:id="tvUsers" VBox.vgrow="ALWAYS" editable="false"/>
   <Separator/>
   <Label fx:id="lblStatus" styleClass="subtle"/>
 </VBox>

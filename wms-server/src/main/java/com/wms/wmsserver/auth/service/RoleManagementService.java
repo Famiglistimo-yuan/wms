@@ -1,9 +1,8 @@
 package com.wms.wmsserver.auth.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.wms.common.BusinessException;
-import com.wms.common.ErrorCode;
-import com.wms.wmsserver.auth.dto.*;
+import com.wms.wmsserver.auth.dto.PermissionVO;
+import com.wms.wmsserver.auth.dto.RoleVO;
 import com.wms.wmsserver.entity.Permission;
 import com.wms.wmsserver.entity.Role;
 import com.wms.wmsserver.entity.RolePermission;
@@ -11,7 +10,6 @@ import com.wms.wmsserver.mapper.PermissionMapper;
 import com.wms.wmsserver.mapper.RoleMapper;
 import com.wms.wmsserver.mapper.RolePermissionMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,24 +27,17 @@ public class RoleManagementService {
     private final RoleMapper roleMapper;
     private final PermissionMapper permissionMapper;
     private final RolePermissionMapper rolePermissionMapper;
-    private final JdbcTemplate jdbc;
 
     /** 角色列表（含已分配权限码） */
     public List<RoleVO> listRoles() {
         List<Role> roles = roleMapper.selectList(Wrappers.<Role>lambdaQuery().orderByAsc(Role::getId));
-        return roles.stream().map(r -> {
-            List<String> codes = jdbc.queryForList(
-                    "SELECT p.perm_code FROM rg2402_11_12_13_role_permission rp " +
-                    "JOIN rg2402_11_12_13_permission p ON p.id = rp.perm_id WHERE rp.role_id = ?",
-                    String.class, r.getId());
-            return RoleVO.builder()
-                    .id(r.getId())
-                    .roleCode(r.getRoleCode())
-                    .roleName(r.getRoleName())
-                    .remark(r.getRemark())
-                    .permCodes(codes)
-                    .build();
-        }).collect(Collectors.toList());
+        return roles.stream().map(r -> RoleVO.builder()
+                .id(r.getId())
+                .roleCode(r.getRoleCode())
+                .roleName(r.getRoleName())
+                .remark(r.getRemark())
+                .permCodes(rolePermissionMapper.selectPermCodesByRoleId(r.getId()))
+                .build()).collect(Collectors.toList());
     }
 
     /** 权限资源列表（菜单项，按 sort_order 排序） */
@@ -62,9 +53,9 @@ public class RoleManagementService {
     }
 
     /** 给角色分配权限（全量覆盖） */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void assignPermissions(Long roleId, List<Long> permIds) {
-        jdbc.update("DELETE FROM rg2402_11_12_13_role_permission WHERE role_id = ?", roleId);
+        rolePermissionMapper.deleteByRoleId(roleId);
         if (permIds != null) {
             for (Long pid : permIds) {
                 RolePermission rp = new RolePermission();
@@ -77,8 +68,6 @@ public class RoleManagementService {
 
     /** 查询角色已分配的权限 id 列表 */
     public List<Long> listPermIds(Long roleId) {
-        return jdbc.queryForList(
-                "SELECT perm_id FROM rg2402_11_12_13_role_permission WHERE role_id = ?",
-                Long.class, roleId);
+        return rolePermissionMapper.selectPermIdsByRoleId(roleId);
     }
 }

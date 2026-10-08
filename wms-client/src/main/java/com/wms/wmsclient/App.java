@@ -1,9 +1,12 @@
 package com.wms.wmsclient;
 
 import javafx.application.Application;
+import com.wms.common.dto.LoginResponse;
 import com.wms.wmsclient.controller.LoginController;
 import com.wms.wmsclient.controller.MainController;
+import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.update.UpdateService;
+import com.wms.wmsclient.util.TokenStore;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
@@ -28,11 +31,34 @@ public class App extends Application {
         this.stage = primaryStage;
         // 窗口图标（Windows/Linux 任务栏；macOS 的 Dock 图标由 jpackage 的 .icns 提供）
         stage.getIcons().add(new Image(getClass().getResource("/icons/wms.png").toExternalForm()));
-        showLogin();
+        // token 落盘恢复（FR-4/FR-6）：data/session.json 有存档则免重登直接进主界面
+        if (!restoreSession()) {
+            showLogin();
+        }
         stage.setTitle("仓库管理系统");
         stage.show();
         // FR-6：后台检查新版本（失败静默，不阻塞登录；确有新版弹窗征求同意）
         UpdateService.checkAsync(false);
+    }
+
+    /** 恢复落盘登录态；返回是否恢复成功（无存档/恢复失败回登录窗） */
+    private boolean restoreSession() {
+        LoginResponse saved = TokenStore.load();
+        if (saved == null || saved.getToken() == null || saved.getToken().isEmpty()) {
+            return false;
+        }
+        SessionContext.set(saved);
+        ApiClient.auth(saved.getToken());
+        try {
+            showMain();
+            return true;
+        } catch (IOException e) {
+            // 主界面加载失败不能留在空白窗口：清态回登录窗
+            SessionContext.reset();
+            ApiClient.clearAuth();
+            TokenStore.clear();
+            return false;
+        }
     }
 
     /** 登录窗 */

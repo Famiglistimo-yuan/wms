@@ -27,7 +27,7 @@ public class RoleGrantController {
     }
 
     @FXML
-    protected void onRefresh() {
+    protected void onRefreshClicked() {
         // TODO(FR-4-6/7): 调 /api/roles 加载角色，调 /api/roles/permissions 加载权限码并勾选
     }
 }

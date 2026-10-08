@@ -11,7 +11,7 @@
       stylesheets="@../styles.css"
       spacing="8">
   <ToolBar>
-    <Button text="刷新" onAction="#onRefresh"/>
+    <Button text="刷新" onAction="#onRefreshClicked"/>
   </ToolBar>
   <Label text="角色列表（左） / 权限勾选（右）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">

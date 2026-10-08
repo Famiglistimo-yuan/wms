@@ -19,7 +19,7 @@ public class UserManageController {
 
     private final App app;
 
-    @FXML private TableView<UserRow> tblUsers;
+    @FXML private TableView<UserRow> tvUsers;
     @FXML private Label lblStatus;
 
     public UserManageController(App app) {
@@ -45,29 +45,29 @@ public class UserManageController {
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colStatus.setPrefWidth(80);
 
-        tblUsers.getColumns().addAll(colId, colUsername, colRealName, colStatus);
+        tvUsers.getColumns().addAll(colId, colUsername, colRealName, colStatus);
 
         lblStatus.setText("点击「刷新」加载用户列表");
     }
 
     @FXML
-    protected void onRefresh() {
+    protected void onRefreshClicked() {
         lblStatus.setText("用户管理：点击「刷新」从服务端加载（功能待接入）");
         new Alert(Alert.AlertType.INFORMATION, "用户管理列表刷新将在子系统后续接入服务端接口").showAndWait();
     }
 
     @FXML
-    protected void onCreateUser() {
+    protected void onCreateUserClicked() {
         showPlaceholder("新增用户");
     }
 
     @FXML
-    protected void onToggleStatus() {
+    protected void onToggleStatusClicked() {
         showPlaceholder("启/停用用户");
     }
 
     @FXML
-    protected void onAssignRoles() {
+    protected void onAssignRolesClicked() {
         showPlaceholder("给用户分配角色");
     }
 

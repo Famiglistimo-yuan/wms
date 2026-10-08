@@ -4,6 +4,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.update.UpdateService;
+import com.wms.wmsclient.util.TokenStore;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -110,70 +111,70 @@ public class MainController {
         menu.setVisible(anyVisible);
     }
 
-    // ====== 以下是 FXML 里 MenuItem 绑定的 onAction 处理 ======
+    // ====== 以下是 FXML 里 MenuItem 绑定的 onAction 处理（命名按开发规范 §5.4：on + 动作 + Clicked）======
 
     @FXML
-    protected void onPersonView() {
+    protected void onPersonViewClicked() {
         showPlaceholder("人员档案查询");
     }
 
     @FXML
-    protected void onPersonAdd() {
+    protected void onPersonAddClicked() {
         showPlaceholder("人员档案增加");
     }
 
     @FXML
-    protected void onPersonEdit() {
+    protected void onPersonEditClicked() {
         showPlaceholder("人员档案修改");
     }
 
     @FXML
-    protected void onPersonDelete() {
+    protected void onPersonDeleteClicked() {
         showPlaceholder("人员档案删除");
     }
 
     @FXML
-    protected void onMaterialView() {
+    protected void onMaterialViewClicked() {
         showPlaceholder("物料档案查询");
     }
 
     @FXML
-    protected void onMaterialAdd() {
+    protected void onMaterialAddClicked() {
         showPlaceholder("物料档案增加");
     }
 
     @FXML
-    protected void onMaterialEdit() {
+    protected void onMaterialEditClicked() {
         showPlaceholder("物料档案修改");
     }
 
     @FXML
-    protected void onMaterialDelete() {
+    protected void onMaterialDeleteClicked() {
         showPlaceholder("物料档案删除");
     }
 
     @FXML
-    protected void onStockIn() {
+    protected void onStockInClicked() {
         showPlaceholder("进仓录入");
     }
 
     @FXML
-    protected void onStockOut() {
+    protected void onStockOutClicked() {
         showPlaceholder("出仓录入");
     }
 
     @FXML
-    protected void onStockQuery() {
+    protected void onStockQueryClicked() {
         showPlaceholder("进出仓单查询");
     }
 
     @FXML
-    protected void onAuthUser() {
+    protected void onAuthUserClicked() {
         showPanelSafe("rg2402_11_12_13_user-manage");
     }
 
     @FXML
-    protected void onAuthGrant() {
+    protected void onAuthGrantClicked() {
         showPanelSafe("rg2402_11_12_13_role-grant");
     }
 
@@ -185,9 +186,10 @@ public class MainController {
 
     @FXML
     protected void onLogoutClicked() {
-        // 清登录态
+        // 清登录态（内存 + 落盘存档）
         SessionContext.reset();
         ApiClient.clearAuth();
+        TokenStore.clear();
         try {
             app.showLogin();
         } catch (Exception e) {

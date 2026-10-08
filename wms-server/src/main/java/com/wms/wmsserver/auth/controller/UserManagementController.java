@@ -47,11 +47,11 @@ public class UserManagementController {
         return Result.success(service.listRoleIds(id));
     }
 
-    /** 给用户分配角色（全量覆盖） */
-    @PostMapping("/roles")
+    /** 给用户分配角色（全量覆盖；与 GET /{id}/roles 同资源嵌套风格） */
+    @PostMapping("/{id}/roles")
     @RequirePermission("menu.auth.grant")
-    public Result<Void> assignRoles(@RequestBody AssignRolesDTO dto) {
-        service.assignRoles(dto);
+    public Result<Void> assignRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
+        service.assignRoles(id, roleIds);
         return Result.success();
     }
 }

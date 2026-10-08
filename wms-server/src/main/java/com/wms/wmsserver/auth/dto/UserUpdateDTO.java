@@ -1,5 +1,6 @@
 package com.wms.wmsserver.auth.dto;
 
+import com.wms.common.RegexPatterns;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
@@ -10,7 +11,7 @@ import lombok.Data;
 public class UserUpdateDTO {
 
     /** 空表示不改 */
-    @Pattern(regexp = "^$|^[a-zA-Z0-9]{6,20}$", message = "口令须为 6-20 位字母/数字")
+    @Pattern(regexp = "^$|" + RegexPatterns.PASSWORD, message = "口令须为 6-20 位字母/数字")
     private String password;
 
     /** null 表示不改 */

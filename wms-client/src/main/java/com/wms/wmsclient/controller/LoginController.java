@@ -7,9 +7,11 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.util.TokenStore;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.concurrent.Task;
@@ -27,6 +29,8 @@ public class LoginController {
     private TextField tfUsername;
     @FXML
     private PasswordField pfPassword;
+    @FXML
+    private Button btnLogin;
 
     public LoginController(App app) {
         this.app = app;
@@ -61,9 +65,11 @@ public class LoginController {
         };
 
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            btnLogin.setDisable(false);
             LoginResponse loginResp = task.getValue();
             SessionContext.set(loginResp);
             ApiClient.auth(loginResp.getToken());
+            TokenStore.save(loginResp);
             try {
                 app.showMain();
             } catch (Exception ex) {
@@ -72,6 +78,7 @@ public class LoginController {
         }));
 
         task.setOnFailed(e -> Platform.runLater(() -> {
+            btnLogin.setDisable(false);
             Throwable t = task.getException();
             String msg;
             if (t instanceof ApiException ae) {
@@ -82,7 +89,8 @@ public class LoginController {
             alertError(msg);
         }));
 
-        // 防止重复点击
+        // 防连点：请求期间禁用登录按钮，成功/失败回调里恢复
+        btnLogin.setDisable(true);
         new Thread(task, "login-task").start();
     }
 
