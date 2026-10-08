@@ -2,8 +2,8 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
 
 /**
  * 权限授予界面骨架。服务端接口已就绪（/api/roles, /api/roles/permissions），
@@ -14,6 +14,8 @@ public class RoleGrantController {
     private final App app;
 
     @FXML private Label lblStatus;
+    @FXML private ListView<Object> lvRoles;
+    @FXML private ListView<Object> lvPermissions;
 
     public RoleGrantController(App app) {
         this.app = app;
@@ -26,6 +28,6 @@ public class RoleGrantController {
 
     @FXML
     protected void onRefresh() {
-        new Alert(Alert.AlertType.INFORMATION, "权限授予界面将在后续接入服务端接口").showAndWait();
+        // TODO(FR-4-6/7): 调 /api/roles 加载角色，调 /api/roles/permissions 加载权限码并勾选
     }
 }

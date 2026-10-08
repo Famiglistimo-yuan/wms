@@ -169,12 +169,12 @@ public class MainController {
 
     @FXML
     protected void onAuthUser() {
-        showPlaceholder("用户管理");
+        showPanelSafe("rg2402_11_12_13_user-manage");
     }
 
     @FXML
     protected void onAuthGrant() {
-        showPlaceholder("权限授予");
+        showPanelSafe("rg2402_11_12_13_role-grant");
     }
 
     @FXML
@@ -202,5 +202,14 @@ public class MainController {
 
     private void showPlaceholder(String featureName) {
         new Alert(Alert.AlertType.INFORMATION, featureName + " 将在对应子系统开发中开放").showAndWait();
+    }
+
+    /** 安全切换面板，异常弹窗 */
+    private void showPanelSafe(String fxmlName) {
+        try {
+            app.showPanel(fxmlName);
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.ERROR, "无法打开 " + fxmlName + "：" + e.getMessage()).showAndWait();
+        }
     }
 }
