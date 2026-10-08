@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.HBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.wms.wmsclient.controller.UserManageController"
+      stylesheets="@../styles.css"
+      spacing="8">
+  <ToolBar>
+    <Button text="刷新" onAction="#onRefresh"/>
+    <Button text="新增用户" onAction="#onCreateUser"/>
+    <Button text="启/停用" onAction="#onToggleStatus"/>
+    <Button text="分配角色" onAction="#onAssignRoles"/>
+  </ToolBar>
+  <TableView fx:id="tblUsers" VBox.vgrow="ALWAYS" editable="false">
+    <columns>
+      <TableColumn fx:id="colId" text="ID" prefWidth="60"/>
+      <TableColumn fx:id="colUsername" text="用户名" prefWidth="150"/>
+      <TableColumn fx:id="colRealName" text="真实姓名" prefWidth="150"/>
+      <TableColumn fx:id="colStatus" text="状态" prefWidth="80"/>
+    </columns>
+  </TableView>
+  <Separator/>
+  <Label fx:id="lblStatus" styleClass="subtle"/>
+</VBox>
