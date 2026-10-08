@@ -1,6 +1,6 @@
 # 升级包目录（FR-6）
 
-此目录已**外置**：`application.yaml` 的 `spring.web.resources.static-locations` 将 `/download/**`
+此目录已**外置**：由 `WebMvcConfig` 代码将 `/download/**`
 映射到服务端运行目录的 `./downloads/`（文件系统），升级包不入服务端 jar——发客户端新版只换
 文件、无需重新构建/重启服务端 jar。本 README 仅保留占位说明。
 

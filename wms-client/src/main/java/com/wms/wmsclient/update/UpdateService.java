@@ -13,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -27,7 +28,11 @@ public final class UpdateService {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    /** 重入保护：连点「检查更新」不并发起两个检查线程（否则两个确认弹窗叠加） */
+    /**
+     * 重入保护：从发起到结果弹窗关闭期间为 true，连点「检查更新」不并发第二个检查线程。
+     * 释放时机必须在弹窗 showAndWait 返回之后——Platform.runLater 是 post 语义立即返回，
+     * 若在发起线程提前释放，弹窗显示前的间隙连点仍会叠窗。
+     */
     private static final AtomicBoolean CHECKING = new AtomicBoolean(false);
 
     private UpdateService() {
@@ -52,15 +57,33 @@ public final class UpdateService {
                 if (remote == null || local == null || !isNewer(remote.getVersion(), local)) {
                     if (manual) {
                         String msg = remote == null || local == null
-                                ? "升级检查未通过（服务端不可达、发布配置不完整或本地版本缺失），已跳过"
+                                ? "升级检查未通过（服务端不可达、发布配置无效或本地版本缺失），已跳过"
                                 : "当前已是最新版本";
-                        Platform.runLater(() -> info(msg));
+                        Platform.runLater(() -> {
+                            try {
+                                info(msg);
+                            } finally {
+                                CHECKING.set(false);   // 弹窗关闭后才释放（见 CHECKING 注释）
+                            }
+                        });
+                    } else {
+                        CHECKING.set(false);   // 自动检查静默降级，无弹窗，直接释放
                     }
                     return;
                 }
-                Platform.runLater(() -> askAndUpgrade(remote));
-            } finally {
+                // 确认弹窗 showAndWait 期间锁保持持有，弹窗关闭（含确认后启动失败的提示）才释放
+                Platform.runLater(() -> {
+                    try {
+                        askAndUpgrade(remote);
+                    } finally {
+                        CHECKING.set(false);
+                    }
+                });
+            } catch (Throwable t) {
+                // 兜底：runLater 未成功 post（如 fetchRemote/localVersion 抛未捕获异常、FX 工具包已退出）
+                // 时，锁必须在此释放，否则后续所有手动检查都会「已在检查中」死锁
                 CHECKING.set(false);
+                throw t;
             }
         }, "version-check").start();
     }
@@ -95,10 +118,11 @@ public final class UpdateService {
             String os = System.getProperty("os.name", "").toLowerCase();
             String launcher = os.contains("win") ? "WMS.exe" : "MacOS/WMS";
 
+            // resolve 按基 URL 解析相对地址：download-url 漏前导 / 也不会拼成 host:8080download/…
             new ProcessBuilder(
                     javaExe.toString(),
                     "-jar", appDir.resolve("updater.jar").toString(),
-                    "--url=" + ApiClient.BASE_URL + remote.getDownloadUrl(),
+                    "--url=" + URI.create(ApiClient.BASE_URL).resolve(remote.getDownloadUrl()),
                     "--md5=" + remote.getMd5(),
                     "--target=" + appDir.resolve("wms-client.jar"),
                     "--pid=" + ProcessHandle.current().pid(),
@@ -142,7 +166,7 @@ public final class UpdateService {
         }
     }
 
-    /** 查询服务端最新版本；任何失败或发布配置不完整（version/md5 空白）返回 null，调用方静默降级 */
+    /** 查询服务端最新版本；任何失败或发布配置无效（version 非三段数字、md5/downloadUrl 空白）返回 null，调用方静默降级 */
     static VersionInfo fetchRemote() {
         try {
             String body = ApiClient.get("/api/version");
@@ -153,11 +177,13 @@ public final class UpdateService {
                 return null;
             }
             VersionInfo info = result.getData();
-            // 服务端 application.yaml 默认 md5=""，若发版时忘了填就下发，会让客户端下载完 6MB
-            // 主 jar 才在 MD5 校验时弹错。这里提前短路，视为「无有效发布」。
+            // 发布配置无效就提前短路，视为「无有效发布」：md5 空白会让客户端下载完 6MB 主 jar
+            // 才在校验时弹错；版本号非法落到「已是最新」分支会误导手动检查；downloadUrl 空白拼不出下载地址。
             if (info == null
                     || info.getVersion() == null || info.getVersion().isBlank()
-                    || info.getMd5() == null || info.getMd5().isBlank()) {
+                    || info.getMd5() == null || info.getMd5().isBlank()
+                    || info.getDownloadUrl() == null || info.getDownloadUrl().isBlank()
+                    || parse(info.getVersion()) == null) {
                 return null;
             }
             return info;

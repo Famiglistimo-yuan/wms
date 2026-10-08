@@ -1,5 +1,6 @@
 package com.wms.updater;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -7,7 +8,7 @@ import java.nio.file.Path;
  * FR-6 升级执行器（课题方法二）：主程序在退出前以 app-image 自带 runtime 的 java 启动本程序，
  * 传入 --url/--md5/--target/--pid/--launch 五参数（见 {@link Params}）。
  * 流程：等主程序退出 → 下载 → MD5 校验 → 备份替换 → 重启主程序 → 退出。
- * 任何一步失败都保持旧文件原样（宁可不升级，不升级坏文件）。
+ * 任何一步失败都保持旧文件原样（宁可不升级，不升级坏文件）；仅重启失败例外——新包已就位，只提示手动启动。
  */
 public class Updater {
 
@@ -24,33 +25,36 @@ public class Updater {
         javax.swing.JDialog progress = SwingProgress.showProgress("正在升级，请稍候…");
         Path downloaded = null;
         try {
-            waitForMainExit(p.pid());
+            waitForMainExit(p.pid(), progress);
             downloaded = download(p.url());
             if (!FileUtil.md5Matches(downloaded, p.md5())) {
                 SwingProgress.hideProgress(progress);
+                deleteQuietly(downloaded);   // 校验失败残件不留在临时目录（errorExit 不走 catch 清理）
                 SwingProgress.errorExit("下载文件校验失败，已放弃升级（原程序未受影响）");
                 return;
             }
             FileUtil.replaceWithBackup(p.target(), downloaded);
             downloaded = null;   // 已 move 进 target，标记已消费
-            new ProcessBuilder(p.launch().toString()).start();
-            SwingProgress.hideProgress(progress);
-            System.exit(0);
         } catch (Exception e) {
-            if (downloaded != null) {
-                try {
-                    Files.deleteIfExists(downloaded);   // 未消费的下载残留，及时清理
-                } catch (java.io.IOException ignored) {
-                    // 清理失败无害，temp 目录最终由 OS 回收
-                }
-            }
+            deleteQuietly(downloaded);   // 未消费的下载残留，及时清理
             SwingProgress.hideProgress(progress);
             SwingProgress.errorExit("升级失败，已放弃：" + e.getMessage());
         }
+
+        // 到这里替换已成功，重启单独成段：launch 失败只意味着需要手动启动，
+        // 不是「升级失败」，专门文案避免用户误做回滚
+        try {
+            new ProcessBuilder(p.launch().toString()).start();
+        } catch (Exception e) {
+            SwingProgress.hideProgress(progress);
+            SwingProgress.errorExit("升级已完成，但重启失败，请手动启动程序（" + e.getMessage() + "）");
+        }
+        SwingProgress.hideProgress(progress);
+        System.exit(0);
     }
 
     /** 轮询等待主程序进程消失（每 300ms 一次，30 秒超时则中止——主程序卡死时不动文件） */
-    private static void waitForMainExit(long pid) throws InterruptedException {
+    private static void waitForMainExit(long pid, javax.swing.JDialog progress) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 30_000;
         while (System.currentTimeMillis() < deadline) {
             if (ProcessHandle.of(pid).isEmpty()) {
@@ -58,7 +62,20 @@ public class Updater {
             }
             Thread.sleep(300);
         }
+        SwingProgress.hideProgress(progress);
         SwingProgress.errorExit("等待主程序退出超时，升级中止");
+    }
+
+    /** 删除未消费的下载残留（校验失败/异常出口都要走——errorExit 内 System.exit 不经过 catch） */
+    private static void deleteQuietly(Path file) {
+        if (file == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // 清理失败无害，temp 目录最终由 OS 回收
+        }
     }
 
     /**
