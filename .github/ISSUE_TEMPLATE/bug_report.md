@@ -1,3 +1,10 @@
+---
+name: Bug 报告
+about: 报告一个缺陷或异常行为
+title: "[Bug] "
+labels: bug
+---
+
 ## Summary
 
 <!-- 现象：发生了什么 -->

@@ -1,3 +1,10 @@
+---
+name: 功能建议
+about: 提出新功能或改进建议
+title: "[Feature] "
+labels: enhancement
+---
+
 ## Related Requirement
 
 <!-- 关联课题需求编号（如 FR-2-9）；新增需求写 None -->

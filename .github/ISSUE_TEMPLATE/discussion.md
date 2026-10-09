@@ -2,7 +2,7 @@
 name: Discussion
 about: 发起项目相关的开放讨论
 title: "[Discussion] "
-labels: discussion
+labels: question
 ---
 
 ## Topic
