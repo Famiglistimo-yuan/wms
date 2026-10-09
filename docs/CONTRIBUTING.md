@@ -217,7 +217,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 规则要点：
 
 1. 新功能一律建独立功能包（小写单数名词），不要往根级层包里加类；根级不再新建 `controller/`、`service/` 目录。
-2. 小功能包（≤4 个类）直接平铺，不再套 `controller/` 等子包（如 `update/` 只有 VersionController + config/UpdateProperties）；子包在类多时才有意义（参照 `auth/`）。
+2. 小功能包（≤4 个类）业务类直接放功能包根，不再套 `controller/`、`service/`、`dto/` 等**分层**子包；功能专用配置仍可单独放 `config/` 子包（如 `update/` = VersionController + `config/UpdateProperties`）。分层子包在类多时才有意义（参照 `auth/`）。
 3. 新增表 = 根级 `entity/` + `mapper/` 各加一个类 + `schema.sql` 变更同步，三者必须一致。
 4. 功能包对外只暴露 Controller 接口；确需复用其他功能的业务逻辑时，先把公共部分下沉到根级（Mapper 或 common 工具），不做功能包间依赖。
 
