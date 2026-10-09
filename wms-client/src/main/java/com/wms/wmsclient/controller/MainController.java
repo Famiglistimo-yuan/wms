@@ -68,8 +68,8 @@ public class MainController {
         applyMenuPermissions();
     }
 
-    /** 遍历所有菜单项，根据权限码显隐 + 禁用 */
-    private void applyMenuPermissions() {
+    /** 遍历所有菜单项，根据权限码显隐 + 禁用。public 供 App.restoreSession 异步校验成功后重跑 */
+    public void applyMenuPermissions() {
         // 人员档案
         applyPerm(miPersonView, "menu.person.view");
         applyPerm(miPersonAdd, "menu.person.add");

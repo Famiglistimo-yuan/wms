@@ -68,4 +68,21 @@ public class AuthService {
                 .permissions(permissions)
                 .build();
     }
+
+    /** 当前用户信息（启动恢复/刷新权限集用）：从数据库取最新权限，覆盖 token 内可能陈旧的 permissions */
+    public LoginResponse me(Long userId, String clientToken) {
+        User user = userMapper.selectById(userId);
+        if (user == null || user.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "用户不存在或已停用");
+        }
+        Person person = personMapper.selectById(user.getPersonId());
+        List<String> permissions = userMapper.selectPermCodesByUserId(user.getId());
+        return LoginResponse.builder()
+                .token(clientToken)
+                .username(user.getUsername())
+                .personCode(person == null ? null : person.getPersonCode())
+                .realName(person == null ? null : person.getName())
+                .permissions(permissions)
+                .build();
+    }
 }

@@ -12,6 +12,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * HTTP 客户端：服务端通信统一入口。
@@ -21,6 +22,9 @@ import java.util.Map;
  *
  * <p>鉴权：ApiClient.auth(token) 设置后，每次请求自动带 Authorization: Bearer 头；
  * ApiClient.clearAuth() 清除。
+ *
+ * <p>401 统一处理：ApiClient.setOnUnauthorized() 注册回调，业务码 401 时触发——
+ * 典型用法是 App 初始化时注册「清登录态 + 回登录窗」，避免每个 Controller 重复写。
  */
 public final class ApiClient {
 
@@ -36,6 +40,9 @@ public final class ApiClient {
     /** 当前登录 token（静态全局，SessionContext 里保存但也同步到此，ApiClient 零依赖 SessionContext） */
     private static volatile String bearerToken;
 
+    /** 401 业务码触发回调：典型由 App 注册「清态 + 回登录窗」 */
+    private static volatile Consumer<Integer> onUnauthorized;
+
     private ApiClient() {
     }
 
@@ -47,6 +54,11 @@ public final class ApiClient {
     /** 清除 token（注销时调） */
     public static void clearAuth() {
         bearerToken = null;
+    }
+
+    /** 注册 401 统一回调（App 启动时注册；触发在抛 ApiException 之前） */
+    public static void setOnUnauthorized(Consumer<Integer> callback) {
+        onUnauthorized = callback;
     }
 
     /** GET，带 query params */
@@ -77,11 +89,13 @@ public final class ApiClient {
     /**
      * 发送请求并解析 Result。code != 0 抛 ApiException，HTTP 非 200 也抛 ApiException。
      * 返回 data 字段（已按 targetClass 反序列化）。
+     * 业务码 401 触发 onUnauthorized 回调（若已注册），然后抛 ApiException 让调用方感知。
      */
     public static <T> T getResultData(String jsonResponse, Class<T> targetClass) throws IOException {
         Result<T> result = MAPPER.readValue(jsonResponse,
                 MAPPER.getTypeFactory().constructParametricType(Result.class, targetClass));
         if (result.getCode() != 0) {
+            fireOnUnauthorizedIf401(result.getCode());
             throw new ApiException(result.getCode(), result.getMessage());
         }
         return result.getData();
@@ -91,6 +105,7 @@ public final class ApiClient {
     public static <T> java.util.List<T> getResultList(String jsonResponse, Class<T> elementClass) throws IOException {
         Result<?> result = MAPPER.readValue(jsonResponse, Result.class);
         if (result.getCode() != 0) {
+            fireOnUnauthorizedIf401(result.getCode());
             throw new ApiException(result.getCode(), result.getMessage());
         }
         if (result.getData() == null) {
@@ -105,7 +120,15 @@ public final class ApiClient {
     public static void checkSuccess(String jsonResponse) throws IOException {
         Result<?> result = MAPPER.readValue(jsonResponse, Result.class);
         if (result.getCode() != 0) {
+            fireOnUnauthorizedIf401(result.getCode());
             throw new ApiException(result.getCode(), result.getMessage());
+        }
+    }
+
+    /** 业务码 401 时触发回调（HTTP 非 200 由 sendAndGetBody 处理，不走这里） */
+    private static void fireOnUnauthorizedIf401(int code) {
+        if (code == 401 && onUnauthorized != null) {
+            try { onUnauthorized.accept(code); } catch (RuntimeException ignored) {}
         }
     }
 

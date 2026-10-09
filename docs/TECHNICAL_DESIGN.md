@@ -228,7 +228,7 @@
 
 ### 5.1 表清单
 
-按课题命名规范，所有表名以「班级＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（实体 `@TableName` 直书完整表名——MP 的 `table-prefix` 对显式 `@TableName` 不生效，故不配置该参数，见 §7.2 口径）；下表以 `wms_` 简写代替实际前缀以便阅读；**完整可执行 DDL 与存储过程签名契约以 `docs/sql/schema.sql` 为准**（MySQL 8.4 实测建库通过）：
+按课题命名规范，所有表名以「班级＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（实体 `@TableName` 直书完整表名——MP 的 `table-prefix` 对显式 `@TableName` 不生效，项目不配置，见 docs/CONTRIBUTING.md §7.2 口径）；下表以 `wms_` 简写代替实际前缀以便阅读；**完整可执行 DDL 与存储过程签名契约以 `docs/sql/schema.sql` 为准**（MySQL 8.4 实测建库通过）：
 
 | 表名 | 用途 | 关键字段 |
 |------|------|---------|
@@ -299,7 +299,10 @@
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
 | GET | `/api/reports/monthly-orders/{yyyyMM}` | 导出月度进出仓单 Excel |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}` | 导出仓库账本 PDF |
-| GET/POST | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用），需 `menu.auth.user` |
+| POST | `/api/auth/login` | 登录（公开） |
+| GET | `/api/auth/me` | 当前用户信息+最新权限集（启动恢复校验+权限刷新；受保护） |
+| POST | `/api/auth/logout` | 注销（语义入口，公开） |
+| GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用），需 `menu.auth.user` |
 | GET/POST | `/api/users/{id}/roles` | 查询/分配用户角色（逐用户授权，全量覆盖），需 `menu.auth.grant` |
 | GET | `/api/roles`；GET `/api/roles/permissions` | 角色列表（含权限码）/ 权限资源列表（菜单项） |
 | GET/POST | `/api/roles/{roleId}/permissions` | 查询/分配角色权限（逐角色授权，全量覆盖），需 `menu.auth.grant` |
