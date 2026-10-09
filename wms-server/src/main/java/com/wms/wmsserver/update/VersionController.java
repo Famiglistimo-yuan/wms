@@ -1,8 +1,8 @@
-package com.wms.wmsserver.version;
+package com.wms.wmsserver.update;
 
 import com.wms.common.Result;
 import com.wms.common.VersionInfo;
-import com.wms.wmsserver.version.config.UpdateProperties;
+import com.wms.wmsserver.update.config.UpdateProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
