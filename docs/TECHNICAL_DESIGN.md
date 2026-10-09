@@ -94,6 +94,7 @@
 | 连接池 | HikariCP | Spring Boot 默认 | — |
 | 鉴权 | JJWT | 0.12.x | 无状态 token |
 | 口令加密 | spring-security-crypto（BCrypt） | 7.x | 单独引入 crypto 模块，不引入全家桶（随 Spring Boot 4 配套） |
+| 校验注解 | jakarta.validation-api | 3.1.x | 纯注解 API，版本随 Spring Boot BOM；wms-common 共享 DTO（`LoginRequest` 等）双端校验用，不引实现——hibernate-validator 仅 server 端经 `spring-boot-starter-validation` 传递引入 |
 | 报表导出 | EasyExcel / iText | 3.x / 7.x | Excel 用 EasyExcel，PDF 用 iText |
 | 构建 | Maven | 3.9.x | 三模块反应堆构建，根 pom 挂 SB starter parent 统一版本与插件配置 |
 | 打包 | jpackage | JDK 21 内置 | Windows 队友机器上出 exe/msi |
@@ -227,7 +228,7 @@
 
 ### 5.1 表清单
 
-按课题命名规范，所有表名以「班级＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（配置于 MyBatis-Plus `table-prefix`，实体/Mapper 层零感知）；下表以 `wms_` 简写代替实际前缀以便阅读；**完整可执行 DDL 与存储过程签名契约以 `docs/sql/schema.sql` 为准**（MySQL 8.4 实测建库通过）：
+按课题命名规范，所有表名以「班级＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（实体 `@TableName` 直书完整表名——MP 的 `table-prefix` 对显式 `@TableName` 不生效，项目不配置，见 docs/CONTRIBUTING.md §7.2 口径）；下表以 `wms_` 简写代替实际前缀以便阅读；**完整可执行 DDL 与存储过程签名契约以 `docs/sql/schema.sql` 为准**（MySQL 8.4 实测建库通过）：
 
 | 表名 | 用途 | 关键字段 |
 |------|------|---------|
@@ -287,8 +288,9 @@
 
 | 方法 | 路径 | 功能 |
 |------|------|------|
-| POST | `/api/auth/login` | 登录，返回 JWT + 权限码集合 |
-| POST | `/api/auth/logout` | 注销 |
+| POST | `/api/auth/login` | 登录（公开），返回 JWT + 权限码集合 |
+| GET | `/api/auth/me` | 当前用户信息+最新权限集（启动恢复校验+权限刷新；受保护） |
+| POST | `/api/auth/logout` | 注销（语义入口，公开） |
 | GET | `/api/persons?name={字}&page=&size=` | 人员分页查询（支持单字模糊） |
 | POST/PUT/DELETE | `/api/persons` `/api/persons/{id}` | 人员增删改 |
 | GET | `/api/materials?keyword=&page=&size=` | 物料分页模糊查询 |
@@ -298,7 +300,10 @@
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
 | GET | `/api/reports/monthly-orders/{yyyyMM}` | 导出月度进出仓单 Excel |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}` | 导出仓库账本 PDF |
-| GET | `/api/users` / POST `/api/users/{id}/permissions` | 用户与授权管理 |
+| GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用），需 `menu.auth.user` |
+| GET/POST | `/api/users/{id}/roles` | 查询/分配用户角色（逐用户授权，全量覆盖），需 `menu.auth.grant` |
+| GET | `/api/roles`；GET `/api/roles/permissions` | 角色列表（含权限码）/ 权限资源列表（菜单项） |
+| GET/POST | `/api/roles/{roleId}/permissions` | 查询/分配角色权限（逐角色授权，全量覆盖），需 `menu.auth.grant` |
 | GET | `/api/version` | 客户端版本检测（自动升级） |
 
 ### 6.3 设计约定
@@ -329,7 +334,7 @@
 ### 7.3 权限管理（子系统四）
 
 - 登录流程：客户端提交用户名口令 → 服务端 BCrypt 比对 → 签发 JWT（含权限码）→ 客户端按权限码渲染菜单，无权菜单 `setVisible(false)` 且 `setDisable(true)` 双保险。
-- 授权界面：树形展示用户 × 菜单权限，勾选即授予/收回，仅影响该用户（RBAC 关系表天然满足）。
+- 授权界面：两级 RBAC——「角色 × 权限」勾选授予/收回 +「用户 × 角色」分配；用户实际权限 = 其全部角色的权限并集，操作仅影响对应角色/用户（RBAC 关系表天然满足，FR-4-3/4-6）。
 - 服务端接口级鉴权：自定义注解 `@RequirePermission("menu.xxx")` + 拦截器校验——即使客户端被绕过，接口仍然安全（答辩论述纵深）。
 
 ### 7.4 统计与报表（子系统五）

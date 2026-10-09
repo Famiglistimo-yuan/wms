@@ -28,8 +28,8 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: auto
-      # 课题命名规范：表名以「班级＋座号」为前缀（开发规范 §7.1）；前缀含尾部下划线，MP 纯拼接
-      table-prefix: rg2402_11_12_13_
+      # 表名前缀口径：实体 @TableName 直书完整表名（MP table-prefix 对显式 @TableName 不生效，故不配置，
+      # 见技术方案 §5.1 / 开发规范 §7.2）
   mapper-locations: classpath*:/mapper/**/*.xml
 
 # 自动升级发布信息（FR-6）：发版时改 version/md5 并将新主 jar 放入升级包目录（见 download-url），

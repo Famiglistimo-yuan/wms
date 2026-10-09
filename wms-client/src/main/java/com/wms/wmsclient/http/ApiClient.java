@@ -1,22 +1,33 @@
 package com.wms.wmsclient.http;
 
+import com.wms.common.Result;
+import tools.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
- * HTTP 客户端骨架（FR-6 首个使用方；FR-4 登录切片在此扩展 POST/token 携带）。
- * 错误契约：HTTP 恒 200，业务成败看响应体 Result.code（TECHNICAL_DESIGN §6.1）。
+ * HTTP 客户端：服务端通信统一入口。
+ *
+ * <p>错误契约：HTTP 恒 200，业务成败看响应体 Result.code。code != 0 时抛 ApiException，
+ * 由调用方（Controller）负责 UI 反馈；网络异常原样抛出。
+ *
+ * <p>鉴权：ApiClient.auth(token) 设置后，每次请求自动带 Authorization: Bearer 头；
+ * ApiClient.clearAuth() 清除。
+ *
+ * <p>401 统一处理：ApiClient.setOnUnauthorized() 注册回调，业务码 401 时触发——
+ * 典型用法是 App 初始化时注册「清登录态 + 回登录窗」，避免每个 Controller 重复写。
  */
 public final class ApiClient {
 
-    /**
-     * 服务端地址：默认本机开发；可用系统属性覆盖（-Dwms.server.url=http://192.168.x.x:8080），
-     * 局域网演示时另一台机器当服务端无需重打包。FR-4 落地时改 data/ 配置文件。
-     */
     public static final String BASE_URL =
             System.getProperty("wms.server.url", "http://localhost:8080");
 
@@ -24,16 +35,130 @@ public final class ApiClient {
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /** 当前登录 token（静态全局，SessionContext 里保存但也同步到此，ApiClient 零依赖 SessionContext） */
+    private static volatile String bearerToken;
+
+    /** 401 业务码触发回调：典型由 App 注册「清态 + 回登录窗」 */
+    private static volatile Consumer<Integer> onUnauthorized;
+
     private ApiClient() {
     }
 
-    /** GET 请求，返回响应体字符串；网络/超时异常原样抛出，由调用方决定降级策略 */
+    /** 设置 Bearer token，后续请求自动携带 */
+    public static void auth(String token) {
+        bearerToken = token;
+    }
+
+    /** 清除 token（注销时调） */
+    public static void clearAuth() {
+        bearerToken = null;
+    }
+
+    /** 注册 401 统一回调（App 启动时注册；触发在抛 ApiException 之前） */
+    public static void setOnUnauthorized(Consumer<Integer> callback) {
+        onUnauthorized = callback;
+    }
+
+    /** GET，带 query params */
+    public static String get(String path, Map<String, String> params) throws IOException, InterruptedException {
+        String fullPath = buildPath(path, params);
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + fullPath))
+                .timeout(Duration.ofSeconds(10))
+                .GET();
+        applyAuth(builder);
+        return sendAndGetBody(builder.build());
+    }
+
+    /** GET，无 query params */
     public static String get(String path) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(BASE_URL + path))
-                .timeout(Duration.ofSeconds(5))
-                .GET()
-                .build();
-        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        return get(path, null);
+    }
+
+    /** POST，JSON body */
+    public static String post(String path, String jsonBody) throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + path))
+                .timeout(Duration.ofSeconds(10))
+                .header("Content-Type", "application/json;charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8));
+        applyAuth(builder);
+        return sendAndGetBody(builder.build());
+    }
+
+    /**
+     * 发送请求并解析 Result。code != 0 抛 ApiException，HTTP 非 200 也抛 ApiException。
+     * 返回 data 字段（已按 targetClass 反序列化）。
+     * 业务码 401 触发 onUnauthorized 回调（若已注册），然后抛 ApiException 让调用方感知。
+     */
+    public static <T> T getResultData(String jsonResponse, Class<T> targetClass) throws IOException {
+        Result<T> result = MAPPER.readValue(jsonResponse,
+                MAPPER.getTypeFactory().constructParametricType(Result.class, targetClass));
+        if (result.getCode() != 0) {
+            fireOnUnauthorizedIf401(result.getCode());
+            throw new ApiException(result.getCode(), result.getMessage());
+        }
+        return result.getData();
+    }
+
+    /** 同上，但 data 是字符串类型（list 场景） */
+    public static <T> java.util.List<T> getResultList(String jsonResponse, Class<T> elementClass) throws IOException {
+        Result<?> result = MAPPER.readValue(jsonResponse, Result.class);
+        if (result.getCode() != 0) {
+            fireOnUnauthorizedIf401(result.getCode());
+            throw new ApiException(result.getCode(), result.getMessage());
+        }
+        if (result.getData() == null) {
+            return java.util.List.of();
+        }
+        // 通用 List 反序列化
+        return MAPPER.convertValue(result.getData(),
+                MAPPER.getTypeFactory().constructCollectionType(java.util.List.class, elementClass));
+    }
+
+    /** 仅校验 code == 0，data 丢弃（如 logout） */
+    public static void checkSuccess(String jsonResponse) throws IOException {
+        Result<?> result = MAPPER.readValue(jsonResponse, Result.class);
+        if (result.getCode() != 0) {
+            fireOnUnauthorizedIf401(result.getCode());
+            throw new ApiException(result.getCode(), result.getMessage());
+        }
+    }
+
+    /** 业务码 401 时触发回调（HTTP 非 200 由 sendAndGetBody 处理，不走这里） */
+    private static void fireOnUnauthorizedIf401(int code) {
+        if (code == 401 && onUnauthorized != null) {
+            try { onUnauthorized.accept(code); } catch (RuntimeException ignored) {}
+        }
+    }
+
+    private static void applyAuth(HttpRequest.Builder builder) {
+        String token = bearerToken;
+        if (token != null && !token.isEmpty()) {
+            builder.header("Authorization", "Bearer " + token);
+        }
+    }
+
+    private static String sendAndGetBody(HttpRequest request) throws IOException, InterruptedException {
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() != 200) {
+            throw new ApiException(response.statusCode(), "服务端返回 HTTP " + response.statusCode());
+        }
         return response.body();
+    }
+
+    private static String buildPath(String path, Map<String, String> params) {
+        if (params == null || params.isEmpty()) return path;
+        StringBuilder sb = new StringBuilder(path);
+        sb.append(path.contains("?") ? "&" : "?");
+        boolean first = true;
+        for (Map.Entry<String, String> e : params.entrySet()) {
+            if (!first) sb.append("&");
+            first = false;
+            sb.append(URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8))
+                    .append('=')
+                    .append(URLEncoder.encode(e.getValue() == null ? "" : e.getValue(), StandardCharsets.UTF_8));
+        }
+        return sb.toString();
     }
 }
