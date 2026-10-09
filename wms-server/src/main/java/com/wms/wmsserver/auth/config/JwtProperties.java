@@ -1,4 +1,4 @@
-package com.wms.wmsserver.config;
+package com.wms.wmsserver.auth.config;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

@@ -1,6 +1,6 @@
 package com.wms.wmsserver.auth.util;
 
-import com.wms.wmsserver.config.JwtProperties;
+import com.wms.wmsserver.auth.config.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;

@@ -1,4 +1,4 @@
-package com.wms.wmsserver.config;
+package com.wms.wmsserver.version.config;
 
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;

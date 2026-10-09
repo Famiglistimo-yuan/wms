@@ -204,6 +204,22 @@ feat(client): 物料档案界面支持分页与模糊查询
 2. `@Builder.Default` 用在带默认值的字段上必须显式标注，否则 Lombok 不会生成默认值。
 3. POJO 字段名与 JSON 字段名不一致时，**优先用 Jackson `@JsonProperty`**，不要靠 Lombok 自动生成的 setter 名。
 
+### 3.6 服务端包结构约定
+
+服务端按**功能分包**（2026-10 定稿，随子系统四 auth/ 落地确立），分层只在功能包内部体现：
+
+| 内容 | 位置 |
+|------|------|
+| 功能业务代码（Controller / Service / DTO / 功能内配置） | 功能包：`auth/`、`version/`、`person/`、`material/`、`stock/`、`stats/`…，包内自建 `controller/`、`service/`、`dto/`、`config/` 子包（参照 `auth/` 模板） |
+| **entity + mapper（数据契约层）** | **根级集中一处**——实体=表=`schema.sql` 定稿的契约，跨功能共用（stock 引用 material/person，stats 读全表）；功能包之间禁止互相 import 业务类，跨功能数据访问一律走根级 Mapper |
+| 横切关注点（`config/`、`exception/`） | 根级：只收**被多个功能引用**的全局装配（如 `WebMvcConfig`）与全局异常处理；功能专用的 `@ConfigurationProperties` 随功能包走（如 `auth/config/JwtProperties`、`version/config/UpdateProperties`）——判断标准：grep 引用方，仅一个功能在用即归功能包 |
+
+规则要点：
+
+1. 新功能一律建独立功能包（小写单数名词），不要往根级层包里加类；根级不再新建 `controller/`、`service/` 目录。
+2. 新增表 = 根级 `entity/` + `mapper/` 各加一个类 + `schema.sql` 变更同步，三者必须一致。
+3. 功能包对外只暴露 Controller 接口；确需复用其他功能的业务逻辑时，先把公共部分下沉到根级（Mapper 或 common 工具），不做功能包间依赖。
+
 ## 4. 服务端专项规范
 
 1. **统一响应**：所有接口返回 `Result<T>`（技术方案 §6.1 的 code/message/data），禁止 Controller 直接返回裸对象或裸 Map。
