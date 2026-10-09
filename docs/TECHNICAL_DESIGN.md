@@ -364,7 +364,7 @@
 1. `./mvnw versions:set -DnewVersion=x.y.z -DgenerateBackupPoms=false`（版本单一来源，`version.txt` 经 resources filtering 随之注入主 jar）
 2. `./scripts/package-appimage.sh x.y.z`——产物 `target/jpackage/WMS.app`（Windows 同参数），末尾打印主 jar 的 MD5
 3. 主 jar（固定名 `wms-client.jar`）拷入服务端 `static/download/`
-4. 版本号与 MD5 填入 `application.yaml` 的 `wms-update` 块，重启服务端。客户端下次启动即检测到新版本
+4. 版本号与 MD5 填入 `application.yaml` 的 `wms.update` 块，重启服务端。客户端下次启动即检测到新版本
 
 **升级包的替换粒度与文件名（实现约束，详见 ADR-008）**：主 jar 为 shade fat jar（含 wms-common 与 Jackson 等纯 Java 依赖）且**固定名 `wms-client.jar` 不带版本号**——jpackage 启动配置 `WMS.cfg` 写死 classpath 文件名，带版本号会导致升级后启动器找不到文件；版本信息由 jar 内 `version.txt` 承载。JavaFX 及其 native lib 不随升级变更（由打包的 `app/` 目录提供，升级需整包重装）。
 

@@ -56,10 +56,10 @@ jpackage \
   "${ICON_ARGS[@]}" \
   --dest target/jpackage
 
-# 发布辅助：打印主 jar MD5（发版时填入 application.yaml 的 wms-update.md5）
+# 发布辅助：打印主 jar MD5（发版时填入 application.yaml 的 wms.update.md5）
 MAIN_JAR="target/jpackage/WMS.app/Contents/app/wms-client.jar"
 [ -f "$MAIN_JAR" ] || MAIN_JAR="target/jpackage/WMS/app/wms-client.jar"
 echo ""
 echo "打包完成：$(dirname "$(dirname "$MAIN_JAR")")"
-echo "主 jar MD5（发版填 application.yaml → wms-update.md5）："
+echo "主 jar MD5（发版填 application.yaml → wms.update.md5）："
 if command -v md5 >/dev/null; then md5 -q "$MAIN_JAR"; else certutil -hashfile "$MAIN_JAR" MD5 | head -2 | tail -1; fi

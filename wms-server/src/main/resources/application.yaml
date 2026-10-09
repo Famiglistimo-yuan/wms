@@ -34,10 +34,11 @@ mybatis-plus:
 
 # 自动升级发布信息（FR-6）：发版时改 version/md5 并将新主 jar 放入升级包目录（见 download-url），
 # 客户端启动时经 /api/version 比对（发布流程见 static/download/README.md）
-wms-update:
-  version: 1.0.1
-  download-url: /download/wms-client.jar
-  md5: 1001f1c761e030c60ec7e6f34cf6ccf1
+wms:
+  update:
+    version: 1.0.1
+    download-url: /download/wms-client.jar
+    md5: 1001f1c761e030c60ec7e6f34cf6ccf1
 
 # 日志
 logging:

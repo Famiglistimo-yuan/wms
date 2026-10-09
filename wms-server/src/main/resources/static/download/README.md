@@ -9,7 +9,7 @@
 1. `./mvnw versions:set -DnewVersion=x.y.z -DgenerateBackupPoms=false`（版本号单一来源，version.txt 随之注入）
 2. `./scripts/package-appimage.sh x.y.z`（末尾打印主 jar 的 MD5）
 3. 产物主 jar（`target/jpackage/WMS[.app]/app/wms-client.jar`）拷入服务端运行目录的 `./downloads/` 下（URL 为 `/download/wms-client.jar`）
-4. 版本号与 MD5 填入 `application.yaml` 的 `wms-update` 块，重启 server
+4. 版本号与 MD5 填入 `application.yaml` 的 `wms.update` 块，重启 server
 
 **Windows 交付必须整流程重跑**：JavaFX 依赖带平台 classifier（macOS 产物是
 `javafx-*-macos-aarch64.jar`，Windows 需 `-win.jar`）——不能复用 macOS 上 copy-dependencies
