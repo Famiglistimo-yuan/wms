@@ -288,8 +288,9 @@
 
 | 方法 | 路径 | 功能 |
 |------|------|------|
-| POST | `/api/auth/login` | 登录，返回 JWT + 权限码集合 |
-| POST | `/api/auth/logout` | 注销 |
+| POST | `/api/auth/login` | 登录（公开），返回 JWT + 权限码集合 |
+| GET | `/api/auth/me` | 当前用户信息+最新权限集（启动恢复校验+权限刷新；受保护） |
+| POST | `/api/auth/logout` | 注销（语义入口，公开） |
 | GET | `/api/persons?name={字}&page=&size=` | 人员分页查询（支持单字模糊） |
 | POST/PUT/DELETE | `/api/persons` `/api/persons/{id}` | 人员增删改 |
 | GET | `/api/materials?keyword=&page=&size=` | 物料分页模糊查询 |
@@ -299,9 +300,6 @@
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
 | GET | `/api/reports/monthly-orders/{yyyyMM}` | 导出月度进出仓单 Excel |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}` | 导出仓库账本 PDF |
-| POST | `/api/auth/login` | 登录（公开） |
-| GET | `/api/auth/me` | 当前用户信息+最新权限集（启动恢复校验+权限刷新；受保护） |
-| POST | `/api/auth/logout` | 注销（语义入口，公开） |
 | GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用），需 `menu.auth.user` |
 | GET/POST | `/api/users/{id}/roles` | 查询/分配用户角色（逐用户授权，全量覆盖），需 `menu.auth.grant` |
 | GET | `/api/roles`；GET `/api/roles/permissions` | 角色列表（含权限码）/ 权限资源列表（菜单项） |

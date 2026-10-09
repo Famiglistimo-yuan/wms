@@ -6,7 +6,6 @@ import com.wms.common.dto.LoginResponse;
 import com.wms.wmsclient.controller.LoginController;
 import com.wms.wmsclient.controller.MainController;
 import com.wms.wmsclient.http.ApiClient;
-import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.update.UpdateService;
 import com.wms.wmsclient.util.TokenStore;
 import javafx.concurrent.Task;
@@ -41,10 +40,19 @@ public class App extends Application {
         // 401 统一回调：任何业务接口返回 401 自动清态回登录窗（兜底，解决过期 token 卡主界面 +
         // 管理员收回权限后旧会话的陈旧菜单显隐）
         ApiClient.setOnUnauthorized(code -> Platform.runLater(() -> {
+            // 登录接口口令错误也返回 401：未登录态（SessionContext 为空）的 401 属于登录失败，
+            // 由 LoginController 弹窗提示，不重载登录窗；这里只处理会话过期/失效
+            if (SessionContext.get() == null) {
+                return;
+            }
             SessionContext.reset();
             ApiClient.clearAuth();
             TokenStore.clear();
-            try { showLogin(); } catch (IOException ignored) {}
+            try {
+                showLogin();
+            } catch (IOException e) {
+                System.err.println("会话过期后回登录窗失败：" + e.getMessage());
+            }
         }));
 
         // token 落盘恢复（FR-4/FR-6）：data/session.json 有存档则免重登直接进主界面
@@ -100,12 +108,8 @@ public class App extends Application {
             }
         }));
         verifyTask.setOnFailed(e -> {
-            // 401：ApiClient.setOnUnauthorized 已清态回登录窗，这里什么都不用做
+            // 401：ApiClient.setOnUnauthorized 已清态回登录窗；
             // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底
-            Throwable t = verifyTask.getException();
-            if (!(t instanceof ApiException ae && ae.getCode() == 401)) {
-                // 非 401 异常静默
-            }
         });
         new Thread(verifyTask, "restore-session-verify").start();
 
