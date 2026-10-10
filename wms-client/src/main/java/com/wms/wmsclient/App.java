@@ -16,6 +16,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * 客户端入口：登录窗 → 主界面。
@@ -121,12 +122,17 @@ public class App extends Application {
             // 401：ApiClient.setOnUnauthorized 已清态回登录窗；
             // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底
         });
-        new Thread(verifyTask, "restore-session-verify").start();
+        // daemon：关窗即退，不因后台校验未完成而僵住进程
+        Thread t = new Thread(verifyTask, "restore-session-verify");
+        t.setDaemon(true);
+        t.start();
     }
 
     /** 登录窗 */
     public void showLogin() throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/rg2402_11_12_13_login.fxml"));
+        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(
+                getClass().getResource("/fxml/rg2402_11_12_13_login.fxml"),
+                "缺少 FXML 资源：/fxml/rg2402_11_12_13_login.fxml"));
         loader.setControllerFactory(c -> new LoginController(this));
         stage.setScene(new Scene(loader.load(), 360, 260));
         stage.centerOnScreen();
@@ -134,7 +140,9 @@ public class App extends Application {
 
     /** 主界面（菜单骨架） */
     public void showMain() throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/rg2402_11_12_13_main.fxml"));
+        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(
+                getClass().getResource("/fxml/rg2402_11_12_13_main.fxml"),
+                "缺少 FXML 资源：/fxml/rg2402_11_12_13_main.fxml"));
         loader.setControllerFactory(c -> new MainController(this));
         mainRoot = loader.load();
         mainController = loader.getController();
@@ -153,7 +161,9 @@ public class App extends Application {
         if (mainRoot == null) {
             throw new IllegalStateException("尚未进入主界面，不能切换面板");
         }
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/" + fxmlName + ".fxml"));
+        String path = "/fxml/" + fxmlName + ".fxml";
+        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(
+                getClass().getResource(path), "缺少 FXML 资源：" + path));
         loader.setControllerFactory(c -> {
             try {
                 return c.getConstructor(App.class).newInstance(this);
