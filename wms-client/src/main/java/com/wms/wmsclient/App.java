@@ -35,7 +35,10 @@ public class App extends Application {
     public void start(Stage primaryStage) throws IOException {
         this.stage = primaryStage;
         // 窗口图标（Windows/Linux 任务栏；macOS 的 Dock 图标由 jpackage 的 .icns 提供）
-        stage.getIcons().add(new Image(getClass().getResource("/icons/wms.png").toExternalForm()));
+        var iconUrl = getClass().getResource("/icons/wms.png");
+        if (iconUrl != null) {
+            stage.getIcons().add(new Image(iconUrl.toExternalForm()));
+        }
 
         // 401 统一回调：任何业务接口返回 401 自动清态回登录窗（兜底，解决过期 token 卡主界面 +
         // 管理员收回权限后旧会话的陈旧菜单显隐）
@@ -90,6 +93,13 @@ public class App extends Application {
         }
 
         // 后台异步校验 token 有效性 + 刷新权限集
+        startVerifyTask();
+
+        return true;
+    }
+
+    /** 后台异步校验 token 有效性 + 刷新权限集（成功则覆盖会话并重显隐菜单；失败静默，见 ApiClient 401 兜底） */
+    private void startVerifyTask() {
         Task<LoginResponse> verifyTask = new Task<>() {
             @Override
             protected LoginResponse call() throws Exception {
@@ -112,8 +122,6 @@ public class App extends Application {
             // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底
         });
         new Thread(verifyTask, "restore-session-verify").start();
-
-        return true;
     }
 
     /** 登录窗 */
@@ -128,7 +136,7 @@ public class App extends Application {
     public void showMain() throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/rg2402_11_12_13_main.fxml"));
         loader.setControllerFactory(c -> new MainController(this));
-        mainRoot = (BorderPane) loader.load();
+        mainRoot = loader.load();
         mainController = loader.getController();
         stage.setScene(new Scene(mainRoot, 800, 600));
         stage.centerOnScreen();
