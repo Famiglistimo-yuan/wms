@@ -18,7 +18,7 @@
             <Label text="姓名单字："/>
             <TextField fx:id="tfSearch" promptText="输入任意一个字，如「王」" onAction="#onRefreshClicked"
                        prefWidth="180"/>
-            <Button text="查询/刷新" onAction="#onRefreshClicked"/>
+            <Button fx:id="btnRefresh" text="查询/刷新" onAction="#onRefreshClicked"/>
             <Button text="新增" onAction="#onCreateClicked"/>
             <Button text="修改" onAction="#onEditClicked"/>
             <Button text="删除" onAction="#onDeleteClicked"/>
@@ -26,7 +26,7 @@
     </top>
 
     <center>
-        <TableView fx:id="tvPersons" VBox.vgrow="ALWAYS" editable="false"/>
+        <TableView fx:id="tvPersons" editable="false"/>
     </center>
 
     <bottom>

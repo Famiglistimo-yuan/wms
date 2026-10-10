@@ -1,6 +1,7 @@
 package com.wms.wmsclient.controller;
 
 import com.wms.common.RegexPatterns;
+import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import javafx.application.Platform;
@@ -21,6 +22,7 @@ import java.util.*;
  */
 public class PersonManageController {
 
+    private final App app;
     private final ObservableList<PersonRow> rows = FXCollections.observableArrayList();
 
     @FXML private TextField tfSearch;
@@ -28,7 +30,9 @@ public class PersonManageController {
     @FXML private TableView<PersonRow> tvPersons;
     @FXML private Label lblStatus;
 
-    public PersonManageController() {
+    /** App 注入构造器（MainController.showPanel 的 ControllerFactory 要求） */
+    public PersonManageController(App app) {
+        this.app = app;
     }
 
     @FXML

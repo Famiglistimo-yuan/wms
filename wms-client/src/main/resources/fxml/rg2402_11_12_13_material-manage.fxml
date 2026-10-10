@@ -22,7 +22,7 @@
     </top>
 
     <center>
-        <TableView fx:id="tvMaterials" VBox.vgrow="ALWAYS" editable="false"/>
+        <TableView fx:id="tvMaterials" editable="false"/>
     </center>
 
     <bottom>

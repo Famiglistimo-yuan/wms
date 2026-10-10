@@ -1,5 +1,6 @@
 package com.wms.wmsclient.controller;
 
+import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import javafx.application.Platform;
@@ -20,6 +21,8 @@ import java.util.*;
  */
 public class MaterialManageController {
 
+    private final App app;
+
     /** FR-1-3-3 预设单位，ComboBox 还允许自由输入 */
     private static final List<String> UNIT_PRESETS = List.of("件", "套", "公斤", "吨", "升", "米", "毫米", "个", "箱", "包");
 
@@ -29,7 +32,10 @@ public class MaterialManageController {
     @FXML private TableView<MaterialRow> tvMaterials;
     @FXML private Label lblStatus;
 
-    public MaterialManageController() {}
+    /** App 注入构造器（MainController.showPanel 的 ControllerFactory 要求） */
+    public MaterialManageController(App app) {
+        this.app = app;
+    }
 
     @FXML
     protected void initialize() {
