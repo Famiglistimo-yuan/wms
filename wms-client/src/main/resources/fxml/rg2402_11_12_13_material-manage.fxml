@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.wms.wmsclient.controller.MaterialManageController">
+
+    <top>
+        <HBox spacing="8" style="-fx-padding: 8px;">
+            <Label text="关键字："/>
+            <TextField fx:id="tfSearch" promptText="代码 / 名称 / 规格" onAction="#onRefreshClicked" prefWidth="200"/>
+            <Button text="查询/刷新" onAction="#onRefreshClicked"/>
+            <Button text="新增" onAction="#onCreateClicked"/>
+            <Button text="修改" onAction="#onEditClicked"/>
+            <Button text="删除" onAction="#onDeleteClicked"/>
+        </HBox>
+    </top>
+
+    <center>
+        <TableView fx:id="tvMaterials" editable="false"/>
+    </center>
+
+    <bottom>
+        <HBox style="-fx-padding: 4px 8px;">
+            <Label fx:id="lblStatus" text="点击查询加载物料列表" HBox.hgrow="ALWAYS"/>
+        </HBox>
+    </bottom>
+</BorderPane>

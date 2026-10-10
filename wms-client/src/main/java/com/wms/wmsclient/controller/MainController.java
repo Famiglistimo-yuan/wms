@@ -114,44 +114,28 @@ public class MainController {
     // ====== 以下是 FXML 里 MenuItem 绑定的 onAction 处理（命名按开发规范 §5.4：on + 动作 + Clicked）======
 
     @FXML
-    protected void onPersonViewClicked() {
-        showPlaceholder("人员档案查询");
-    }
+    protected void onPersonViewClicked() { showPanelSafe("rg2402_11_12_13_person-manage"); }
 
     @FXML
-    protected void onPersonAddClicked() {
-        showPlaceholder("人员档案增加");
-    }
+    protected void onPersonAddClicked() { showPanelSafe("rg2402_11_12_13_person-manage"); }
 
     @FXML
-    protected void onPersonEditClicked() {
-        showPlaceholder("人员档案修改");
-    }
+    protected void onPersonEditClicked() { showPanelSafe("rg2402_11_12_13_person-manage"); }
 
     @FXML
-    protected void onPersonDeleteClicked() {
-        showPlaceholder("人员档案删除");
-    }
+    protected void onPersonDeleteClicked() { showPanelSafe("rg2402_11_12_13_person-manage"); }
 
     @FXML
-    protected void onMaterialViewClicked() {
-        showPlaceholder("物料档案查询");
-    }
+    protected void onMaterialViewClicked() { showPanelSafe("rg2402_11_12_13_material-manage"); }
 
     @FXML
-    protected void onMaterialAddClicked() {
-        showPlaceholder("物料档案增加");
-    }
+    protected void onMaterialAddClicked() { showPanelSafe("rg2402_11_12_13_material-manage"); }
 
     @FXML
-    protected void onMaterialEditClicked() {
-        showPlaceholder("物料档案修改");
-    }
+    protected void onMaterialEditClicked() { showPanelSafe("rg2402_11_12_13_material-manage"); }
 
     @FXML
-    protected void onMaterialDeleteClicked() {
-        showPlaceholder("物料档案删除");
-    }
+    protected void onMaterialDeleteClicked() { showPanelSafe("rg2402_11_12_13_material-manage"); }
 
     @FXML
     protected void onStockInClicked() {
