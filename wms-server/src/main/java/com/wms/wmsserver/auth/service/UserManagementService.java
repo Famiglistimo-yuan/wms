@@ -13,7 +13,6 @@ import com.wms.wmsserver.mapper.PersonMapper;
 import com.wms.wmsserver.mapper.UserMapper;
 import com.wms.wmsserver.mapper.UserRoleMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +30,7 @@ public class UserManagementService {
     private final PersonMapper personMapper;
     private final UserRoleMapper userRoleMapper;
 
-    private final PasswordEncoder encoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder encoder;
 
     /** 用户列表（联表人员档案） */
     public List<UserVO> listUsers() {

@@ -49,9 +49,7 @@ public class App extends Application {
             if (SessionContext.get() == null) {
                 return;
             }
-            SessionContext.reset();
-            ApiClient.clearAuth();
-            TokenStore.clear();
+            clearSession();
             try {
                 showLogin();
             } catch (IOException e) {
@@ -67,6 +65,13 @@ public class App extends Application {
         stage.show();
         // FR-6：后台检查新版本（失败静默，不阻塞登录；确有新版弹窗征求同意）
         UpdateService.checkAsync(false);
+    }
+
+    /** 清空登录态（内存会话 + ApiClient token + 落盘存档） */
+    public void clearSession() {
+        SessionContext.reset();
+        ApiClient.clearAuth();
+        TokenStore.clear();
     }
 
     /**
@@ -87,9 +92,7 @@ public class App extends Application {
         try {
             showMain();
         } catch (IOException e) {
-            SessionContext.reset();
-            ApiClient.clearAuth();
-            TokenStore.clear();
+            clearSession();
             return false;
         }
 

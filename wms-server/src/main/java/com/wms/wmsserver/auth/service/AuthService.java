@@ -13,7 +13,6 @@ import com.wms.wmsserver.mapper.PersonMapper;
 import com.wms.wmsserver.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +30,7 @@ public class AuthService {
     private final PersonMapper personMapper;
     private final JwtUtil jwtUtil;
 
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     /** 登录：校验 → 查权限 → 签发 JWT → 返回 */
     public LoginResponse login(LoginRequest req) {
