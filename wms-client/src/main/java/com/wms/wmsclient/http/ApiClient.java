@@ -86,6 +86,35 @@ public final class ApiClient {
         return sendAndGetBody(builder.build());
     }
 
+    /** PUT，JSON body */
+    public static String put(String path, String jsonBody) throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + path))
+                .timeout(Duration.ofSeconds(10))
+                .header("Content-Type", "application/json;charset=UTF-8")
+                .method("PUT", HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8));
+        applyAuth(builder);
+        return sendAndGetBody(builder.build());
+    }
+
+    /** DELETE，无 body */
+    public static String delete(String path) throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + path))
+                .timeout(Duration.ofSeconds(10))
+                .method("DELETE", HttpRequest.BodyPublishers.noBody());
+        applyAuth(builder);
+        return sendAndGetBody(builder.build());
+    }
+
+    /** 通用 JSON 序列化（Jackson，两端共享 DTO 注解兼容） */
+    public static String toJson(Object obj) throws IOException {
+        return MAPPER.writeValueAsString(obj);
+    }
+
+    /** URL 编码（search keyword 等） */
+    public static String urlEncode(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
     /**
      * 发送请求并解析 Result。code != 0 抛 ApiException，HTTP 非 200 也抛 ApiException。
      * 返回 data 字段（已按 targetClass 反序列化）。
