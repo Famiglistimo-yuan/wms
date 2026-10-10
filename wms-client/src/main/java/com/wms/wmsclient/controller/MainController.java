@@ -2,9 +2,7 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
-import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.update.UpdateService;
-import com.wms.wmsclient.util.TokenStore;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -187,9 +185,7 @@ public class MainController {
     @FXML
     protected void onLogoutClicked() {
         // 清登录态（内存 + 落盘存档）
-        SessionContext.reset();
-        ApiClient.clearAuth();
-        TokenStore.clear();
+        app.clearSession();
         try {
             app.showLogin();
         } catch (Exception e) {

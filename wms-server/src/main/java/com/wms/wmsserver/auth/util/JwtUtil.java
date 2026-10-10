@@ -4,7 +4,6 @@ import com.wms.wmsserver.auth.config.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -19,16 +18,20 @@ import java.util.List;
  *   permissions = 权限码集合（字符串列表）
  */
 @Component
-@RequiredArgsConstructor
 public class JwtUtil {
 
-    private final JwtProperties properties;
+    private final SecretKey key;
+    private final long expireHours;
+
+    public JwtUtil(JwtProperties properties) {
+        this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
+        this.expireHours = properties.getExpireHours();
+    }
 
     /** 签发 JWT */
     public String issue(Long userId, String username, List<String> permissions) {
-        SecretKey key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
         long now = System.currentTimeMillis();
-        long exp = now + (long) properties.getExpireHours() * 3600_000L;
+        long exp = now + expireHours * 3600_000L;
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
@@ -41,7 +44,6 @@ public class JwtUtil {
 
     /** 解析 JWT，返回全部 Claims；非法/过期/篡改均抛 JwtException */
     public Claims parse(String token) {
-        SecretKey key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
