@@ -81,6 +81,14 @@ mysql -u root -p wms_dev < docs/sql/data.sql     # 13 项菜单权限 + 初始�
 
 两端都跑通即环境就绪，可以开始按子系统分工开发了。
 
+> **坑：命令行单模块启动前，先确认 wms-common 已 install。**
+> `-pl` 单模块构建（如 `./mvnw -pl wms-server spring-boot:run`）从 `~/.m2`
+> 解析 wms-common——改过 common 源码但没重新 install，就会报
+> `NoSuchMethodError`（方法在源码里明明存在）。防法二选一：
+> ① 改了 common 就 `./mvnw -pl wms-common install -DskipTests`；
+> ② 服务端直接用 IDEA 启动（工作区类路径不走 .m2，天然免疫）。
+> 完整分析见 issue「.m2 化石 wms-common」。
+
 > 期末交付：在 Windows 机器上用 `jpackage` 打包 exe/msi（需下载一次 JavaFX SDK 解压供 jlink 组装运行时）。
 
 ## 1. Git 提交规范（Conventional Commits）
