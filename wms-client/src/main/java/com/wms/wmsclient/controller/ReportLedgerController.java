@@ -16,6 +16,8 @@ import javafx.util.StringConverter;
 
 import java.io.File;
 import java.io.UncheckedIOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +95,9 @@ public class ReportLedgerController {
         Task<byte[]> task = new Task<>() {
             @Override
             protected byte[] call() throws Exception {
-                return ApiClient.downloadFile("/api/reports/ledger/" + material.getMaterialCode() + "/" + year,
+                // 物料代码 URL 编码：万一含 / ? # 空格等字符不破坏路径（服务端路径变量自动解码）
+                String code = URLEncoder.encode(material.getMaterialCode(), StandardCharsets.UTF_8);
+                return ApiClient.downloadFile("/api/reports/ledger/" + code + "/" + year,
                         Map.of("format", fmt));
             }
         };
