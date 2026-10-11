@@ -26,7 +26,7 @@ public class ReportModel {
     /** 表头列名 */
     private List<String> headers;
 
-    /** 各列宽（字符数，Excel 列宽 / Word 比例参考） */
+    /** 各列宽（字符数，仅 Excel 用；Word 按实际内容自适应，见 WordTableRenderer） */
     private List<Integer> widths;
 
     /** 各列对齐：left / center / right（数量列右对齐，排版合理） */
