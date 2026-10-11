@@ -18,23 +18,27 @@ public interface StatsMapper {
 
     /**
      * 各物料在 [from, to] 内的进出仓数量总和。
-     * 日期条件放在 JOIN 而非 WHERE：区间内无流水的物料仍保留（进出为 0），
-     * 「流动量最小物料」分析才完整（呆滞物料不应凭空消失）。
+     * 日期条件在派生表内过滤（谓词下推）：明细表扫描被区间限定，避免全量展开；
+     * 物料表 LEFT JOIN 派生表保证零流动物料保留（呆滞物料不消失），
+     * 「流动量最小物料」分析才完整。
      */
     @Select("""
             SELECT m.material_code AS materialCode,
                    m.name          AS name,
                    m.spec          AS spec,
                    m.unit          AS unit,
-                   COALESCE(SUM(CASE WHEN o.order_type = 'IN'  THEN i.quantity END), 0) AS inQty,
-                   COALESCE(SUM(CASE WHEN o.order_type = 'OUT' THEN i.quantity END), 0) AS outQty
+                   COALESCE(f.in_qty, 0)  AS inQty,
+                   COALESCE(f.out_qty, 0) AS outQty
               FROM rg2402_11_12_13_material m
-              LEFT JOIN rg2402_11_12_13_stock_order_item i
-                     ON i.material_id = m.id
-              LEFT JOIN rg2402_11_12_13_stock_order o
-                     ON o.id = i.order_id
-                    AND o.order_date BETWEEN #{from} AND #{to}
-             GROUP BY m.id, m.material_code, m.name, m.spec, m.unit
+              LEFT JOIN (
+                    SELECT i.material_id,
+                           SUM(CASE WHEN o.order_type = 'IN'  THEN i.quantity END) AS in_qty,
+                           SUM(CASE WHEN o.order_type = 'OUT' THEN i.quantity END) AS out_qty
+                      FROM rg2402_11_12_13_stock_order_item i
+                      JOIN rg2402_11_12_13_stock_order o ON o.id = i.order_id
+                     WHERE o.order_date BETWEEN #{from} AND #{to}
+                     GROUP BY i.material_id
+                   ) f ON f.material_id = m.id
             """)
     List<MaterialFlowStat> selectFlowStats(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
