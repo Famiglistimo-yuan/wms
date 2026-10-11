@@ -1,5 +1,6 @@
 <!--
   WMS 应用图标唯一矢量源（app-image 打包图标 + 客户端窗口图标的母版）。
+  设计：液态玻璃等距立方体（透明玻璃壳 + 壳内悬浮琥珀货箱 + 背景光斑折射）。
   衍生文件再生成方法（任一尺寸 S 用 rsvg-convert -w S -h S wms.svg -o out.png）：
   - scripts/icons/wms.icns ：iconset 10 档 16/32/64/128/256/512/1024（含 @2x 命名），iconutil -c icns 打包
   - scripts/icons/wms.ico  ：16/24/32/48/64/128/256 七档 PNG 条目打包成 ICO
@@ -7,19 +8,75 @@
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#06B6D4"/>
-      <stop offset="1" stop-color="#1E3A8A"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#7C3AED"/>
     </linearGradient>
+    <linearGradient id="ft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="fl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.06"/>
+    </linearGradient>
+    <linearGradient id="fr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.03"/>
+    </linearGradient>
+    <filter id="blob" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="70"/></filter>
+    <filter id="frost" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"/></filter>
+    <filter id="spec" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="9"/></filter>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="shadow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="22"/></filter>
+    <clipPath id="round"><rect width="1024" height="1024" rx="228"/></clipPath>
+    <clipPath id="cube"><path d="M512 282 L676 377 L676 587 L512 682 L348 587 L348 377 Z"/></clipPath>
   </defs>
+
   <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
-  <!-- 包裹箱体 -->
-  <rect x="286" y="380" width="452" height="332" rx="40" fill="#FFFFFF"/>
-  <!-- 竖向封箱带 -->
-  <rect x="486" y="380" width="52" height="332" fill="#1D4ED8"/>
-  <!-- 顶部翻盖折线 -->
-  <path d="M 302 446 L 512 386 L 722 446" stroke="#1D4ED8" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <!-- 对勾徽标 -->
-  <circle cx="706" cy="676" r="132" fill="#F59E0B"/>
-  <path d="M 650 676 L 694 722 L 776 626" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <g clip-path="url(#round)">
+    <circle cx="290" cy="270" r="200" fill="#22D3EE" opacity="0.50" filter="url(#blob)"/>
+    <circle cx="780" cy="790" r="220" fill="#F472B6" opacity="0.45" filter="url(#blob)"/>
+    <circle cx="810" cy="230" r="170" fill="#818CF8" opacity="0.50" filter="url(#blob)"/>
+  </g>
+
+  <!-- 整组立方体放大 1.4 倍 -->
+  <g transform="translate(512 452) scale(1.4) translate(-512 -482)">
+    <ellipse cx="512" cy="742" rx="205" ry="38" fill="#000000" opacity="0.28" filter="url(#shadow)"/>
+    <path d="M512 282 L676 377 L676 587 L512 682 L348 587 L348 377 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="16" stroke-linejoin="round" filter="url(#glow)"/>
+
+    <g clip-path="url(#cube)">
+      <g filter="url(#frost)" transform="translate(512 482) scale(1.10) translate(-512 -482)">
+        <rect width="1024" height="1024" fill="url(#bg)"/>
+        <circle cx="290" cy="270" r="200" fill="#22D3EE" opacity="0.50"/>
+        <circle cx="780" cy="790" r="220" fill="#F472B6" opacity="0.45"/>
+        <circle cx="810" cy="230" r="170" fill="#818CF8" opacity="0.50"/>
+      </g>
+    </g>
+
+    <!-- 外层玻璃壳 -->
+    <path d="M512 282 L676 377 L512 472 L348 377 Z" fill="url(#ft)" stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M348 377 L512 472 L512 682 L348 587 Z" fill="url(#fl)" stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M676 377 L676 587 L512 682 L512 472 Z" fill="url(#fr)" stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="6" stroke-linejoin="round"/>
+
+    <!-- 内立方体投在壳底的影 -->
+    <g clip-path="url(#cube)">
+      <ellipse cx="512" cy="636" rx="95" ry="24" fill="#000000" opacity="0.22" filter="url(#frost)"/>
+    </g>
+
+    <!-- 内层琥珀立方体 -->
+    <g transform="translate(512 482) scale(0.45) translate(-512 -482)">
+      <path d="M512 282 L676 377 L512 472 L348 377 Z" fill="#FDE68A" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M348 377 L512 472 L512 682 L348 587 Z" fill="#F59E0B" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M676 377 L676 587 L512 682 L512 472 Z" fill="#FBBF24" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="6" stroke-linejoin="round"/>
+    </g>
+
+    <g clip-path="url(#cube)">
+      <path d="M474 302 L356 370" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="24" stroke-linecap="round" filter="url(#spec)"/>
+      <circle cx="612" cy="352" r="11" fill="#FFFFFF" opacity="0.9"/>
+    </g>
+
+    <path d="M512 282 L676 377 L676 587 L512 682 L348 587 L348 377 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M348 377 L512 472 L676 377 M512 472 V682" fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="3" stroke-linejoin="round"/>
+  </g>
 </svg>
