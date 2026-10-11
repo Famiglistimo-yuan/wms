@@ -95,7 +95,7 @@
 | 鉴权 | JJWT | 0.12.x | 无状态 token |
 | 口令加密 | spring-security-crypto（BCrypt） | 7.x | 单独引入 crypto 模块，不引入全家桶（随 Spring Boot 4 配套） |
 | 校验注解 | jakarta.validation-api | 3.1.x | 纯注解 API，版本随 Spring Boot BOM；wms-common 共享 DTO（`LoginRequest` 等）双端校验用，不引实现——hibernate-validator 仅 server 端经 `spring-boot-starter-validation` 传递引入 |
-| 报表导出 | EasyExcel / iText | 3.x / 7.x | Excel 用 EasyExcel，PDF 用 iText |
+| 报表导出 | Apache POI | 5.5.x | 单库出 Excel(.xlsx) + Word(.docx)，不做 PDF，见 ADR-009 |
 | 构建 | Maven | 3.9.x | 三模块反应堆构建，根 pom 挂 SB starter parent 统一版本与插件配置 |
 | 打包 | jpackage | JDK 21 内置 | Windows 队友机器上出 exe/msi |
 | 版本控制 | Git | — | GitHub 公开仓库（Collaborator 模式） |
@@ -224,6 +224,24 @@
 - **理由**：固定名是「升级后能启动」的硬约束（cfg 不随升级更新）；fat jar 是「只换一个文件就能完成升级」的前提（共享模块与业务代码依赖版本随主 jar 走，杜绝新旧混载的 ClassNotFoundException）；复用 runtime 让用户机器彻底免装 Java。
 - **后果**：**升级粒度**——业务代码、wms-common 契约 DTO、Jackson 等纯 Java 依赖随主 jar 升级；JavaFX 及其 native lib 不随升级变更，需整包重装（报告说明此边界）。打包脚本负责把已被 shade 的坐标从 `dependency:copy-dependencies` 平铺产物中剔除，避免 app/ 目录同时存在「主 jar 内嵌版本」与「独立 jar 版本」造成类加载二义性。.bak 备份滚动保留一个版本，回滚为手动改名。
 
+### ADR-009：报表导出采用 Apache POI 单库，不做 PDF
+
+- **状态**：已采纳
+- **上下文**：FR-5 要求报表输出 PDF 或 Word、Excel（三者或关系，满足其一即可）；组内决策放弃 PDF，且两个报表（月度进出仓单、仓库账本）均开放 Excel 与 Word 双格式。原 §3 预留选型 EasyExcel（阿里已停更归档）与 iText 7（AGPL 许可）需重新评估。
+- **候选方案对比**：
+
+| 维度 | A Apache POI 单库（已选） | B Fesod＋POI | C POI＋poi-tl 模板 | D EasyExcel＋iText（原预留） |
+|------|------|------|------|------|
+| 覆盖 Word＋Excel | 单库全覆盖 | Excel 注解式＋Word 仍需 POI | Word 模板省＋Excel 手写 | 两库各管一种（iText 仅 PDF） |
+| 许可 | Apache 2.0 | MIT＋Apache 2.0 | Apache 2.0 | iText 为 AGPL |
+| 版本稳定 | 基石库 5.5.1 稳定 | 孵化期，坐标两年三跳（EasyExcel→FastExcel→Fesod） | 稳定 | EasyExcel 已停更归档 |
+| 依赖数量 | 1 条 | 2 条 | 2 条＋模板资源文件 | 2 条 |
+| 代码量 | 边框/表头手写 helper（两报表共用） | Excel 端省代码 | Word 端省、Excel 端同 A | 两库各写一遍 |
+
+- **决策**：引 `org.apache.poi:poi-ooxml:5.5.1` 单依赖；数据组装与渲染分离——每个报表一份行数据构建器，Excel/Word 两个薄渲染器共用「报表头＋边框」helper；接口以 `format=excel|word` 参数分流。
+- **理由**：需要的恰好只有 Word＋Excel，POI 单库全覆盖且是 EasyExcel 系底层的事实标准，避开其孵化期坐标迁移风险与 iText AGPL 顾虑；手写样式 helper 为一次性成本，两报表摊薄。
+- **后果**：§3 技术栈表同步更新；本对比直接用于报告「复杂问题识别与多方案比较择优」章节（NFR-8）；后续若恢复 PDF 需求需新增依赖并另立 ADR。
+
 ## 5. 数据库设计
 
 ### 5.1 表清单
@@ -298,8 +316,8 @@
 | POST | `/api/stock/orders` | 提交进出仓单（单物料/多物料同一接口，明细数组长度 ≥ 1） |
 | GET | `/api/stock/orders?dateFrom=&dateTo=&material=&operator=&remark=` | 单据组合查询 |
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
-| GET | `/api/reports/monthly-orders/{yyyyMM}` | 导出月度进出仓单 Excel |
-| GET | `/api/reports/ledger/{materialCode}/{yyyy}` | 导出仓库账本 PDF |
+| GET | `/api/reports/monthly-orders/{yyyyMM}?format=excel\|word` | 导出月度进出仓单（Excel/Word，缺省 excel） |
+| GET | `/api/reports/ledger/{materialCode}/{yyyy}?format=excel\|word` | 导出仓库账本（Excel/Word，缺省 excel） |
 | GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用），需 `menu.auth.user` |
 | GET/POST | `/api/users/{id}/roles` | 查询/分配用户角色（逐用户授权，全量覆盖），需 `menu.auth.grant` |
 | GET | `/api/roles`；GET `/api/roles/permissions` | 角色列表（含权限码）/ 权限资源列表（菜单项） |
