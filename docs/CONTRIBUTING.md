@@ -150,6 +150,8 @@ feat(client): 物料档案界面支持分页与模糊查询
 |------|------|------|
 | `main` | 交付基线 | 保护分支，禁止直接 push，只通过 PR 合入；任何时刻 `main` 必须可编译、可启动 |
 | `feature/<模块>` | 功能开发 | 命名如 `feature/material-manage`、`feature/stock-out`，小写中划线分隔 |
+| `ui/<界面或资产>` | 界面与视觉资产 | 图标、配色、窗口布局等视觉类改动，如 `ui/app-icon` |
+| `<type>/<主题>` | 其余类型 | 前缀即 §1.2 的 type 名，遵循 Conventional Commits 规范，如 `docs/branch-spec`、`chore/build-script` |
 | `fix/<问题>` | 修 bug | 如 `fix/login-token-expired` |
 | `hotfix/*` | 紧急修复 | 仅期末演示期使用，从 `main` 拉出，修完合回 `main` |
 
