@@ -26,6 +26,11 @@
         <MenuItem fx:id="miStockOut" text="出仓录入" onAction="#onStockOutClicked"/>
         <MenuItem fx:id="miStockQuery" text="单据查询" onAction="#onStockQueryClicked"/>
       </Menu>
+      <Menu fx:id="menuStats" text="统计报表">
+        <MenuItem fx:id="miStatsFlow" text="物料流量统计" onAction="#onStatsFlowClicked"/>
+        <MenuItem fx:id="miStatsMonthly" text="月度进出仓单" onAction="#onStatsMonthlyClicked"/>
+        <MenuItem fx:id="miStatsLedger" text="仓库账本" onAction="#onStatsLedgerClicked"/>
+      </Menu>
       <Menu fx:id="menuAuth" text="系统管理">
         <MenuItem fx:id="miAuthUser" text="用户管理" onAction="#onAuthUserClicked"/>
         <MenuItem fx:id="miAuthGrant" text="权限授予" onAction="#onAuthGrantClicked"/>
