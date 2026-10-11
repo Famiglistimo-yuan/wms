@@ -92,7 +92,7 @@ public final class ApiClient {
      */
     public static byte[] downloadFile(String path, Map<String, String> params)
             throws IOException, InterruptedException {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(buildPath(path, params)))
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + buildPath(path, params)))
                 .timeout(Duration.ofSeconds(30))
                 .GET();
         applyAuth(builder);
