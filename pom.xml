@@ -26,6 +26,7 @@
         <java.version>21</java.version>
         <jjwt.version>0.12.6</jjwt.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <poi.version>5.5.1</poi.version>
     </properties>
 
     <!-- 跨模块共享版本统一在此管理；SB 系版本由 starter parent 的 BOM 提供，不重复声明 -->
@@ -55,6 +56,12 @@
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
+            </dependency>
+            <!-- 报表导出（FR-5）：Apache POI 单库出 Excel + Word，ADR-009 -->
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
