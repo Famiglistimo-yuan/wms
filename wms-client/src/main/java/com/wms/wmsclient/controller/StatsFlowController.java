@@ -89,13 +89,18 @@ public class StatsFlowController {
         }
         chartFlow.getData().addAll(inSeries, outSeries);
 
-        MaterialFlowStat min = report.getMinFlowMaterial();
-        if (min == null) {
+        var mins = report.getMinFlowMaterials();
+        if (mins == null || mins.isEmpty()) {
             lblMinFlow.setText("暂无物料数据");
         } else {
-            lblMinFlow.setText("流动量最小的物料：" + min.getMaterialCode() + " " + min.getName()
-                    + "（进仓 " + strip(min.getInQty()) + "，出仓 " + strip(min.getOutQty())
-                    + "，合计 " + strip(min.getTotalFlow()) + " " + min.getUnit() + "）");
+            String detail = mins.stream()
+                    .map(m -> m.getMaterialCode() + " " + m.getName()
+                            + "（进仓 " + strip(m.getInQty()) + "，出仓 " + strip(m.getOutQty())
+                            + "，合计 " + strip(m.getTotalFlow()) + " " + m.getUnit() + "）")
+                    .collect(java.util.stream.Collectors.joining("；"));
+            lblMinFlow.setText(mins.size() == 1
+                    ? "流动量最小的物料：" + detail
+                    : "流动量最小的物料（" + mins.size() + " 种并列）：" + detail);
         }
     }
 

@@ -36,10 +36,14 @@ public class StatsService {
         // 流动量 = 进 + 出，服务端算好免得客户端与报表各算一遍
         items.forEach(it -> it.setTotalFlow(it.getInQty().add(it.getOutQty())));
         items.sort(Comparator.comparing(MaterialFlowStat::getTotalFlow).reversed());
-        MaterialFlowStat min = items.isEmpty() ? null : items.get(items.size() - 1);
-        log.info("物料流量统计 {} ~ {}，共 {} 种物料，最小流动：{}",
-                from, to, items.size(), min == null ? "无" : min.getMaterialCode());
-        return MaterialFlowReport.builder().items(items).minFlowMaterial(min).build();
+        // 并列最小全部返回：多个零流动的呆滞物料不能只报一个（降序末位即最小值）
+        List<MaterialFlowStat> mins = items.isEmpty() ? List.of()
+                : items.stream()
+                        .filter(it -> it.getTotalFlow().compareTo(items.get(items.size() - 1).getTotalFlow()) == 0)
+                        .toList();
+        log.info("物料流量统计 {} ~ {}，共 {} 种物料，最小流动 {} 种：{}", from, to, items.size(),
+                mins.size(), mins.stream().map(MaterialFlowStat::getMaterialCode).toList());
+        return MaterialFlowReport.builder().items(items).minFlowMaterials(mins).build();
     }
 
     /** 物料下拉选项（账本面板） */
