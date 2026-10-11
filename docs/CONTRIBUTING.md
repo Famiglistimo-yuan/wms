@@ -87,7 +87,7 @@ mysql -u root -p wms_dev < docs/sql/data.sql     # 13 项菜单权限 + 初始�
 > `NoSuchMethodError`（方法在源码里明明存在）。防法二选一：
 > ① 改了 common 就 `./mvnw -pl wms-common install -DskipTests`；
 > ② 服务端直接用 IDEA 启动（工作区类路径不走 .m2，天然免疫）。
-> 完整分析见 issue「.m2 化石 wms-common」。
+> 完整分析见 issue #25。
 
 > 期末交付：在 Windows 机器上用 `jpackage` 打包 exe/msi（需下载一次 JavaFX SDK 解压供 jlink 组装运行时）。
 
