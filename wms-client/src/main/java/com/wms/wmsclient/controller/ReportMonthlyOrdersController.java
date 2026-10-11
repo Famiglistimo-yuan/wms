@@ -17,7 +17,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 /**
- * 月度进出仓单导出面板（FR-5-2）：选择月份与格式（Excel/Word），导出后保存并打开。
+ * 月度进出仓单导出面板（FR-5-2）：选择时间与格式（Excel/Word），导出后保存，路径显示在状态栏。
  */
 public class ReportMonthlyOrdersController {
 
