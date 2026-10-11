@@ -1,7 +1,5 @@
 package com.wms.wmsclient.update;
 
-import com.wms.common.ErrorCode;
-import com.wms.common.Result;
 import com.wms.common.VersionInfo;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.AppPaths;
@@ -9,7 +7,6 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,8 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 仅在确有新版本且用户同意时才退出主程序、拉起 Updater（下载/校验/替换由其完成）。
  */
 public final class UpdateService {
-
-    private static final ObjectMapper JSON = new ObjectMapper();
 
     /**
      * 重入保护：从发起到结果弹窗关闭期间为 true，连点「检查更新」不并发第二个检查线程。
@@ -169,14 +164,7 @@ public final class UpdateService {
     /** 查询服务端最新版本；任何失败或发布配置无效（version 非三段数字、md5/downloadUrl 空白）返回 null，调用方静默降级 */
     static VersionInfo fetchRemote() {
         try {
-            String body = ApiClient.get("/api/version");
-            // 泛型包装需显式构造参数化类型，否则 data 反序列化为 LinkedHashMap
-            Result<VersionInfo> result = JSON.readValue(body,
-                    JSON.getTypeFactory().constructParametricType(Result.class, VersionInfo.class));
-            if (result.getCode() != ErrorCode.SUCCESS) {
-                return null;
-            }
-            VersionInfo info = result.getData();
+            VersionInfo info = ApiClient.getResultData(ApiClient.get("/api/version"), VersionInfo.class);
             // 发布配置无效就提前短路，视为「无有效发布」：md5 空白会让客户端下载完 6MB 主 jar
             // 才在校验时弹错；版本号非法落到「已是最新」分支会误导手动检查；downloadUrl 空白拼不出下载地址。
             if (info == null

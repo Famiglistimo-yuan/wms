@@ -94,20 +94,14 @@ public final class ApiClient {
     public static <T> T getResultData(String jsonResponse, Class<T> targetClass) throws IOException {
         Result<T> result = MAPPER.readValue(jsonResponse,
                 MAPPER.getTypeFactory().constructParametricType(Result.class, targetClass));
-        if (result.getCode() != 0) {
-            fireOnUnauthorizedIf401(result.getCode());
-            throw new ApiException(result.getCode(), result.getMessage());
-        }
+        assertSuccess(result);
         return result.getData();
     }
 
     /** 同上，但 data 是字符串类型（list 场景） */
     public static <T> java.util.List<T> getResultList(String jsonResponse, Class<T> elementClass) throws IOException {
         Result<?> result = MAPPER.readValue(jsonResponse, Result.class);
-        if (result.getCode() != 0) {
-            fireOnUnauthorizedIf401(result.getCode());
-            throw new ApiException(result.getCode(), result.getMessage());
-        }
+        assertSuccess(result);
         if (result.getData() == null) {
             return java.util.List.of();
         }
@@ -118,7 +112,11 @@ public final class ApiClient {
 
     /** 仅校验 code == 0，data 丢弃（如 logout） */
     public static void checkSuccess(String jsonResponse) throws IOException {
-        Result<?> result = MAPPER.readValue(jsonResponse, Result.class);
+        assertSuccess(MAPPER.readValue(jsonResponse, Result.class));
+    }
+
+    /** code != 0：触发 401 回调（若注册）后抛 ApiException */
+    private static void assertSuccess(Result<?> result) {
         if (result.getCode() != 0) {
             fireOnUnauthorizedIf401(result.getCode());
             throw new ApiException(result.getCode(), result.getMessage());
