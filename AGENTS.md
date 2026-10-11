@@ -44,4 +44,4 @@
 ## 提交与分支
 
 - Conventional Commits：`type(scope): 中文描述`，type/scope 清单见 docs/CONTRIBUTING.md §1
-- 分支：`feature/<模块>` / `fix/<东西>` 小写中划线；main 走 PR 合并
+- 分支：`feature/<模块>` / `ui/<界面或资产>` / 其余 `<type>/<主题>`（前缀即 type 名，遵循 Conventional Commits）小写中划线；main 走 PR 合并
