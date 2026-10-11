@@ -87,6 +87,30 @@ public final class ApiClient {
     }
 
     /**
+     * GET 下载二进制文件流（FR-5 报表导出）。正常返回文件字节；若响应是 JSON，
+     * 说明失败走了统一 Result 契约（HTTP 恒 200，见技术方案 §6.1）——解析后按业务码抛 ApiException。
+     */
+    public static byte[] downloadFile(String path, Map<String, String> params)
+            throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + buildPath(path, params)))
+                .timeout(Duration.ofSeconds(30))
+                .GET();
+        applyAuth(builder);
+        HttpResponse<byte[]> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200) {
+            throw new ApiException(response.statusCode(), "服务端返回 HTTP " + response.statusCode());
+        }
+        String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase();
+        if (contentType.contains("json")) {
+            // 文件接口的失败路径：全局异常处理返回的 Result JSON，401 触发统一回调
+            Result<?> result = MAPPER.readValue(new String(response.body(), StandardCharsets.UTF_8), Result.class);
+            fireOnUnauthorizedIf401(result.getCode());
+            throw new ApiException(result.getCode(), result.getMessage());
+        }
+        return response.body();
+    }
+
+    /**
      * 发送请求并解析 Result。code != 0 抛 ApiException，HTTP 非 200 也抛 ApiException。
      * 返回 data 字段（已按 targetClass 反序列化）。
      * 业务码 401 触发 onUnauthorized 回调（若已注册），然后抛 ApiException 让调用方感知。

@@ -29,6 +29,8 @@ public class MainController {
     private Menu menuStock;
     @FXML
     private Menu menuAuth;
+    @FXML
+    private Menu menuStats;
 
     // ====== 人员档案菜单项 ======
     @FXML private MenuItem miPersonView;
@@ -50,6 +52,11 @@ public class MainController {
     // ====== 系统管理菜单项 ======
     @FXML private MenuItem miAuthUser;
     @FXML private MenuItem miAuthGrant;
+
+    // ====== 统计报表菜单项 ======
+    @FXML private MenuItem miStatsFlow;
+    @FXML private MenuItem miStatsMonthly;
+    @FXML private MenuItem miStatsLedger;
 
     public MainController(App app) {
         this.app = app;
@@ -94,6 +101,12 @@ public class MainController {
         applyPerm(miAuthGrant, "menu.auth.grant");
         // 退出登录所有人都可见，不 applyPerm
         hideMenuIfEmpty(menuAuth);
+
+        // 统计报表
+        applyPerm(miStatsFlow, "menu.stats.flow");
+        applyPerm(miStatsMonthly, "menu.stats.monthly");
+        applyPerm(miStatsLedger, "menu.stats.ledger");
+        hideMenuIfEmpty(menuStats);
     }
 
     /** 单项：无权则 hide + disable 双保险 */
@@ -196,6 +209,21 @@ public class MainController {
     @FXML
     protected void onCheckUpdateClicked() {
         UpdateService.checkAsync(true);
+    }
+
+    @FXML
+    protected void onStatsFlowClicked() {
+        showPanelSafe("rg2402_11_12_13_stats-flow");
+    }
+
+    @FXML
+    protected void onStatsMonthlyClicked() {
+        showPanelSafe("rg2402_11_12_13_report-monthly-orders");
+    }
+
+    @FXML
+    protected void onStatsLedgerClicked() {
+        showPanelSafe("rg2402_11_12_13_report-ledger");
     }
 
     private void showPlaceholder(String featureName) {
