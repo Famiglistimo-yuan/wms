@@ -62,7 +62,7 @@ public class ReportMonthlyOrdersController {
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             try {
-                File saved = ExportHelper.saveAndOpen(btnExport.getScene().getWindow(),
+                File saved = ExportHelper.save(btnExport.getScene().getWindow(),
                         "月度进出仓单_" + ym + ExportHelper.extensionOf(fmt),
                         ExportHelper.extensionOf(fmt), task.getValue());
                 lblStatus.setText(saved == null ? "已取消保存" : "已导出：" + saved.getAbsolutePath());

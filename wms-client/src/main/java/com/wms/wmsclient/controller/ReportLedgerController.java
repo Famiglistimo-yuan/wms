@@ -99,7 +99,7 @@ public class ReportLedgerController {
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             try {
-                File saved = ExportHelper.saveAndOpen(btnExport.getScene().getWindow(),
+                File saved = ExportHelper.save(btnExport.getScene().getWindow(),
                         "仓库账本_" + material.getMaterialCode() + "_" + year + ExportHelper.extensionOf(fmt),
                         ExportHelper.extensionOf(fmt), task.getValue());
                 lblStatus.setText(saved == null ? "已取消保存" : "已导出：" + saved.getAbsolutePath());

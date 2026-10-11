@@ -328,7 +328,7 @@
 
 1. 分页统一 `page`（从 1 起）+ `size`（默认 20，上限 100）参数，响应携带 `total`。
 2. 所有写操作以 DTO 接收，`@Valid` 注解 + `BindingResult` 输出字段级错误信息。
-3. 报表导出接口返回文件流（`Content-Type: application/octet-stream`），客户端下载后用系统默认程序打开。
+3. 报表导出接口返回文件流（`Content-Type: application/octet-stream`），客户端经 FileChooser 保存后不自动打开，保存路径显示在面板状态栏，由用户自行打开。
 4. 接口文档用 SpringDoc（OpenAPI 3）自动生成，开发期浏览器查看，前后端联调以它为契约。
 
 ## 7. 关键功能实现方案
