@@ -27,3 +27,11 @@
     -fx-padding: 16;
     -fx-min-width: 340;
 }
+
+/* 连通测试状态色（绿=通/红=不通，国际通用语义） */
+.ping-ok {
+    -fx-text-fill: #1D9E75;
+}
+.ping-fail {
+    -fx-text-fill: #D85A30;
+}

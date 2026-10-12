@@ -139,6 +139,24 @@ public final class ApiClient {
         assertSuccess(MAPPER.readValue(jsonResponse, Result.class));
     }
 
+    /**
+     * 连通测试（「更多」面板排障用）：GET /api/version 公开接口，2s 超时，HTTP 200 即通。
+     * 不解析 body——只验服务端可达 + 路由通；超时/连接拒绝/非 200 一律视为不通。
+     * 短超时避免用户在面板上干等默认的 10s。
+     */
+    public static boolean pingServer() {
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(BASE_URL + "/api/version"))
+                    .timeout(Duration.ofSeconds(2))
+                    .GET()
+                    .build();
+            HttpResponse<Void> resp = HTTP.send(req, HttpResponse.BodyHandlers.discarding());
+            return resp.statusCode() == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /** code != 0：触发 401 回调（若注册）后抛 ApiException */
     private static void assertSuccess(Result<?> result) {
         if (result.getCode() != 0) {

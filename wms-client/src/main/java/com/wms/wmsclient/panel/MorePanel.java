@@ -1,7 +1,9 @@
 package com.wms.wmsclient.panel;
 
 import com.wms.wmsclient.App;
+import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.update.UpdateService;
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -52,6 +54,32 @@ public final class MorePanel {
         Button btnGitHub = new Button("前往 GitHub ↗");
         btnGitHub.setOnAction(e -> app.getHostServices().showDocument(GITHUB_URL));
 
+        // ====== 第三行：服务器地址（只读）+ 测试连接 ======
+        Label serverUrl = new Label(ApiClient.BASE_URL);
+        serverUrl.getStyleClass().add("subtle");
+        Button btnPing = new Button("测试连接");
+        Label pingStatus = new Label("未测试");
+        pingStatus.getStyleClass().add("subtle");
+        // 后台线程发请求（CONTRIBUTING §3.4 第 1 条），结果切回 FX 线程更新 UI
+        btnPing.setOnAction(e -> {
+            btnPing.setDisable(true);
+            pingStatus.setText("测试中…");
+            pingStatus.getStyleClass().setAll("subtle");
+            new Thread(() -> {
+                boolean ok = ApiClient.pingServer();
+                Platform.runLater(() -> {
+                    btnPing.setDisable(false);
+                    if (ok) {
+                        pingStatus.setText("✓ 已连接");
+                        pingStatus.getStyleClass().setAll("ping-ok");
+                    } else {
+                        pingStatus.setText("✗ 无法连接");
+                        pingStatus.getStyleClass().setAll("ping-fail");
+                    }
+                });
+            }, "ping-server").start();
+        });
+
         Region spacer1 = new Region();
         HBox.setHgrow(spacer1, Priority.ALWAYS);
         HBox row1 = new HBox(12, new Label("当前版本"), versionValue, spacer1, btnCheck);
@@ -62,7 +90,12 @@ public final class MorePanel {
         HBox row2 = new HBox(12, new Label("关于 WMS"), spacer2, btnGitHub);
         row2.setAlignment(Pos.CENTER_LEFT);
 
-        VBox root = new VBox(14, row1, row2);
+        Region spacer3 = new Region();
+        HBox.setHgrow(spacer3, Priority.ALWAYS);
+        HBox row3 = new HBox(12, new Label("服务器"), serverUrl, spacer3, btnPing, pingStatus);
+        row3.setAlignment(Pos.CENTER_LEFT);
+
+        VBox root = new VBox(14, row1, row2, row3);
         root.getStyleClass().add("more-panel");
         Scene scene = new Scene(root);
         // TRANSPARENT 舞台必须配透明场景填充，圆角面板外才不会露白底
