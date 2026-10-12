@@ -7,6 +7,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.panel.MorePanel;
 import com.wms.wmsclient.util.TokenStore;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -96,6 +97,13 @@ public class LoginController {
 
     private void alert(String message) {
         new Alert(Alert.AlertType.WARNING, message).showAndWait();
+    }
+
+    // ====== 「更多」面板入口（FR-6：/api/version 为公开接口，登录前可用）======
+
+    @FXML
+    protected void onMoreClicked() {
+        MorePanel.show(app);
     }
 
     private void alertError(String message) {

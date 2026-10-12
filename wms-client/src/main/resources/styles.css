@@ -16,3 +16,14 @@
 .primary-btn {
     -fx-min-width: 88px;
 }
+
+/* 「更多」面板（MorePanel，TRANSPARENT 舞台上的圆角卡片） */
+.more-panel {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1;
+    -fx-padding: 16;
+    -fx-min-width: 340;
+}

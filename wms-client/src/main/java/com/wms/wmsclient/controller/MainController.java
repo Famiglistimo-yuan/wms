@@ -2,7 +2,7 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
-import com.wms.wmsclient.update.UpdateService;
+import com.wms.wmsclient.panel.MorePanel;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
@@ -206,9 +206,11 @@ public class MainController {
         }
     }
 
+    // ====== 「更多」面板入口（菜单栏右侧独立按钮，与登录窗同一路径）======
+
     @FXML
-    protected void onCheckUpdateClicked() {
-        UpdateService.checkAsync(true);
+    protected void onMoreClicked() {
+        MorePanel.show(app);
     }
 
     @FXML
