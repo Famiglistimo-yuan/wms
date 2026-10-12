@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <BorderPane stylesheets="@../styles.css" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.wms.wmsclient.controller.MainController">
   <top>
-    <MenuBar>
+    <!-- 「更多」放菜单栏右侧独立按钮：MenuBar 点击 Menu 只展开下拉（空 Menu 连 showing 都不触发），
+         弹面板动作必须走 Button onAction，与登录窗同一路径 -->
+    <HBox>
+      <MenuBar>
       <Menu fx:id="menuPerson" text="人员档案">
         <MenuItem fx:id="miPersonView" text="查询" onAction="#onPersonViewClicked"/>
         <MenuItem fx:id="miPersonAdd" text="增加" onAction="#onPersonAddClicked"/>
@@ -36,10 +42,10 @@
         <MenuItem fx:id="miAuthGrant" text="权限授予" onAction="#onAuthGrantClicked"/>
         <MenuItem text="退出登录" onAction="#onLogoutClicked"/>
       </Menu>
-      <Menu text="帮助">
-        <MenuItem text="检查更新" onAction="#onCheckUpdateClicked"/>
-      </Menu>
-    </MenuBar>
+      </MenuBar>
+      <Region HBox.hgrow="ALWAYS"/>
+      <Button text="更多" onAction="#onMoreClicked" styleClass="primary-btn"/>
+    </HBox>
   </top>
   <center>
     <Label fx:id="lblUser" styleClass="subtle"/>

@@ -152,8 +152,9 @@ public final class UpdateService {
         return appRoot.resolve("runtime/bin/java");
     }
 
-    /** 读本地版本：打包时经 resources filtering 烧进 jar 的 version.txt（FR-6 版本单一来源） */
-    static String localVersion() {
+    /** 读本地版本：打包时经 resources filtering 烧进 jar 的 version.txt（FR-6 版本单一来源）。
+     *  public：MorePanel 挪出 update 包后跨包调用（原包私有同包直调） */
+    public static String localVersion() {
         try (InputStream in = UpdateService.class.getResourceAsStream("/version.txt")) {
             return in == null ? null : new String(in.readAllBytes()).trim();
         } catch (IOException e) {

@@ -26,6 +26,11 @@ public class App extends Application {
 
     private Stage stage;
 
+    /** 主窗口引用；「更多」面板等浮层用它做 initOwner 与定位基准 */
+    public Stage getStage() {
+        return stage;
+    }
+
     /** 主界面根布局；showPanel 在其 center 区切换子程序面板（ADR-007） */
     private BorderPane mainRoot;
 

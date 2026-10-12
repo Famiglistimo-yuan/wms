@@ -7,6 +7,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.panel.MorePanel;
 import com.wms.wmsclient.util.TokenStore;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -73,7 +74,7 @@ public class LoginController {
             try {
                 app.showMain();
             } catch (Exception ex) {
-                alertError("进入主界面失败：" + ex.getMessage());
+                alertError("进入主界面失败：" + describe(ex));
             }
         }));
 
@@ -98,7 +99,26 @@ public class LoginController {
         new Alert(Alert.AlertType.WARNING, message).showAndWait();
     }
 
+    // ====== 「更多」面板入口（FR-6：/api/version 为公开接口，登录前可用）======
+
+    @FXML
+    protected void onMoreClicked() {
+        MorePanel.show(app);
+    }
+
     private void alertError(String message) {
         new Alert(Alert.AlertType.ERROR, message).showAndWait();
+    }
+
+    /** 拼接整条异常 cause 链：FXML 加载失败等原因藏在最内层（如「属性不存在」），
+     *  只看外壳 message 只剩「fxml:行号」，排障只能靠行号反推 */
+    private static String describe(Throwable t) {
+        StringBuilder sb = new StringBuilder(t.toString());
+        Throwable c = t.getCause();
+        while (c != null && c != t && c != c.getCause()) {
+            sb.append("\n原因：").append(c.toString());
+            c = c.getCause();
+        }
+        return sb.toString();
     }
 }
