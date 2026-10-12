@@ -74,7 +74,7 @@ public class LoginController {
             try {
                 app.showMain();
             } catch (Exception ex) {
-                alertError("进入主界面失败：" + ex.getMessage());
+                alertError("进入主界面失败：" + describe(ex));
             }
         }));
 
@@ -108,5 +108,17 @@ public class LoginController {
 
     private void alertError(String message) {
         new Alert(Alert.AlertType.ERROR, message).showAndWait();
+    }
+
+    /** 拼接整条异常 cause 链：FXML 加载失败等原因藏在最内层（如「属性不存在」），
+     *  只看外壳 message 只剩「fxml:行号」，排障只能靠行号反推 */
+    private static String describe(Throwable t) {
+        StringBuilder sb = new StringBuilder(t.toString());
+        Throwable c = t.getCause();
+        while (c != null && c != t && c != c.getCause()) {
+            sb.append("\n原因：").append(c.toString());
+            c = c.getCause();
+        }
+        return sb.toString();
     }
 }
