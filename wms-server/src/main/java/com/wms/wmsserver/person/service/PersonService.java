@@ -92,8 +92,6 @@ public class PersonService {
     public void delete(Long id) {
         Person p = personMapper.selectById(id);
         if (p == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "人员不存在");
-        Long refs = personMapper.selectCount(Wrappers.<Person>lambdaQuery().eq(Person::getId, id));
-        if (refs <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "人员不存在");
         // User 表外键在删除时数据库会拒绝（FK 约束），此处友好提示
         try {
             personMapper.deleteById(id);

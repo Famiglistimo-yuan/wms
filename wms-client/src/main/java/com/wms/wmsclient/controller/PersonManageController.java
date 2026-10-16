@@ -190,7 +190,7 @@ public class PersonManageController {
             this.personCode = vo.personCode;
             this.name = vo.name;
             this.gender = vo.gender;
-            this.birthDate = vo.birthDateStr != null && !vo.birthDateStr.isEmpty() ? LocalDate.parse(vo.birthDateStr) : null;
+            this.birthDate = vo.birthDate != null && !vo.birthDate.isEmpty() ? LocalDate.parse(vo.birthDate) : null;
             this.idCard = vo.idCard;
             this.phone = vo.phone;
             this.address = vo.address;
@@ -239,7 +239,7 @@ public class PersonManageController {
         public String personCode;
         public String name;
         public String gender;
-        public String birthDateStr;
+        public String birthDate;
         public String idCard;
         public String phone;
         public String address;
