@@ -9,6 +9,8 @@ import com.wms.wmsserver.person.dto.PersonCreateDTO;
 import com.wms.wmsserver.person.dto.PersonUpdateDTO;
 import com.wms.wmsserver.person.dto.PersonVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
  * 报告中说明取舍：姓名一般 2-4 字，全表扫描可接受。
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class PersonService {
 
@@ -95,7 +98,8 @@ public class PersonService {
         // User 表外键在删除时数据库会拒绝（FK 约束），此处友好提示
         try {
             personMapper.deleteById(id);
-        } catch (Exception e) {
+        } catch (DataIntegrityViolationException e) {
+            log.warn("删除人员 {} 失败：存在关联登录账号", id, e);
             throw new BusinessException(ErrorCode.CONFLICT, "该人员已关联登录账号，无法删除");
         }
     }

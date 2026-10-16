@@ -9,6 +9,8 @@ import com.wms.wmsserver.material.dto.MaterialCreateDTO;
 import com.wms.wmsserver.material.dto.MaterialUpdateDTO;
 import com.wms.wmsserver.material.dto.MaterialVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.util.stream.Collectors;
  * 物料档案 CRUD + 模糊查询（FR-1-3-5）：keyword 同时匹配 material_code / name / spec。
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class MaterialService {
 
@@ -88,8 +91,8 @@ public class MaterialService {
         if (m == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "物料不存在");
         try {
             materialMapper.deleteById(id);
-        } catch (Exception e) {
-            // 进出仓明细外键约束（stock_order_item.material_id）会拒绝删除
+        } catch (DataIntegrityViolationException e) {
+            log.warn("删除物料 {} 失败：存在进出仓单引用", id, e);
             throw new BusinessException(ErrorCode.CONFLICT, "该物料已被进出仓单引用，无法删除");
         }
     }

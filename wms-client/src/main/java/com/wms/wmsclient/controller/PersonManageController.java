@@ -181,6 +181,7 @@ public class PersonManageController {
         public LocalDate birthDate;
         public String idCard;
         public String phone;
+        public String hometown;
         public String address;
         public String remark;
 
@@ -193,6 +194,7 @@ public class PersonManageController {
             this.birthDate = vo.birthDate != null && !vo.birthDate.isEmpty() ? LocalDate.parse(vo.birthDate) : null;
             this.idCard = vo.idCard;
             this.phone = vo.phone;
+            this.hometown = vo.hometown;
             this.address = vo.address;
             this.remark = vo.remark;
         }
@@ -205,6 +207,7 @@ public class PersonManageController {
         public String getGender() { return gender; }
         public String getIdCard() { return idCard == null ? "" : idCard; }
         public String getPhone() { return phone == null ? "" : phone; }
+        public String getHometown() { return hometown == null ? "" : hometown; }
         public String getAddress() { return address == null ? "" : address; }
         public String getRemark() { return remark == null ? "" : remark; }
 
@@ -216,6 +219,7 @@ public class PersonManageController {
             m.put("birthDate", birthDate != null ? birthDate.toString() : null);
             m.put("idCard", idCard);
             m.put("phone", phone);
+            m.put("hometown", hometown);
             m.put("address", address);
             m.put("remark", remark);
             return ApiClient.toJson(m);
@@ -227,6 +231,7 @@ public class PersonManageController {
             if (birthDate != null) m.put("birthDate", birthDate.toString());
             if (idCard != null) m.put("idCard", idCard);
             if (phone != null) m.put("phone", phone);
+            if (hometown != null) m.put("hometown", hometown);
             if (address != null) m.put("address", address);
             if (remark != null) m.put("remark", remark);
             return ApiClient.toJson(m);
@@ -242,6 +247,7 @@ public class PersonManageController {
         public String birthDate;
         public String idCard;
         public String phone;
+        public String hometown;
         public String address;
         public String remark;
     }
@@ -255,6 +261,7 @@ public class PersonManageController {
         private final DatePicker dpBirth = new DatePicker();
         private final TextField tfIdCard = new TextField();
         private final TextField tfPhone = new TextField();
+        private final TextField tfHometown = new TextField();
         private final TextField tfAddress = new TextField();
         private final TextField tfRemark = new TextField();
 
@@ -271,8 +278,9 @@ public class PersonManageController {
             grid.add(new Label("出生日期"), 0, 3); grid.add(dpBirth, 1, 3);
             grid.add(new Label("身份证号"), 0, 4); grid.add(tfIdCard, 1, 4);
             grid.add(new Label("电话"), 0, 5);     grid.add(tfPhone, 1, 5);
-            grid.add(new Label("地址"), 0, 6);     grid.add(tfAddress, 1, 6);
-            grid.add(new Label("备注"), 0, 7);     grid.add(tfRemark, 1, 7);
+            grid.add(new Label("籍贯"), 0, 6);     grid.add(tfHometown, 1, 6);
+            grid.add(new Label("地址"), 0, 7);     grid.add(tfAddress, 1, 7);
+            grid.add(new Label("备注"), 0, 8);     grid.add(tfRemark, 1, 8);
 
             if (existing != null) {
                 tfCode.setText(existing.personCode);
@@ -282,6 +290,7 @@ public class PersonManageController {
                 dpBirth.setValue(existing.birthDate);
                 tfIdCard.setText(existing.idCard);
                 tfPhone.setText(existing.phone);
+                tfHometown.setText(existing.hometown);
                 tfAddress.setText(existing.address);
                 tfRemark.setText(existing.remark);
             }
@@ -301,6 +310,7 @@ public class PersonManageController {
                     row.birthDate = dpBirth.getValue();
                     row.idCard = tfIdCard.getText().trim().isEmpty() ? null : tfIdCard.getText().trim();
                     row.phone = tfPhone.getText().trim().isEmpty() ? null : tfPhone.getText().trim();
+                    row.hometown = tfHometown.getText().trim().isEmpty() ? null : tfHometown.getText().trim();
                     row.address = tfAddress.getText().trim().isEmpty() ? null : tfAddress.getText().trim();
                     row.remark = tfRemark.getText().trim().isEmpty() ? null : tfRemark.getText().trim();
                 }
