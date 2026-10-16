@@ -64,7 +64,7 @@ public class PersonService {
         p.setName(dto.getName());
         p.setGender(dto.getGender());
         p.setBirthDate(dto.getBirthDate());
-        p.setIdCard(dto.getIdCard());
+        p.setIdCard(emptyToNull(dto.getIdCard()));
         p.setHometown(dto.getHometown());
         p.setAddress(dto.getAddress());
         p.setPhone(dto.getPhone());
@@ -86,7 +86,7 @@ public class PersonService {
         if (dto.getName() != null) p.setName(dto.getName());
         if (dto.getGender() != null) p.setGender(dto.getGender());
         if (dto.getBirthDate() != null) p.setBirthDate(dto.getBirthDate());
-        if (dto.getIdCard() != null) p.setIdCard(dto.getIdCard());
+        if (dto.getIdCard() != null) p.setIdCard(emptyToNull(dto.getIdCard()));
         if (dto.getHometown() != null) p.setHometown(dto.getHometown());
         if (dto.getAddress() != null) p.setAddress(dto.getAddress());
         if (dto.getPhone() != null) p.setPhone(dto.getPhone());
@@ -122,5 +122,10 @@ public class PersonService {
                 .remark(p.getRemark())
                 .createdAt(p.getCreatedAt())
                 .build();
+    }
+
+    /** 空串转 null：数据库 CHECK 约束（IS NULL OR 正则）不接受空串 */
+    private static String emptyToNull(String s) {
+        return s == null || s.isEmpty() ? null : s;
     }
 }

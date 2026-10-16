@@ -256,11 +256,11 @@ public class MaterialManageController {
                 tfCode.setText(existing.materialCode);
                 tfCode.setDisable(true);
                 tfName.setText(existing.name);
-                tfSpec.setText(existing.spec);
+                tfSpec.setText(existing.spec == null ? "" : existing.spec);
                 cbUnit.setValue(existing.unit);
                 tfStock.setText(existing.stock != null ? existing.stock.stripTrailingZeros().toPlainString() : "0");
                 tfStock.setDisable(true); // 编辑模式库存只读（库存变更仅经进出仓 SP）
-                tfRemark.setText(existing.remark);
+                tfRemark.setText(existing.remark == null ? "" : existing.remark);
             }
 
             getDialogPane().setContent(grid);
@@ -270,12 +270,12 @@ public class MaterialManageController {
                 String error = validate();
                 if (error != null) { e.consume(); alertError(error); }
                 else {
-                    row.materialCode = tfCode.getText().trim();
-                    row.name = tfName.getText().trim();
+                    row.materialCode = tfCode.getText() == null ? "" : tfCode.getText().trim();
+                    row.name = tfName.getText() == null ? "" : tfName.getText().trim();
                     // 空串表示清空；编辑模式不取 stock（库存变更仅经进出仓 SP）
-                    row.spec = tfSpec.getText().trim();
+                    row.spec = tfSpec.getText() == null ? "" : tfSpec.getText().trim();
                     row.unit = cbUnit.getValue() != null ? cbUnit.getValue().trim() : null;
-                    row.remark = tfRemark.getText().trim();
+                    row.remark = tfRemark.getText() == null ? "" : tfRemark.getText().trim();
                 }
             });
             setResultConverter(btn -> btn == ButtonType.OK ? row : null);
@@ -286,7 +286,7 @@ public class MaterialManageController {
             if (tfName.getText() == null || tfName.getText().isBlank()) return "物料名称不能为空";
             String unitVal = cbUnit.getValue();
             if (unitVal == null || unitVal.isBlank()) return "请选择或输入计量单位";
-            String stockStr = tfStock.getText().trim();
+            String stockStr = tfStock.getText() == null ? "" : tfStock.getText().trim();
             if (!stockStr.isEmpty()) {
                 try {
                     BigDecimal s = new BigDecimal(stockStr);

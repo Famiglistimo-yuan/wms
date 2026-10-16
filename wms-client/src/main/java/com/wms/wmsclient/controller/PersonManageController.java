@@ -289,11 +289,11 @@ public class PersonManageController {
                 tfName.setText(existing.name);
                 cbGender.setValue(existing.gender);
                 dpBirth.setValue(existing.birthDate);
-                tfIdCard.setText(existing.idCard);
-                tfPhone.setText(existing.phone);
-                tfHometown.setText(existing.hometown);
-                tfAddress.setText(existing.address);
-                tfRemark.setText(existing.remark);
+                tfIdCard.setText(existing.idCard == null ? "" : existing.idCard);
+                tfPhone.setText(existing.phone == null ? "" : existing.phone);
+                tfHometown.setText(existing.hometown == null ? "" : existing.hometown);
+                tfAddress.setText(existing.address == null ? "" : existing.address);
+                tfRemark.setText(existing.remark == null ? "" : existing.remark);
             }
 
             getDialogPane().setContent(grid);
@@ -310,11 +310,11 @@ public class PersonManageController {
                     row.gender = cbGender.getValue();
                     row.birthDate = dpBirth.getValue();
                     // 空串表示清空（服务端 UpdateDTO @Pattern ^$|... 已预留空串语义）
-                    row.idCard = tfIdCard.getText().trim();
-                    row.phone = tfPhone.getText().trim();
-                    row.hometown = tfHometown.getText().trim();
-                    row.address = tfAddress.getText().trim();
-                    row.remark = tfRemark.getText().trim();
+                    row.idCard = tfIdCard.getText() == null ? "" : tfIdCard.getText().trim();
+                    row.phone = tfPhone.getText() == null ? "" : tfPhone.getText().trim();
+                    row.hometown = tfHometown.getText() == null ? "" : tfHometown.getText().trim();
+                    row.address = tfAddress.getText() == null ? "" : tfAddress.getText().trim();
+                    row.remark = tfRemark.getText() == null ? "" : tfRemark.getText().trim();
                 }
             });
             setResultConverter(btn -> btn == ButtonType.OK ? row : null);
@@ -324,7 +324,7 @@ public class PersonManageController {
             if (tfCode.getText() == null || tfCode.getText().isBlank()) return "人员代码不能为空";
             if (tfName.getText() == null || tfName.getText().isBlank()) return "姓名不能为空";
             if (cbGender.getValue() == null) return "请选择性别";
-            String idc = tfIdCard.getText().trim();
+            String idc = tfIdCard.getText() == null ? "" : tfIdCard.getText().trim();
             if (!idc.isEmpty() && !idc.matches(RegexPatterns.ID_CARD)) return "身份证号须为 18 位，最后一位为数字或 X";
             return null;
         }
