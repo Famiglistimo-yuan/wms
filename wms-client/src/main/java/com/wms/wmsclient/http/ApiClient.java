@@ -86,6 +86,35 @@ public final class ApiClient {
         return sendAndGetBody(builder.build());
     }
 
+    /** PUT，JSON body */
+    public static String put(String path, String jsonBody) throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + path))
+                .timeout(Duration.ofSeconds(10))
+                .header("Content-Type", "application/json;charset=UTF-8")
+                .method("PUT", HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8));
+        applyAuth(builder);
+        return sendAndGetBody(builder.build());
+    }
+
+    /** DELETE，无 body */
+    public static String delete(String path) throws IOException, InterruptedException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + path))
+                .timeout(Duration.ofSeconds(10))
+                .method("DELETE", HttpRequest.BodyPublishers.noBody());
+        applyAuth(builder);
+        return sendAndGetBody(builder.build());
+    }
+
+    /** 通用 JSON 序列化（Jackson，两端共享 DTO 注解兼容） */
+    public static String toJson(Object obj) throws IOException {
+        return MAPPER.writeValueAsString(obj);
+    }
+
+    /** URL 编码（search keyword 等） */
+    public static String urlEncode(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
     /**
      * GET 下载二进制文件流（FR-5 报表导出）。正常返回文件字节；若响应是 JSON，
      * 说明失败走了统一 Result 契约（HTTP 恒 200，见技术方案 §6.1）——解析后按业务码抛 ApiException。
