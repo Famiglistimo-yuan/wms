@@ -36,10 +36,9 @@ public class PersonService {
                 .stream().map(this::toVO).collect(Collectors.toList());
     }
 
-    /** FR-1-2-7：输入姓名任何一个单字 → 含该字全部人员（LIKE '%x%'） */
+    /** FR-1-2-7：按姓名模糊查询（LIKE '%keyword%'，天然兼容单字） */
     public List<PersonVO> searchBySingleChar(String ch) {
-        if (ch == null || ch.length() != 1) {
-            // 空或非单字 → 返回全部（客户端搜索框清空后的默认行为）
+        if (ch == null || ch.isBlank()) {
             return listAll();
         }
         return personMapper.selectList(Wrappers.<Person>lambdaQuery()
@@ -70,7 +69,12 @@ public class PersonService {
         p.setAddress(dto.getAddress());
         p.setPhone(dto.getPhone());
         p.setRemark(dto.getRemark());
-        personMapper.insert(p);
+        try {
+            personMapper.insert(p);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("新增人员代码冲突：{}", dto.getPersonCode(), e);
+            throw new BusinessException(ErrorCode.CONFLICT, "人员代码已存在");
+        }
         return toVO(p);
     }
 

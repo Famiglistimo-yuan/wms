@@ -208,12 +208,12 @@ public class MaterialManageController {
             return ApiClient.toJson(m);
         }
         public String toUpdateJson() throws Exception {
+            // 编辑全量提交 String 字段：空串=清空；stock 不参与修改（FR-1-3-4 库存变更仅经进出仓 SP）
             Map<String, Object> m = new LinkedHashMap<>();
-            if (name != null) m.put("name", name);
-            if (spec != null) m.put("spec", spec);
-            if (unit != null) m.put("unit", unit);
-            if (stock != null) m.put("stock", stock);
-            if (remark != null) m.put("remark", remark);
+            m.put("name", name);
+            m.put("spec", spec);
+            m.put("unit", unit);
+            m.put("remark", remark);
             return ApiClient.toJson(m);
         }
     }
@@ -259,6 +259,7 @@ public class MaterialManageController {
                 tfSpec.setText(existing.spec);
                 cbUnit.setValue(existing.unit);
                 tfStock.setText(existing.stock != null ? existing.stock.stripTrailingZeros().toPlainString() : "0");
+                tfStock.setDisable(true); // 编辑模式库存只读（库存变更仅经进出仓 SP）
                 tfRemark.setText(existing.remark);
             }
 
@@ -271,11 +272,10 @@ public class MaterialManageController {
                 else {
                     row.materialCode = tfCode.getText().trim();
                     row.name = tfName.getText().trim();
-                    row.spec = tfSpec.getText().trim().isEmpty() ? null : tfSpec.getText().trim();
+                    // 空串表示清空；编辑模式不取 stock（库存变更仅经进出仓 SP）
+                    row.spec = tfSpec.getText().trim();
                     row.unit = cbUnit.getValue() != null ? cbUnit.getValue().trim() : null;
-                    String stockStr = tfStock.getText().trim();
-                    row.stock = stockStr.isEmpty() ? BigDecimal.ZERO : new BigDecimal(stockStr);
-                    row.remark = tfRemark.getText().trim().isEmpty() ? null : tfRemark.getText().trim();
+                    row.remark = tfRemark.getText().trim();
                 }
             });
             setResultConverter(btn -> btn == ButtonType.OK ? row : null);

@@ -225,15 +225,16 @@ public class PersonManageController {
             return ApiClient.toJson(m);
         }
         public String toUpdateJson() throws Exception {
+            // 编辑全量提交 String 字段：空串=清空，非空串=新值（birthDate 除外，null=不改）
             Map<String, Object> m = new LinkedHashMap<>();
-            if (name != null) m.put("name", name);
-            if (gender != null) m.put("gender", gender);
+            m.put("name", name);
+            m.put("gender", gender);
             if (birthDate != null) m.put("birthDate", birthDate.toString());
-            if (idCard != null) m.put("idCard", idCard);
-            if (phone != null) m.put("phone", phone);
-            if (hometown != null) m.put("hometown", hometown);
-            if (address != null) m.put("address", address);
-            if (remark != null) m.put("remark", remark);
+            m.put("idCard", idCard);
+            m.put("phone", phone);
+            m.put("hometown", hometown);
+            m.put("address", address);
+            m.put("remark", remark);
             return ApiClient.toJson(m);
         }
     }
@@ -308,11 +309,12 @@ public class PersonManageController {
                     row.name = tfName.getText().trim();
                     row.gender = cbGender.getValue();
                     row.birthDate = dpBirth.getValue();
-                    row.idCard = tfIdCard.getText().trim().isEmpty() ? null : tfIdCard.getText().trim();
-                    row.phone = tfPhone.getText().trim().isEmpty() ? null : tfPhone.getText().trim();
-                    row.hometown = tfHometown.getText().trim().isEmpty() ? null : tfHometown.getText().trim();
-                    row.address = tfAddress.getText().trim().isEmpty() ? null : tfAddress.getText().trim();
-                    row.remark = tfRemark.getText().trim().isEmpty() ? null : tfRemark.getText().trim();
+                    // 空串表示清空（服务端 UpdateDTO @Pattern ^$|... 已预留空串语义）
+                    row.idCard = tfIdCard.getText().trim();
+                    row.phone = tfPhone.getText().trim();
+                    row.hometown = tfHometown.getText().trim();
+                    row.address = tfAddress.getText().trim();
+                    row.remark = tfRemark.getText().trim();
                 }
             });
             setResultConverter(btn -> btn == ButtonType.OK ? row : null);

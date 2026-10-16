@@ -64,7 +64,12 @@ public class MaterialService {
         m.setUnit(dto.getUnit());
         m.setStock(dto.getStock() != null ? dto.getStock() : BigDecimal.ZERO);
         m.setRemark(dto.getRemark());
-        materialMapper.insert(m);
+        try {
+            materialMapper.insert(m);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("新增物料代码冲突：{}", dto.getMaterialCode(), e);
+            throw new BusinessException(ErrorCode.CONFLICT, "物料代码已存在");
+        }
         return toVO(m);
     }
 
@@ -75,12 +80,6 @@ public class MaterialService {
         if (dto.getName() != null) m.setName(dto.getName());
         if (dto.getSpec() != null) m.setSpec(dto.getSpec());
         if (dto.getUnit() != null) m.setUnit(dto.getUnit());
-        if (dto.getStock() != null) {
-            if (dto.getStock().compareTo(BigDecimal.ZERO) < 0) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "库存不能为负");
-            }
-            m.setStock(dto.getStock());
-        }
         if (dto.getRemark() != null) m.setRemark(dto.getRemark());
         materialMapper.updateById(m);
     }
