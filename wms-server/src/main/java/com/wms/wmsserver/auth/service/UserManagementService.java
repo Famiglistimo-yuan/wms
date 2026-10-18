@@ -3,6 +3,7 @@ package com.wms.wmsserver.auth.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
+import com.wms.wmsserver.auth.dto.PersonOptionVO;
 import com.wms.wmsserver.auth.dto.UserCreateDTO;
 import com.wms.wmsserver.auth.dto.UserUpdateDTO;
 import com.wms.wmsserver.auth.dto.UserVO;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户管理：CRUD + 角色分配。
@@ -31,6 +33,17 @@ public class UserManagementService {
     private final UserRoleMapper userRoleMapper;
 
     private final PasswordEncoder encoder;
+
+    /** 人员下拉选项（新增用户时选关联人员） */
+    public List<PersonOptionVO> listPersonOptions() {
+        List<Person> persons = personMapper.selectList(
+                Wrappers.<Person>lambdaQuery().orderByAsc(Person::getId));
+        return persons.stream().map(p -> PersonOptionVO.builder()
+                .id(p.getId())
+                .personCode(p.getPersonCode())
+                .realName(p.getName())
+                .build()).collect(Collectors.toList());
+    }
 
     /** 用户列表（联表人员档案） */
     public List<UserVO> listUsers() {
@@ -48,6 +61,11 @@ public class UserManagementService {
         // 人员档案必须存在
         Person p = personMapper.selectById(dto.getPersonId());
         if (p == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "关联的人员档案不存在");
+
+        // 同一人员不能重复绑定账号（uk_user_person）
+        Long bound = userMapper.selectCount(Wrappers.<User>lambdaQuery()
+                .eq(User::getPersonId, dto.getPersonId()));
+        if (bound > 0) throw new BusinessException(ErrorCode.CONFLICT, "该人员已绑定登录账号");
 
         User u = new User();
         u.setUsername(dto.getUsername());

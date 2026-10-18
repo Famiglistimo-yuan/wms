@@ -319,6 +319,7 @@
 | GET | `/api/reports/monthly-orders/{yyyyMM}?format=excel\|word` | 导出月度进出仓单（Excel/Word，缺省 excel） |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}?format=excel\|word` | 导出仓库账本（Excel/Word，缺省 excel） |
 | GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用），需 `menu.auth.user` |
+| GET | `/api/users/person-options` | 人员下拉选项（新增用户时选关联人员），需 `menu.auth.user` |
 | GET/POST | `/api/users/{id}/roles` | 查询/分配用户角色（逐用户授权，全量覆盖），需 `menu.auth.grant` |
 | GET | `/api/roles`；GET `/api/roles/permissions` | 角色列表（含权限码）/ 权限资源列表（菜单项） |
 | GET/POST | `/api/roles/{roleId}/permissions` | 查询/分配角色权限（逐角色授权，全量覆盖），需 `menu.auth.grant` |

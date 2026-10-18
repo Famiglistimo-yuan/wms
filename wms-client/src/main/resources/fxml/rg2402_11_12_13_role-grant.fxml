@@ -12,10 +12,12 @@
       spacing="8">
   <ToolBar>
     <Button text="刷新" onAction="#onRefreshClicked"/>
+    <Button text="保存授权" onAction="#onSaveClicked"/>
   </ToolBar>
   <Label text="角色列表（左） / 权限勾选（右）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
-    <ListView prefWidth="200" HBox.hgrow="NEVER" fx:id="lvRoles"/>
+    <ListView prefWidth="200" HBox.hgrow="NEVER" fx:id="lvRoles"
+              onMouseClicked="#onRoleSelected"/>
     <ListView HBox.hgrow="ALWAYS" fx:id="lvPermissions"/>
   </HBox>
   <Label fx:id="lblStatus" styleClass="subtle"/>

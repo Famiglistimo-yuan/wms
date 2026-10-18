@@ -32,6 +32,13 @@ public class UserManagementController {
         return Result.success(service.create(dto));
     }
 
+    /** 人员下拉选项（新增用户时选关联人员） */
+    @GetMapping("/person-options")
+    @RequirePermission("menu.auth.user")
+    public Result<List<PersonOptionVO>> personOptions() {
+        return Result.success(service.listPersonOptions());
+    }
+
     @PutMapping("/{id}")
     @RequirePermission("menu.auth.user")
     public Result<Void> update(@PathVariable Long id,
