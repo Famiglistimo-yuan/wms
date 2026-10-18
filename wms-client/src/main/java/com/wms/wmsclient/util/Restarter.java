@@ -39,6 +39,7 @@ public final class Restarter {
         }
         if (autoStarted) {
             Platform.exit();
+            System.exit(0);   // 兜底强杀：重启路径不走 VStage.close() 清理链，防未来引入 vfx 异步组件（VProgressBar/KeyChooser）后旧 JVM 残留
         } else {
             Alerts.of(Alert.AlertType.INFORMATION,
                     "主题偏好已保存，自动重启不可用，请手动重启客户端后生效").showAndWait();
