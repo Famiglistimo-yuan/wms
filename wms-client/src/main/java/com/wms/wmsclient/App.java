@@ -7,6 +7,7 @@ import com.wms.wmsclient.scene.MenuScene;
 import com.wms.wmsclient.scene.PanelScene;
 import com.wms.wmsclient.update.UpdateService;
 import com.wms.wmsclient.util.TokenStore;
+import com.wms.wmsclient.theme.LightTheme;
 import io.vproxy.vfx.control.globalscreen.GlobalScreenUtils;
 import io.vproxy.vfx.manager.task.TaskManager;
 import io.vproxy.vfx.ui.button.FusionButton;
@@ -16,6 +17,7 @@ import io.vproxy.vfx.ui.scene.VSceneHideMethod;
 import io.vproxy.vfx.ui.scene.VSceneShowMethod;
 import io.vproxy.vfx.ui.stage.VStage;
 import io.vproxy.vfx.ui.stage.VStageInitParams;
+import io.vproxy.vfx.theme.Theme;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -45,6 +47,8 @@ public class App extends Application {
 
     @Override
     public void start(Stage primaryStage) throws IOException {
+        // 浅色主题注入（ADR-010）：必须在任何 vfx 组件创建之前，否则 Theme 锁定 DarkTheme
+        Theme.setTheme(new LightTheme());
         homeScene = new HomeScene();
         menuScene = new MenuScene(this);
         vStage = new VStage(primaryStage, new VStageInitParams().setInitialScene(homeScene)) {
