@@ -1,0 +1,44 @@
+/* 深色主题（ADR-010）：与 vfx DarkTheme 骨架配套，类名与 styles.css 同套、值各配。
+   机制：Modena 保持为 UA stylesheet，本文件经 PanelScene/MorePanel 以 author 级注入；
+   -fx-base 等变量挂 .panel-host（面板容器，靠 CSS 继承传给子控件）与 .root
+   （MorePanel/弹窗的 scene root）双选择器，Modena 的 .button 等规则据此派生深色。
+   禁止用 Application.setUserAgentStylesheet 挂本文件——那是替换语义，控件会裸奔。 */
+.root, .panel-host {
+    -fx-font-family: "System";
+    -fx-font-size: 13px;
+    -fx-base: #3a3f45;
+    -fx-background: #24292e;
+    -fx-control-inner-background: #2b3138;
+    -fx-text-fill: #ececec;
+}
+.title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+.subtle {
+    -fx-text-fill: #9aa0a8;
+}
+.primary-btn {
+    -fx-min-width: 88px;
+}
+/* 「更多」面板（MorePanel，TRANSPARENT 舞台上的圆角卡片）——深色版 */
+.more-panel {
+    -fx-background-color: #2b3138;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #4a5058;
+    -fx-border-width: 1;
+    -fx-padding: 16;
+    -fx-min-width: 340;
+}
+/* 连通测试状态色（深色底上提亮的绿/红） */
+.ping-ok {
+    -fx-text-fill: #5ec26a;
+}
+.ping-fail {
+    -fx-text-fill: #e07856;
+}
+/* vfx 面板宿主——深色版底色与 vfx DarkTheme 场景背景一致 */
+.panel-host {
+    -fx-background-color: #24292e;
+}

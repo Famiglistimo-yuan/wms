@@ -4,6 +4,7 @@ import com.wms.common.dto.MaterialFlowReport;
 import com.wms.common.dto.MaterialFlowStat;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
+import com.wms.wmsclient.util.Alerts;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -48,11 +49,11 @@ public class StatsFlowController {
         LocalDate from = dpFrom.getValue();
         LocalDate to = dpTo.getValue();
         if (from == null || to == null) {
-            new Alert(Alert.AlertType.WARNING, "请选择起始与截止日期").showAndWait();
+            Alerts.of(Alert.AlertType.WARNING, "请选择起始与截止日期").showAndWait();
             return;
         }
         if (from.isAfter(to)) {
-            new Alert(Alert.AlertType.WARNING, "起始日期不能晚于截止日期").showAndWait();
+            Alerts.of(Alert.AlertType.WARNING, "起始日期不能晚于截止日期").showAndWait();
             return;
         }
         // JavaFX 线程规则：HTTP 走后台 Task，渲染回 UI 线程（CONTRIBUTING §3.4）
@@ -67,7 +68,7 @@ public class StatsFlowController {
         task.setOnSucceeded(e -> Platform.runLater(() -> render(task.getValue())));
         task.setOnFailed(e -> Platform.runLater(() -> {
             Throwable ex = task.getException();
-            new Alert(Alert.AlertType.ERROR, "统计失败：" + (ex == null ? "未知错误" : ex.getMessage()))
+            Alerts.of(Alert.AlertType.ERROR, "统计失败：" + (ex == null ? "未知错误" : ex.getMessage()))
                     .showAndWait();
         }));
         Thread t = new Thread(task, "stats-flow-query");

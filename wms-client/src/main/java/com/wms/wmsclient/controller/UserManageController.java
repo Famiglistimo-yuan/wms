@@ -1,6 +1,7 @@
 package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
+import com.wms.wmsclient.util.Alerts;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -53,7 +54,7 @@ public class UserManageController {
     @FXML
     protected void onRefreshClicked() {
         lblStatus.setText("用户管理：点击「刷新」从服务端加载（功能待接入）");
-        new Alert(Alert.AlertType.INFORMATION, "用户管理列表刷新将在子系统后续接入服务端接口").showAndWait();
+        Alerts.of(Alert.AlertType.INFORMATION, "用户管理列表刷新将在子系统后续接入服务端接口").showAndWait();
     }
 
     @FXML
@@ -72,7 +73,7 @@ public class UserManageController {
     }
 
     private void showPlaceholder(String featureName) {
-        new Alert(Alert.AlertType.INFORMATION,
+        Alerts.of(Alert.AlertType.INFORMATION,
                 featureName + " 的服务端接口已就绪，前端对接后续接入").showAndWait();
     }
 
