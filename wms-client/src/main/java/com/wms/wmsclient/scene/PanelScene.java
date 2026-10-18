@@ -1,6 +1,7 @@
 package com.wms.wmsclient.scene;
 
 import com.wms.wmsclient.App;
+import com.wms.wmsclient.theme.ThemeManager;
 import io.vproxy.vfx.ui.scene.VScene;
 import io.vproxy.vfx.ui.scene.VSceneRole;
 import io.vproxy.vfx.util.FXUtils;
@@ -32,8 +33,10 @@ public final class PanelScene extends VScene {
             }
         });
         Region root = loader.load();
-        // vfx 场景为深色主题，FXML 面板为浅色配色：panel-host 统一浅底保证对比度（样式值集中于 styles.css）
+        // 底色按主题取浅/深（.panel-host 类在 styles.css / styles-dark.css 各配其值）
         root.getStyleClass().add("panel-host");
+        // FXML 里写死的 @../styles.css 按当前主题替换（浅色下为同一文件，行为不变）
+        root.getStylesheets().setAll(ThemeManager.stylesheetUrl());
         getContentPane().getChildren().add(root);
         FXUtils.observeWidthHeight(getContentPane(), root);
     }

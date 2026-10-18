@@ -246,7 +246,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 2. **Controller 命名**：与 FXML 对应：`LoginController`、`MaterialManageController`。
 3. **fx:id 命名**：控件类型缩写 + 用途驼峰：`tfKeyword`（TextField）、`tvMaterial`（TableView）、`btnSearch`、`dpDate`（DatePicker）。
 4. **FXML 只放结构**：不写 `onAction="#handle"` 以外的任何逻辑；事件方法名 `on + 动作`：`onSearchClicked()`、`onSubmitClicked()`。
-5. **样式统一**：颜色、间距、字号只写在 `resources/styles.css`，FXML 禁止内联写死样式值（技术方案 §11 界面美观度风险的应对）。
+5. **样式统一**：颜色、间距、字号只写在 `resources/styles.css`（浅色）/ `resources/styles-dark.css`（深色），两文件类名同套、需同步维护；FXML 禁止内联写死样式值（技术方案 §11 界面美观度风险的应对）。
 6. **动态内容在 Controller 里填**：表格列、图表数据等运行期数据用 Java 代码填充，不硬编码进 FXML。
 7. **窗口形态（ADR-007 / ADR-010）**：全应用单窗口——vfx `VStage` 骨架，功能导航走左上角「菜单」按钮唤出的抽屉（`MenuScene`），点击经 `App.showPanel(fxmlName)` 以 VScene 带动画切换子程序面板，不新建顶层 Stage；面板 Controller 须提供公共 `(App)` 构造器（工厂注入导航入口）；「定位 → 修改」等二级表单用 `Dialog`/`Alert`，`showAndWait` 取结果后由调用方刷新列表。
 

@@ -256,9 +256,9 @@
 | 长期维护 | 库作者声明可能不兼容升级，需锁版本评估 | 同左但接触面小 | 全自主 |
 | 与 FXML 体系兼容 | 面板可继续 FXML（VScene 包装） | 完全兼容 | 完全兼容 |
 
-- **决策**：方案 A——引入 `io.vproxy:vfx:1.4.0`（Maven Central），应用骨架替换为 vfx：`VStage` 单窗口（自定义标题栏）＋ `VSceneGroup` 场景切换（滑入动画）＋ `DRAWER_VERTICAL` 抽屉菜单（替代 MenuBar）＋ 统一浅色主题（`LightTheme`）；子程序面板暂保持 FXML ＋ Controller，经 `PanelScene` 包装进 VScene，后续逐面板替换为 vfx 原生组件。
+- **决策**：方案 A——引入 `io.vproxy:vfx:1.4.0`（Maven Central），应用骨架替换为 vfx：`VStage` 单窗口（自定义标题栏）＋ `VSceneGroup` 场景切换（滑入动画）＋ `DRAWER_VERTICAL` 抽屉菜单（替代 MenuBar）＋ 浅/深双主题（`ThemeManager` 按落盘偏好启动注入）；子程序面板暂保持 FXML ＋ Controller，经 `PanelScene` 包装进 VScene，后续逐面板替换为 vfx 原生组件。
 - **理由**：课题答辩重视界面演示效果，vfx 以单一依赖一站式获得标题栏/主题/动画/抽屉；面板不动保证各子系统界面零回归；ADR-007 的单窗口与统一导航入口（`App.showPanel`）约定完整保留。
-- **后果**：§3 技术栈表同步更新；窗口关闭需 `TaskManager.terminate()` ＋ `GlobalScreenUtils.unregister()` 清理；vfx 1.4.x 仅内置深色主题，本项目以 `LightTheme`（继承 DarkTheme 覆盖配色）统一全应用浅色视觉，FXML 面板加 `.panel-host` 白底（styles.css）；fat jar 体积增大（jnativehook 原生库随包）；原 `MainController`/`rg2402_11_12_13_main.fxml` 删除，菜单权限显隐逻辑平移至 `MenuScene`；升级 vfx 前需评估 API 兼容性（作者声明可能不兼容升级）。
+- **后果**：§3 技术栈表同步更新；窗口关闭需 `TaskManager.terminate()` ＋ `GlobalScreenUtils.unregister()` 清理；vfx 1.4.x 无运行时主题切换机制（`Theme.setTheme` 仅进程启动注入一次），主题为浅色（自研 `LightTheme` ＋ `styles.css`）/深色（vfx `DarkTheme` ＋ `styles-dark.css`）双份，经「更多」面板确认后落盘并重启客户端生效（打包模式重启 jpackage 启动器；dev 模式重拉 java 进程，classpath 不含 JavaFX 的环境兜底提示手动重启）；深色下 JavaFX 原生控件与弹窗经 `Application.setUserAgentStylesheet` 全局跟随；fat jar 体积增大（jnativehook 原生库随包）；原 `MainController`/`rg2402_11_12_13_main.fxml` 删除，菜单权限显隐逻辑平移至 `MenuScene`；升级 vfx 前需评估 API 兼容性（作者声明可能不兼容升级）。
 
 ## 5. 数据库设计
 

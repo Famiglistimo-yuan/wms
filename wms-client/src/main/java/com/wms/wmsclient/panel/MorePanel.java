@@ -2,11 +2,15 @@ package com.wms.wmsclient.panel;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
+import com.wms.wmsclient.theme.ThemeManager;
 import com.wms.wmsclient.update.UpdateService;
+import com.wms.wmsclient.util.Restarter;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
@@ -95,12 +99,34 @@ public final class MorePanel {
         HBox row3 = new HBox(12, new Label("服务器"), serverUrl, spacer3, btnPing, pingStatus);
         row3.setAlignment(Pos.CENTER_LEFT);
 
-        VBox root = new VBox(14, row1, row2, row3);
+        // ====== 第四行：主题切换（浅色 ⇄ 深色，重启后生效，ADR-010）======
+        Button btnTheme = new Button(ThemeManager.isDark() ? "切换浅色主题" : "切换深色主题");
+        btnTheme.setOnAction(e -> {
+            panel.hide();
+            ThemeManager.Mode target = ThemeManager.isDark() ? ThemeManager.Mode.LIGHT : ThemeManager.Mode.DARK;
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "切换主题将重启客户端，确定切换吗？", ButtonType.YES, ButtonType.NO);
+            confirm.setHeaderText(null);
+            confirm.showAndWait().filter(r -> r == ButtonType.YES).ifPresent(r -> {
+                if (ThemeManager.persist(target)) {
+                    Restarter.restartForThemeChange();   // 打包模式自动重启；dev 模式提示手动重启
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "主题偏好写入失败，未切换").showAndWait();
+                }
+            });
+        });
+
+        Region spacer4 = new Region();
+        HBox.setHgrow(spacer4, Priority.ALWAYS);
+        HBox row4 = new HBox(12, new Label("主题"), spacer4, btnTheme);
+        row4.setAlignment(Pos.CENTER_LEFT);
+
+        VBox root = new VBox(14, row1, row2, row3, row4);
         root.getStyleClass().add("more-panel");
         Scene scene = new Scene(root);
         // TRANSPARENT 舞台必须配透明场景填充，圆角面板外才不会露白底
         scene.setFill(Color.TRANSPARENT);
-        scene.getStylesheets().add(MorePanel.class.getResource("/styles.css").toExternalForm());
+        scene.getStylesheets().add(ThemeManager.stylesheetUrl());
         scene.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ESCAPE) {
                 panel.hide();
