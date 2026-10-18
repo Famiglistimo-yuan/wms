@@ -3,6 +3,7 @@ package com.wms.wmsclient.scene;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.panel.MorePanel;
+import com.wms.wmsclient.util.Alerts;
 import io.vproxy.vfx.control.scroll.VScrollPane;
 import io.vproxy.vfx.manager.font.FontManager;
 import io.vproxy.vfx.theme.Theme;
@@ -109,13 +110,13 @@ public final class MenuScene extends VScene {
                 try {
                     app.showPanel(fxmlName);
                 } catch (Exception ex) {
-                    new Alert(Alert.AlertType.ERROR, "无法打开 " + fxmlName + "：" + ex.getMessage()).showAndWait();
+                    Alerts.of(Alert.AlertType.ERROR, "无法打开 " + fxmlName + "：" + ex.getMessage()).showAndWait();
                 }
             });
         } else {
             button.setOnAction(e -> {
                 app.hideMenu();
-                new Alert(Alert.AlertType.INFORMATION, text + " 将在对应子系统开发中开放").showAndWait();
+                Alerts.of(Alert.AlertType.INFORMATION, text + " 将在对应子系统开发中开放").showAndWait();
             });
         }
         box.getChildren().add(button);
@@ -137,7 +138,7 @@ public final class MenuScene extends VScene {
         try {
             app.showLogin();
         } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "返回登录失败：" + e.getMessage()).showAndWait();
+            Alerts.of(Alert.AlertType.ERROR, "返回登录失败：" + e.getMessage()).showAndWait();
         }
     }
 

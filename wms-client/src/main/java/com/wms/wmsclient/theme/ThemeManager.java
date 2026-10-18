@@ -3,7 +3,6 @@ package com.wms.wmsclient.theme;
 import com.wms.wmsclient.util.AppPaths;
 import io.vproxy.vfx.theme.Theme;
 import io.vproxy.vfx.theme.impl.DarkTheme;
-import javafx.application.Application;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,16 +27,16 @@ public final class ThemeManager {
     private ThemeManager() {
     }
 
-    /** 启动注入：读偏好 → 设置 vfx Theme 与 JavaFX 全局 UA stylesheet（Alert 等弹窗跟随）。
-     *  必须在任何 vfx 组件创建之前调用（App.start 第一行） */
+    /** 启动注入：读偏好 → 设置 vfx Theme。必须在任何 vfx 组件创建之前调用（App.start 第一行）。
+     *  JavaFX UA stylesheet 保持默认 Modena 不动——深色由面板级样式表（styles-dark.css）
+     *  经 CSS 变量继承派生（Application.setUserAgentStylesheet 是替换语义，会丢控件皮肤，
+     *  探针实测已排除，见 ADR-010） */
     public static void init() {
         current = loadPreference();
         if (current == Mode.DARK) {
             Theme.setTheme(new DarkTheme());
-            Application.setUserAgentStylesheet(stylesheetUrl());
         } else {
             Theme.setTheme(new LightTheme());
-            Application.setUserAgentStylesheet(null);
         }
     }
 

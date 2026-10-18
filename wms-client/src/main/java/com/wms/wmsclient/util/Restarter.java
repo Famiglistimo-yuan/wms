@@ -40,7 +40,7 @@ public final class Restarter {
         if (autoStarted) {
             Platform.exit();
         } else {
-            new Alert(Alert.AlertType.INFORMATION,
+            Alerts.of(Alert.AlertType.INFORMATION,
                     "主题偏好已保存，自动重启不可用，请手动重启客户端后生效").showAndWait();
         }
     }

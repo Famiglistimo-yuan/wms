@@ -3,6 +3,7 @@ package com.wms.wmsclient.controller;
 import com.wms.common.dto.MaterialOption;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
+import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ExportHelper;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -87,7 +88,7 @@ public class ReportLedgerController {
     protected void onExportClicked() {
         MaterialOption material = cbMaterial.getValue();
         if (material == null) {
-            new Alert(Alert.AlertType.WARNING, "请选择物料").showAndWait();
+            Alerts.of(Alert.AlertType.WARNING, "请选择物料").showAndWait();
             return;
         }
         int year = cbYear.getValue();
@@ -108,11 +109,11 @@ public class ReportLedgerController {
                         ExportHelper.extensionOf(fmt), task.getValue());
                 lblStatus.setText(saved == null ? "已取消保存" : "已导出：" + saved.getAbsolutePath());
             } catch (UncheckedIOException ex) {
-                new Alert(Alert.AlertType.ERROR, "文件保存失败：" + ex.getCause().getMessage()).showAndWait();
+                Alerts.of(Alert.AlertType.ERROR, "文件保存失败：" + ex.getCause().getMessage()).showAndWait();
             }
         }));
         task.setOnFailed(e -> Platform.runLater(() ->
-                new Alert(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
+                Alerts.of(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
                         .showAndWait()));
         Thread t = new Thread(task, "report-ledger-export");
         t.setDaemon(true);

@@ -4,6 +4,7 @@ import com.wms.common.RegexPatterns;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.util.Alerts;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -165,10 +166,10 @@ public class PersonManageController {
         new Thread(task, "person-delete").start();
     }
 
-    private void alertInfo(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).showAndWait(); }
-    private void alertError(String msg) { new Alert(Alert.AlertType.ERROR, msg).showAndWait(); }
+    private void alertInfo(String msg) { Alerts.of(Alert.AlertType.INFORMATION, msg).showAndWait(); }
+    private void alertError(String msg) { Alerts.of(Alert.AlertType.ERROR, msg).showAndWait(); }
     private boolean confirm(String msg) {
-        return new Alert(Alert.AlertType.CONFIRMATION, msg, ButtonType.OK, ButtonType.CANCEL)
+        return Alerts.of(Alert.AlertType.CONFIRMATION, msg, ButtonType.OK, ButtonType.CANCEL)
                 .showAndWait().filter(b -> b == ButtonType.OK).isPresent();
     }
 

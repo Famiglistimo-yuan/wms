@@ -4,6 +4,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.theme.ThemeManager;
 import com.wms.wmsclient.update.UpdateService;
+import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.Restarter;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
@@ -104,14 +105,14 @@ public final class MorePanel {
         btnTheme.setOnAction(e -> {
             panel.hide();
             ThemeManager.Mode target = ThemeManager.isDark() ? ThemeManager.Mode.LIGHT : ThemeManager.Mode.DARK;
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+            Alert confirm = Alerts.of(Alert.AlertType.CONFIRMATION,
                     "切换主题将重启客户端，确定切换吗？", ButtonType.YES, ButtonType.NO);
             confirm.setHeaderText(null);
             confirm.showAndWait().filter(r -> r == ButtonType.YES).ifPresent(r -> {
                 if (ThemeManager.persist(target)) {
                     Restarter.restartForThemeChange();   // 打包模式自动重启；dev 模式提示手动重启
                 } else {
-                    new Alert(Alert.AlertType.ERROR, "主题偏好写入失败，未切换").showAndWait();
+                    Alerts.of(Alert.AlertType.ERROR, "主题偏好写入失败，未切换").showAndWait();
                 }
             });
         });

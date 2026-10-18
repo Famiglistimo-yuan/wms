@@ -1,8 +1,9 @@
 /* 深色主题（ADR-010）：与 vfx DarkTheme 骨架配套，类名与 styles.css 同套、值各配。
-   -fx-base 派生色整体深色化 JavaFX 原生控件（按钮/表格/输入框/日期选择自动跟随）；
-   深色模式下由 PanelScene/MorePanel 注入替换 styles.css，
-   并经 Application.setUserAgentStylesheet 全局生效（Alert 等弹窗跟随）。 */
-.root {
+   机制：Modena 保持为 UA stylesheet，本文件经 PanelScene/MorePanel 以 author 级注入；
+   -fx-base 等变量挂 .panel-host（面板容器，靠 CSS 继承传给子控件）与 .root
+   （MorePanel/弹窗的 scene root）双选择器，Modena 的 .button 等规则据此派生深色。
+   禁止用 Application.setUserAgentStylesheet 挂本文件——那是替换语义，控件会裸奔。 */
+.root, .panel-host {
     -fx-font-family: "System";
     -fx-font-size: 13px;
     -fx-base: #3a3f45;
