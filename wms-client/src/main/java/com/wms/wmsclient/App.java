@@ -26,7 +26,6 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * 客户端入口（ADR-010 vfx 骨架）：VStage 单窗口 + VSceneGroup 场景切换 + 抽屉菜单。

@@ -33,7 +33,7 @@ public class MaterialManageController {
     @FXML private TableView<MaterialRow> tvMaterials;
     @FXML private Label lblStatus;
 
-    /** App 注入构造器（MainController.showPanel 的 ControllerFactory 要求） */
+    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public MaterialManageController(App app) {
         this.app = app;
     }

@@ -31,7 +31,7 @@ public class PersonManageController {
     @FXML private TableView<PersonRow> tvPersons;
     @FXML private Label lblStatus;
 
-    /** App 注入构造器（MainController.showPanel 的 ControllerFactory 要求） */
+    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public PersonManageController(App app) {
         this.app = app;
     }
