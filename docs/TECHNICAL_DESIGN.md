@@ -86,6 +86,7 @@
 | 层次 | 选型 | 版本 | 说明 |
 |------|------|------|------|
 | 客户端 UI | JavaFX | 21.0.x（LTS） | Maven 依赖引入，无需单独安装 SDK |
+| 客户端 UI 组件库 | vfx | 1.4.0 | VStage/VScene 骨架＋深色主题＋抽屉菜单（ADR-010）；传递引入 jnativehook、io.vproxy:commons |
 | 客户端 HTTP | java.net.http.HttpClient | JDK 内置 | 无第三方依赖 |
 | JSON 序列化 | Jackson | 3.x | Spring Boot 4 默认（包名 `tools.jackson`，annotations 仍为 `com.fasterxml`）；客户端服务端同库，DTO 结构两端一致 |
 | 服务端框架 | Spring Boot | 4.0.8 | 内嵌 Tomcat 10.1，JDK 21 基线（IDEA 向导无 3.x 可选故上调 4.0.8；MyBatis-Plus/JJWT 配套可用） |
@@ -190,7 +191,7 @@
 
 ### ADR-007：客户端界面形态采用「单窗口切换 ＋ Dialog」
 
-- **状态**：已采纳
+- **状态**：已采纳（单窗口决策不变；2026-10 起面板切换机制演进为 vfx VScene 场景切换，见 ADR-010）
 - **上下文**：课题 FR-1-1 要求「主界面可以通过菜单调用到其它所有子程序」，阶段 2 三人并行开发各自的子系统界面，需先统一窗口形态（候选：主界面内切换单窗口 vs 每个子程序独立顶层窗口），避免各写一套导航。
 - **候选方案对比**：
 
@@ -241,6 +242,23 @@
 - **决策**：引 `org.apache.poi:poi-ooxml:5.5.1` 单依赖；数据组装与渲染分离——每个报表一份行数据构建器，Excel/Word 两个薄渲染器共用「报表头＋边框」helper；接口以 `format=excel|word` 参数分流。
 - **理由**：需要的恰好只有 Word＋Excel，POI 单库全覆盖且是 EasyExcel 系底层的事实标准，避开其孵化期坐标迁移风险与 iText AGPL 顾虑；手写样式 helper 为一次性成本，两报表摊薄。
 - **后果**：§3 技术栈表同步更新；本对比直接用于报告「复杂问题识别与多方案比较择优」章节（NFR-8）；后续若恢复 PDF 需求需新增依赖并另立 ADR。
+
+### ADR-010：客户端 UI 骨架深度集成 vfx
+
+- **状态**：已采纳
+- **上下文**：原客户端为 JavaFX 原生 Stage/Scene ＋ FXML MenuBar 骨架，视觉与交互（场景切换动画、抽屉菜单、统一主题、自定义标题栏）均需手写，观感上限低（NFR 界面美观度）。备选：手写 CSS 美化、仅引组件级库、深度集成 UI 框架（非 JavaFX 方案已由 ADR-001 排除）。
+- **候选方案对比**：
+
+| 维度 | A vfx 深度集成：骨架替换＋面板渐进迁移（已选） | B vfx 仅引组件 | C 手写 CSS 美化 |
+|------|----------------------------------------------|----------------|-----------------|
+| 界面观感提升 | 大（标题栏/主题/动画/抽屉一站式） | 中（组件级，骨架仍原生） | 小-中（受原生控件上限） |
+| 改动面 | 骨架层重写（入口/菜单），面板 FXML 不动 | 零骨架改动 | 零新增依赖 |
+| 长期维护 | 库作者声明可能不兼容升级，需锁版本评估 | 同左但接触面小 | 全自主 |
+| 与 FXML 体系兼容 | 面板可继续 FXML（VScene 包装） | 完全兼容 | 完全兼容 |
+
+- **决策**：方案 A——引入 `io.vproxy:vfx:1.4.0`（Maven Central），应用骨架替换为 vfx：`VStage` 单窗口（自定义标题栏）＋ `VSceneGroup` 场景切换（滑入动画）＋ `DRAWER_VERTICAL` 抽屉菜单（替代 MenuBar）＋ vfx 深色主题；子程序面板暂保持 FXML ＋ Controller，经 `PanelScene` 包装进 VScene，后续逐面板替换为 vfx 原生组件。
+- **理由**：课题答辩重视界面演示效果，vfx 以单一依赖一站式获得标题栏/主题/动画/抽屉；面板不动保证各子系统界面零回归；ADR-007 的单窗口与统一导航入口（`App.showPanel`）约定完整保留。
+- **后果**：§3 技术栈表同步更新；窗口关闭需 `TaskManager.terminate()` ＋ `GlobalScreenUtils.unregister()` 清理；vfx 1.4.x 仅深色主题，FXML 面板统一加 `.panel-host` 浅底保证对比度（styles.css）；fat jar 体积增大（jnativehook 原生库随包）；原 `MainController`/`rg2402_11_12_13_main.fxml` 删除，菜单权限显隐逻辑平移至 `MenuScene`；升级 vfx 前需评估 API 兼容性（作者声明可能不兼容升级）。
 
 ## 5. 数据库设计
 

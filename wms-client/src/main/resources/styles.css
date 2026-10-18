@@ -35,3 +35,8 @@
 .ping-fail {
     -fx-text-fill: #D85A30;
 }
+
+/* vfx 面板宿主（ADR-010）：vfx 场景为深色主题，FXML 面板为浅色配色，统一浅底保证对比度 */
+.panel-host {
+    -fx-background-color: white;
+}

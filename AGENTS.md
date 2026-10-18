@@ -17,7 +17,8 @@
 ```bash
 ./mvnw -DskipTests clean compile      # 构建验证（改完代码必须跑）
 ./mvnw -pl wms-server -am spring-boot:run   # 启动服务端（根目录执行，-am 连带 wms-common）
-./mvnw -pl wms-client -am javafx:run        # 启动客户端
+./mvnw -pl wms-common install -DskipTests   # 前置：改过 wms-common 后须重装，否则 client 从 .m2 加载过期 jar
+./mvnw -f wms-client/pom.xml javafx:run      # 启动客户端（须以 client 为当前项目，根目录下 javafx: 前缀解析不到插件）
 ```
 
 ## 代码规则（强制）
