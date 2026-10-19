@@ -77,6 +77,7 @@ public final class MenuScene extends VScene {
         section(box, "系统管理");
         item(box, "用户管理", Set.of("menu.auth.user"), "rg2402_11_12_13_user-manage");
         item(box, "权限授予", Set.of("menu.auth.grant"), "rg2402_11_12_13_role-grant");
+        item(box, "用户授权", Set.of("menu.auth.grant"), "rg2402_11_12_13_user-grant");
 
         // 底部固定项（不受权限控制）：更多 + 退出登录
         Region spacer = new Region();

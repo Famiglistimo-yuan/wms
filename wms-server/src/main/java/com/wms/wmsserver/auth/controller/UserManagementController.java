@@ -74,4 +74,19 @@ public class UserManagementController {
         service.assignRoles(id, roleIds);
         return Result.success();
     }
+
+    /** 用户直接授权回显（角色继承 + allow/deny 集合） */
+    @GetMapping("/{id}/permissions")
+    @RequirePermission("menu.auth.grant")
+    public Result<UserPermissionVO> getPermissions(@PathVariable Long id) {
+        return Result.success(service.getUserPermissions(id));
+    }
+
+    /** 用户直接授权：对单个用户授予/禁止某菜单执行权（全量覆盖，不影响其他用户） */
+    @PostMapping("/{id}/permissions")
+    @RequirePermission("menu.auth.grant")
+    public Result<Void> grantPermissions(@PathVariable Long id, @RequestBody UserPermissionGrantDTO dto) {
+        service.grantPermissions(id, dto);
+        return Result.success();
+    }
 }

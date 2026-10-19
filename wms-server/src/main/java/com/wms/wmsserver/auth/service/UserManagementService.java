@@ -5,13 +5,17 @@ import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
 import com.wms.wmsserver.auth.dto.PersonOptionVO;
 import com.wms.wmsserver.auth.dto.UserCreateDTO;
+import com.wms.wmsserver.auth.dto.UserPermissionGrantDTO;
+import com.wms.wmsserver.auth.dto.UserPermissionVO;
 import com.wms.wmsserver.auth.dto.UserUpdateDTO;
 import com.wms.wmsserver.auth.dto.UserVO;
 import com.wms.wmsserver.entity.Person;
 import com.wms.wmsserver.entity.User;
+import com.wms.wmsserver.entity.UserPermission;
 import com.wms.wmsserver.entity.UserRole;
 import com.wms.wmsserver.mapper.PersonMapper;
 import com.wms.wmsserver.mapper.UserMapper;
+import com.wms.wmsserver.mapper.UserPermissionMapper;
 import com.wms.wmsserver.mapper.UserRoleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +35,7 @@ public class UserManagementService {
     private final UserMapper userMapper;
     private final PersonMapper personMapper;
     private final UserRoleMapper userRoleMapper;
+    private final UserPermissionMapper userPermissionMapper;
 
     private final PasswordEncoder encoder;
 
@@ -110,7 +115,7 @@ public class UserManagementService {
         userMapper.updateById(u);
     }
 
-    /** 删除用户：同事务先解除其角色关系再删账号；禁止删除当前登录账号 */
+    /** 删除用户：同事务解除其角色关系与直接权限再删账号；禁止删除当前登录账号 */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id, Long currentUserId) {
         if (id.equals(currentUserId)) {
@@ -120,6 +125,7 @@ public class UserManagementService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
         }
         userRoleMapper.deleteByUserId(id);
+        userPermissionMapper.deleteByUserId(id);
         userMapper.deleteById(id);
     }
 
@@ -140,5 +146,39 @@ public class UserManagementService {
     /** 查询用户已分配角色 id 列表 */
     public List<Long> listRoleIds(Long userId) {
         return userRoleMapper.selectRoleIdsByUserId(userId);
+    }
+
+    /** 用户授权回显：角色继承 permId 集 + 直授 allow 集 + 禁止 deny 集 */
+    public UserPermissionVO getUserPermissions(Long userId) {
+        if (userMapper.selectById(userId) == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        return UserPermissionVO.builder()
+                .rolePermIds(userMapper.selectRolePermIdsByUserId(userId))
+                .allowPermIds(userPermissionMapper.selectPermIdsByUserIdAndEffect(userId, "allow"))
+                .denyPermIds(userPermissionMapper.selectPermIdsByUserIdAndEffect(userId, "deny"))
+                .build();
+    }
+
+    /** 用户直接授权（全量覆盖 allow/deny；只动该用户的行，不影响其他用户） */
+    @Transactional(rollbackFor = Exception.class)
+    public void grantPermissions(Long userId, UserPermissionGrantDTO dto) {
+        if (userMapper.selectById(userId) == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        userPermissionMapper.deleteByUserId(userId);
+        insertUserPerms(userId, dto.getAllow(), "allow");
+        insertUserPerms(userId, dto.getDeny(), "deny");
+    }
+
+    private void insertUserPerms(Long userId, List<Long> permIds, String effect) {
+        if (permIds == null) return;
+        for (Long permId : permIds) {
+            UserPermission up = new UserPermission();
+            up.setUserId(userId);
+            up.setPermId(permId);
+            up.setEffect(effect);
+            userPermissionMapper.insert(up);
+        }
     }
 }
