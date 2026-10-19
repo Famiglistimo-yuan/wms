@@ -52,6 +52,7 @@ public class UserGrantController {
     @FXML
     protected void initialize() {
         lblStatus.setText("点击「刷新」加载用户和权限");
+        lvUsers.setCellFactory(lv -> new UserCell());
         lvPermissions.setCellFactory(lv -> new PermAssignCell());
         loadAll();
     }
@@ -59,6 +60,13 @@ public class UserGrantController {
     @FXML
     protected void onRefreshClicked() {
         loadAll();
+    }
+
+    @FXML
+    protected void onAllowAllClicked() {
+        for (PermAssignItem item : lvPermissions.getItems()) {
+            item.choice.setValue(OPT_ALLOW);
+        }
     }
 
     @FXML
@@ -94,7 +102,7 @@ public class UserGrantController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() ->
-                lblStatus.setText("已保存用户「" + selected.getUsername() + "」的直接授权（重新登录或刷新权限后生效）")));
+                lblStatus.setText("已保存用户「" + displayName(selected) + "」的直接授权（重新登录或刷新权限后生效）")));
         task.setOnFailed(e -> {
             Throwable t = task.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
@@ -173,6 +181,26 @@ public class UserGrantController {
             Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载用户权限失败：" + msg).showAndWait());
         });
         new Thread(task, "user-grant-load").start();
+    }
+
+    /** 显示名：用户名（真实姓名） */
+    private static String displayName(UserVO u) {
+        return u.getRealName() == null || u.getRealName().isBlank()
+                ? u.getUsername() : u.getUsername() + "（" + u.getRealName() + "）";
+    }
+
+    /** 行渲染：用户名（真实姓名）+ 停用标记 */
+    private static class UserCell extends ListCell<UserVO> {
+        @Override
+        protected void updateItem(UserVO item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty || item == null) {
+                setText(null);
+                return;
+            }
+            setText(displayName(item)
+                    + (Integer.valueOf(0).equals(item.getStatus()) ? "　[已停用]" : ""));
+        }
     }
 
     /** 权限分配行：perm + 是否角色继承 + 当前选择（继承/允许/禁止） */
