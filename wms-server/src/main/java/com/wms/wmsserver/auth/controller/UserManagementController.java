@@ -75,7 +75,7 @@ public class UserManagementController {
         return Result.success();
     }
 
-    /** 用户直接授权回显（角色继承 + allow/deny 集合） */
+    /** 用户直接授权回显（allow/deny 集合） */
     @GetMapping("/{id}/permissions")
     @RequirePermission("menu.auth.grant")
     public Result<UserPermissionVO> getPermissions(@PathVariable Long id) {

@@ -148,13 +148,12 @@ public class UserManagementService {
         return userRoleMapper.selectRoleIdsByUserId(userId);
     }
 
-    /** 用户授权回显：角色继承 permId 集 + 直授 allow 集 + 禁止 deny 集 */
+    /** 用户授权回显：直授 allow 集 + 禁止 deny 集 */
     public UserPermissionVO getUserPermissions(Long userId) {
         if (userMapper.selectById(userId) == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
         }
         return UserPermissionVO.builder()
-                .rolePermIds(userMapper.selectRolePermIdsByUserId(userId))
                 .allowPermIds(userPermissionMapper.selectPermIdsByUserIdAndEffect(userId, "allow"))
                 .denyPermIds(userPermissionMapper.selectPermIdsByUserIdAndEffect(userId, "deny"))
                 .build();

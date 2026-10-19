@@ -22,16 +22,11 @@ public interface UserMapper extends BaseMapper<User> {
             """)
     List<UserVO> selectUserVOs();
 
-    /** 用户有效权限码 = (角色继承并集 ∪ 直授 allow) − 禁止 deny（用户直接权限优先于角色） */
+    /** 用户有效权限码 = 直授 allow − 禁止 deny（不含角色继承，角色仅作标签） */
     @Select("""
             SELECT DISTINCT p.perm_code
             FROM rg2402_11_12_13_permission p
             WHERE p.id IN (
-                    SELECT rp.perm_id
-                    FROM rg2402_11_12_13_user_role ur
-                    JOIN rg2402_11_12_13_role_permission rp ON rp.role_id = ur.role_id
-                    WHERE ur.user_id = #{userId}
-                    UNION
                     SELECT upa.perm_id
                     FROM rg2402_11_12_13_user_permission upa
                     WHERE upa.user_id = #{userId} AND upa.effect = 'allow'
@@ -43,13 +38,4 @@ public interface UserMapper extends BaseMapper<User> {
                   )
             """)
     List<String> selectPermCodesByUserId(@Param("userId") Long userId);
-
-    /** 用户经角色继承的权限 id 并集（用户授权界面回显「继承」来源用，不含直接权限） */
-    @Select("""
-            SELECT DISTINCT rp.perm_id
-            FROM rg2402_11_12_13_user_role ur
-            JOIN rg2402_11_12_13_role_permission rp ON rp.role_id = ur.role_id
-            WHERE ur.user_id = #{userId}
-            """)
-    List<Long> selectRolePermIdsByUserId(@Param("userId") Long userId);
 }

@@ -80,16 +80,16 @@ CREATE TABLE rg2402_11_12_13_role_permission (
 ) COMMENT '角色-权限';
 
 -- 用户直接权限：对单个用户授予/禁止某菜单执行权（FR-4-6，不影响其他用户）
--- 有效权限 = (角色继承并集 ∪ allow) − deny；同一权限一行，effect 决定允许或禁止
+-- 有效权限 = allow − deny（不含角色继承，角色仅作标签）；同一权限一行，effect 决定允许或禁止
 CREATE TABLE rg2402_11_12_13_user_permission (
   user_id BIGINT NOT NULL,
   perm_id BIGINT NOT NULL,
-  effect  VARCHAR(8) NOT NULL COMMENT 'allow=授予，deny=禁止（覆盖角色继承）',
+  effect  VARCHAR(8) NOT NULL COMMENT 'allow=授予，deny=禁止',
   PRIMARY KEY (user_id, perm_id),
   CONSTRAINT fk_up_user FOREIGN KEY (user_id) REFERENCES rg2402_11_12_13_user (id),
   CONSTRAINT fk_up_perm FOREIGN KEY (perm_id) REFERENCES rg2402_11_12_13_permission (id),
   CONSTRAINT chk_up_effect CHECK (effect IN ('allow', 'deny'))
-) COMMENT '用户-权限（直接授予/禁止，优先级高于角色继承）';
+) COMMENT '用户-权限（直接授予/禁止）';
 
 -- ---------- 物料档案（FR-1-3） ----------
 CREATE TABLE rg2402_11_12_13_material (

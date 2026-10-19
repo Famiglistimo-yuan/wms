@@ -41,8 +41,8 @@ INSERT INTO rg2402_11_12_13_role (id, role_code, role_name, remark) VALUES
 
 INSERT INTO rg2402_11_12_13_user_role (user_id, role_id) VALUES (1, 1);
 
--- admin 角色 ↔ 全部 16 项权限
-INSERT INTO rg2402_11_12_13_role_permission (role_id, perm_id) VALUES
-  (1,1),(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),
-  (1,8),(1,9),(1,10),(1,11),(1,12),(1,13),
-  (1,14),(1,15),(1,16);
+-- admin 直授全部 16 项权限（有效权限=allow−deny，角色仅作标签不参与继承）
+INSERT INTO rg2402_11_12_13_user_permission (user_id, perm_id, effect) VALUES
+  (1,1,'allow'),(1,2,'allow'),(1,3,'allow'),(1,4,'allow'),(1,5,'allow'),(1,6,'allow'),(1,7,'allow'),
+  (1,8,'allow'),(1,9,'allow'),(1,10,'allow'),(1,11,'allow'),(1,12,'allow'),(1,13,'allow'),
+  (1,14,'allow'),(1,15,'allow'),(1,16,'allow');

@@ -16,7 +16,7 @@
     <Button text="全部允许" onAction="#onAllowAllClicked"/>
     <Button text="全部禁止" onAction="#onDenyAllClicked"/>
   </ToolBar>
-  <Label text="用户列表（左） / 权限分配（右：继承=跟随角色，允许=单独授予，禁止=单独收回）" styleClass="subtle"/>
+  <Label text="用户列表（左） / 权限分配（右：允许=授予，禁止=不授予）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
     <ListView prefWidth="240" HBox.hgrow="NEVER" fx:id="lvUsers"
               onMouseClicked="#onUserSelected"/>

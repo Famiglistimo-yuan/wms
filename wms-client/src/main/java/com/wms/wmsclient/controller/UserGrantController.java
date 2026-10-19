@@ -27,13 +27,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 用户授权界面：左侧用户列表，右侧权限逐项分配（继承/允许/禁止）。
+ * 用户授权界面：左侧用户列表，右侧权限逐项分配（允许/禁止）。
  * 对单个用户直接授予或收回某菜单执行权，不影响其他用户（FR-4-6）。
- * 有效权限 = (角色继承并集 ∪ 允许) − 禁止。
+ * 有效权限 = 允许 − 禁止（不含角色继承，角色仅作标签）。
  */
 public class UserGrantController {
 
-    private static final String OPT_INHERIT = "继承";
     private static final String OPT_ALLOW = "允许";
     private static final String OPT_DENY = "禁止";
 
@@ -172,14 +171,11 @@ public class UserGrantController {
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             UserPermissionVO vo = task.getValue();
-            List<Long> roleIds = vo.getRolePermIds() != null ? vo.getRolePermIds() : List.of();
             List<Long> allowIds = vo.getAllowPermIds() != null ? vo.getAllowPermIds() : List.of();
-            List<Long> denyIds = vo.getDenyPermIds() != null ? vo.getDenyPermIds() : List.of();
             lvPermissions.getItems().clear();
             for (PermissionVO p : allPermissions) {
-                String choice = allowIds.contains(p.getId()) ? OPT_ALLOW
-                        : denyIds.contains(p.getId()) ? OPT_DENY : OPT_INHERIT;
-                lvPermissions.getItems().add(new PermAssignItem(p, roleIds.contains(p.getId()), choice));
+                String choice = allowIds.contains(p.getId()) ? OPT_ALLOW : OPT_DENY;
+                lvPermissions.getItems().add(new PermAssignItem(p, choice));
             }
         }));
         task.setOnFailed(e -> {
@@ -210,21 +206,19 @@ public class UserGrantController {
         }
     }
 
-    /** 权限分配行：perm + 是否角色继承 + 当前选择（继承/允许/禁止） */
+    /** 权限分配行：perm + 当前选择（允许/禁止） */
     private static class PermAssignItem {
         final PermissionVO perm;
-        final boolean fromRole;
         final ComboBox<String> choice = new ComboBox<>(
-                FXCollections.observableArrayList(OPT_INHERIT, OPT_ALLOW, OPT_DENY));
+                FXCollections.observableArrayList(OPT_ALLOW, OPT_DENY));
 
-        PermAssignItem(PermissionVO perm, boolean fromRole, String initial) {
+        PermAssignItem(PermissionVO perm, String initial) {
             this.perm = perm;
-            this.fromRole = fromRole;
             choice.setValue(initial);
         }
     }
 
-    /** 行渲染：权限名（继承来源标注） + 三态下拉 */
+    /** 行渲染：权限名 + 二态下拉 */
     private static class PermAssignCell extends ListCell<PermAssignItem> {
         private final HBox box = new HBox(10);
         private final Label name = new Label();
@@ -242,8 +236,7 @@ public class UserGrantController {
                 setGraphic(null);
                 return;
             }
-            name.setText(item.perm.getPermName() + " (" + item.perm.getPermCode() + ")"
-                    + (item.fromRole ? "　[角色继承]" : ""));
+            name.setText(item.perm.getPermName() + " (" + item.perm.getPermCode() + ")");
             if (box.getChildren().size() < 3) {
                 box.getChildren().add(item.choice);
             } else {
