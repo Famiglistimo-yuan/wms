@@ -168,6 +168,9 @@ public class UserManagementService {
         userPermissionMapper.deleteByUserId(userId);
         insertUserPerms(userId, dto.getAllow(), "allow");
         insertUserPerms(userId, dto.getDeny(), "deny");
+        if (userPermissionMapper.countEnabledAllowUsersByPermCode("menu.auth.grant") == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "系统至少保留一个拥有「用户授权」权限的启用账号");
+        }
     }
 
     private void insertUserPerms(Long userId, List<Long> permIds, String effect) {

@@ -19,4 +19,13 @@ public interface UserPermissionMapper extends BaseMapper<UserPermission> {
     /** 清空用户的直接权限（全量覆盖前调用；删除用户时连带清理） */
     @Delete("DELETE FROM rg2402_11_12_13_user_permission WHERE user_id = #{userId}")
     int deleteByUserId(@Param("userId") Long userId);
+
+    /** 持有指定权限（allow 且账号启用）的用户数——授权保存防护用 */
+    @Select("""
+            SELECT COUNT(*) FROM rg2402_11_12_13_user_permission up
+            JOIN rg2402_11_12_13_user u ON u.id = up.user_id AND u.status = 1
+            JOIN rg2402_11_12_13_permission p ON p.id = up.perm_id
+            WHERE p.perm_code = #{permCode} AND up.effect = 'allow'
+            """)
+    long countEnabledAllowUsersByPermCode(@Param("permCode") String permCode);
 }
