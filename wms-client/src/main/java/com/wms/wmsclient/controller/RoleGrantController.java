@@ -5,6 +5,7 @@ import com.wms.wmsclient.dto.PermissionVO;
 import com.wms.wmsclient.dto.RoleVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.util.Alerts;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -53,7 +54,7 @@ public class RoleGrantController {
     protected void onSaveClicked() {
         RoleVO selected = lvRoles.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            new Alert(Alert.AlertType.WARNING, "请先选择角色").showAndWait();
+            Alerts.of(Alert.AlertType.WARNING, "请先选择角色").showAndWait();
             return;
         }
 
@@ -62,7 +63,7 @@ public class RoleGrantController {
                 .map(item -> item.perm.getId())
                 .toList();
 
-        Optional<ButtonType> confirm = new Alert(Alert.AlertType.CONFIRMATION,
+        Optional<ButtonType> confirm = Alerts.of(Alert.AlertType.CONFIRMATION,
                 "确定要保存角色「" + selected.getRoleName() + "」的权限吗？共 " + checkedIds.size() + " 项").showAndWait();
         if (confirm.isEmpty() || confirm.get() != ButtonType.OK) return;
 
@@ -80,7 +81,7 @@ public class RoleGrantController {
         task.setOnFailed(e -> {
             Throwable t = task.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "保存失败：" + msg).showAndWait());
+            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "保存失败：" + msg).showAndWait());
         });
         new Thread(task, "role-save-perms").start();
     }
@@ -108,7 +109,7 @@ public class RoleGrantController {
         roleTask.setOnFailed(e -> {
             Throwable t = roleTask.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "加载角色失败：" + msg).showAndWait());
+            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载角色失败：" + msg).showAndWait());
         });
 
         permTask.setOnSucceeded(e -> Platform.runLater(() -> {
@@ -118,7 +119,7 @@ public class RoleGrantController {
         permTask.setOnFailed(e -> {
             Throwable t = permTask.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "加载权限失败：" + msg).showAndWait());
+            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载权限失败：" + msg).showAndWait());
         });
 
         new Thread(roleTask, "role-list").start();
@@ -150,7 +151,7 @@ public class RoleGrantController {
         task.setOnFailed(e -> {
             Throwable t = task.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "加载角色权限失败：" + msg).showAndWait());
+            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载角色权限失败：" + msg).showAndWait());
         });
         new Thread(task, "role-perms").start();
     }
