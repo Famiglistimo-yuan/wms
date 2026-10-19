@@ -99,6 +99,19 @@ public class UserManagementService {
         userMapper.updateById(u);
     }
 
+    /** 删除用户：同事务先解除其角色关系再删账号；禁止删除当前登录账号 */
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id, Long currentUserId) {
+        if (id.equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "不能删除当前登录的账号");
+        }
+        if (userMapper.selectById(id) == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        userRoleMapper.deleteByUserId(id);
+        userMapper.deleteById(id);
+    }
+
     /** 给用户分配角色（全量覆盖） */
     @Transactional(rollbackFor = Exception.class)
     public void assignRoles(Long userId, List<Long> roleIds) {

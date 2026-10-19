@@ -15,6 +15,7 @@
     <Button text="新增用户" onAction="#onCreateUserClicked"/>
     <Button text="启/停用" onAction="#onToggleStatusClicked"/>
     <Button text="分配角色" onAction="#onAssignRolesClicked"/>
+    <Button text="删除用户" onAction="#onDeleteUserClicked"/>
   </ToolBar>
   <TableView fx:id="tvUsers" VBox.vgrow="ALWAYS" editable="false"/>
   <Separator/>

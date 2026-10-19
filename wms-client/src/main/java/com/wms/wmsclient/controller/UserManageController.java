@@ -206,6 +206,38 @@ public class UserManageController {
         new Thread(loadTask, "user-load-roles").start();
     }
 
+    /** 删除用户：二次确认后删除，服务端同事务连带解除其角色关系 */
+    @FXML
+    protected void onDeleteUserClicked() {
+        UserRow selected = tvUsers.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            alertWarn("请先选择要删除的用户");
+            return;
+        }
+        Optional<ButtonType> confirm = Alerts.of(Alert.AlertType.CONFIRMATION,
+                "确定删除用户「" + selected.username + "」吗？其已分配的角色将一并解除，且不可恢复。").showAndWait();
+        if (confirm.isEmpty() || confirm.get() != ButtonType.OK) return;
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                String json = ApiClient.delete("/api/users/" + selected.id);
+                ApiClient.checkSuccess(json);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> Platform.runLater(() -> {
+            loadUsers();
+            lblStatus.setText("已删除用户：" + selected.username);
+        }));
+        task.setOnFailed(e -> {
+            Throwable t = task.getException();
+            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
+            Platform.runLater(() -> alertError("删除用户失败：" + msg));
+        });
+        new Thread(task, "user-delete").start();
+    }
+
     private void loadUsers() {
         Task<List<UserVO>> task = new Task<>() {
             @Override

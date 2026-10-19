@@ -3,7 +3,9 @@ package com.wms.wmsserver.auth.controller;
 import com.wms.common.Result;
 import com.wms.wmsserver.auth.annotation.RequirePermission;
 import com.wms.wmsserver.auth.dto.*;
+import com.wms.wmsserver.auth.interceptor.JwtInterceptor;
 import com.wms.wmsserver.auth.service.UserManagementService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -44,6 +46,15 @@ public class UserManagementController {
     public Result<Void> update(@PathVariable Long id,
                                @Valid @RequestBody UserUpdateDTO dto) {
         service.update(id, dto);
+        return Result.success();
+    }
+
+    /** 删除用户（连带解除其角色关系；禁止删除当前登录账号） */
+    @DeleteMapping("/{id}")
+    @RequirePermission("menu.auth.user")
+    public Result<Void> delete(@PathVariable Long id, HttpServletRequest request) {
+        Long currentUserId = (Long) request.getAttribute(JwtInterceptor.ATTR_USER_ID);
+        service.delete(id, currentUserId);
         return Result.success();
     }
 
