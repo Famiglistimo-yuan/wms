@@ -70,6 +70,13 @@ public class UserGrantController {
     }
 
     @FXML
+    protected void onDenyAllClicked() {
+        for (PermAssignItem item : lvPermissions.getItems()) {
+            item.choice.setValue(OPT_DENY);
+        }
+    }
+
+    @FXML
     protected void onSaveClicked() {
         UserVO selected = lvUsers.getSelectionModel().getSelectedItem();
         if (selected == null) {

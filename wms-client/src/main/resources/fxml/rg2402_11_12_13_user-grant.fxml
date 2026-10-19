@@ -14,6 +14,7 @@
     <Button text="刷新" onAction="#onRefreshClicked"/>
     <Button text="保存授权" onAction="#onSaveClicked"/>
     <Button text="全部允许" onAction="#onAllowAllClicked"/>
+    <Button text="全部禁止" onAction="#onDenyAllClicked"/>
   </ToolBar>
   <Label text="用户列表（左） / 权限分配（右：继承=跟随角色，允许=单独授予，禁止=单独收回）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
