@@ -328,7 +328,7 @@
 | GET | `/api/auth/me` | 当前用户信息+最新权限集（启动恢复校验+权限刷新；受保护） |
 | POST | `/api/auth/logout` | 注销（语义入口，公开） |
 | GET | `/api/persons?name={字}&page=&size=` | 人员分页查询（支持单字模糊） |
-| POST/PUT/DELETE | `/api/persons` `/api/persons/{id}` | 人员增删改 |
+| POST/PUT/DELETE | `/api/persons` `/api/persons/{id}` | 人员增删改；POST 支持可选 `createUser/username/password`，为 true 时同事务创建关联登录账号（FR-4-1） |
 | GET | `/api/materials?keyword=&page=&size=` | 物料分页模糊查询 |
 | POST/PUT/DELETE | `/api/materials` `/api/materials/{id}` | 物料增删改 |
 | POST | `/api/stock/orders` | 提交进出仓单（单物料/多物料同一接口，明细数组长度 ≥ 1） |
