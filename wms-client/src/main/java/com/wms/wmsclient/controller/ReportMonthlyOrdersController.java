@@ -2,6 +2,7 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
+import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ExportHelper;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -67,11 +68,11 @@ public class ReportMonthlyOrdersController {
                         ExportHelper.extensionOf(fmt), task.getValue());
                 lblStatus.setText(saved == null ? "已取消保存" : "已导出：" + saved.getAbsolutePath());
             } catch (UncheckedIOException ex) {
-                new Alert(Alert.AlertType.ERROR, "文件保存失败：" + ex.getCause().getMessage()).showAndWait();
+                Alerts.of(Alert.AlertType.ERROR, "文件保存失败：" + ex.getCause().getMessage()).showAndWait();
             }
         }));
         task.setOnFailed(e -> Platform.runLater(() ->
-                new Alert(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
+                Alerts.of(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
                         .showAndWait()));
         Thread t = new Thread(task, "report-monthly-export");
         t.setDaemon(true);

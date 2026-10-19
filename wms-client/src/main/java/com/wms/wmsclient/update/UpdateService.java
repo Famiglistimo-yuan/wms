@@ -2,6 +2,7 @@ package com.wms.wmsclient.update;
 
 import com.wms.common.VersionInfo;
 import com.wms.wmsclient.http.ApiClient;
+import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.AppPaths;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
@@ -85,7 +86,7 @@ public final class UpdateService {
 
     /** 拉起 Updater 并退出：JavaFX 线程上调用（弹窗确认后） */
     private static void askAndUpgrade(VersionInfo remote) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+        Alert alert = Alerts.of(Alert.AlertType.CONFIRMATION,
                 "发现新版本 " + remote.getVersion() + "，是否升级？（升级将退出当前程序）",
                 new ButtonType("升级", ButtonBar.ButtonData.OK_DONE),
                 ButtonType.CANCEL);
@@ -215,6 +216,6 @@ public final class UpdateService {
     }
 
     private static void info(String message) {
-        new Alert(Alert.AlertType.INFORMATION, message).showAndWait();
+        Alerts.of(Alert.AlertType.INFORMATION, message).showAndWait();
     }
 }

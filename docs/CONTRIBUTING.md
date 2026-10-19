@@ -246,9 +246,9 @@ feat(client): 物料档案界面支持分页与模糊查询
 2. **Controller 命名**：与 FXML 对应：`LoginController`、`MaterialManageController`。
 3. **fx:id 命名**：控件类型缩写 + 用途驼峰：`tfKeyword`（TextField）、`tvMaterial`（TableView）、`btnSearch`、`dpDate`（DatePicker）。
 4. **FXML 只放结构**：不写 `onAction="#handle"` 以外的任何逻辑；事件方法名 `on + 动作`：`onSearchClicked()`、`onSubmitClicked()`。
-5. **样式统一**：颜色、间距、字号只写在 `resources/styles.css`，FXML 禁止内联写死样式值（技术方案 §11 界面美观度风险的应对）。
+5. **样式统一**：颜色、间距、字号只写在 `resources/styles.css`（浅色）/ `resources/styles-dark.css`（深色），两文件类名同套、需同步维护；FXML 禁止内联写死样式值（技术方案 §11 界面美观度风险的应对）。
 6. **动态内容在 Controller 里填**：表格列、图表数据等运行期数据用 Java 代码填充，不硬编码进 FXML。
-7. **窗口形态（ADR-007）**：全应用单窗口——菜单点击经 `App.showPanel(fxmlName)` 在主界面 center 区切换子程序面板，不新建顶层 Stage；面板 Controller 须提供公共 `(App)` 构造器（工厂注入导航入口）；「定位 → 修改」等二级表单用 `Dialog`/`Alert`，`showAndWait` 取结果后由调用方刷新列表。
+7. **窗口形态（ADR-007 / ADR-010）**：全应用单窗口——vfx `VStage` 骨架，功能导航走左上角「菜单」按钮唤出的抽屉（`MenuScene`），点击经 `App.showPanel(fxmlName)` 以 VScene 带动画切换子程序面板，不新建顶层 Stage；面板 Controller 须提供公共 `(App)` 构造器（工厂注入导航入口）；「定位 → 修改」等二级表单用 `Dialog`/`Alert`，`showAndWait` 取结果后由调用方刷新列表。
 
 ## 6. REST API 规范
 
@@ -265,7 +265,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 ## 7. 数据库规范
 
-1. **命名规范（课题硬性要求，见需求文档 §6）**：程序、数据表、存储过程均以「班级名＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（班级 rg2402，成员座号 11/12/13；含尾部下划线，与对象名分隔）。主界面程序对应 `rg2402_11_12_13_main.fxml`（映射口径见 §5.1）；存储过程名在 `schema.sql` 中直接带前缀；Java 类名不加。
+1. **命名规范（课题硬性要求，见需求文档 §6）**：程序、数据表、存储过程均以「班级名＋座号」为前缀。本组前缀为 **`rg2402_11_12_13_`**（班级 rg2402，成员座号 11/12/13；含尾部下划线，与对象名分隔）。主界面骨架自 ADR-010 起为 vfx 原生实现（无独立 FXML），「程序名」前缀由各功能窗口 FXML 承载（映射口径见 §5.1）；存储过程名在 `schema.sql` 中直接带前缀；Java 类名不加。
 2. 表名前缀 `rg2402_11_12_13_` + 小写下划线（实体 `@TableName` 直书完整表名——MP `table-prefix` 对显式 `@TableName` 不生效，项目不配置，见技术方案 §5.1）；字段小写下划线，靠 MyBatis-Plus 驼峰映射对接 Java。
 3. 每张表必备 `id BIGINT AUTO_INCREMENT PRIMARY KEY`；业务唯一键（人员代码、物料代码、单号）加唯一索引。
 4. 建表脚本入库：`docs/sql/schema.sql`（结构）与 `docs/sql/data.sql`（初始数据），**禁止只在本地 Navicat 里改表**——他人无法复现你的环境。

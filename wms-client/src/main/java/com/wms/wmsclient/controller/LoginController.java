@@ -8,6 +8,7 @@ import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.panel.MorePanel;
+import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.TokenStore;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -96,7 +97,7 @@ public class LoginController {
     }
 
     private void alert(String message) {
-        new Alert(Alert.AlertType.WARNING, message).showAndWait();
+        Alerts.of(Alert.AlertType.WARNING, message).showAndWait();
     }
 
     // ====== 「更多」面板入口（FR-6：/api/version 为公开接口，登录前可用）======
@@ -107,7 +108,7 @@ public class LoginController {
     }
 
     private void alertError(String message) {
-        new Alert(Alert.AlertType.ERROR, message).showAndWait();
+        Alerts.of(Alert.AlertType.ERROR, message).showAndWait();
     }
 
     /** 拼接整条异常 cause 链：FXML 加载失败等原因藏在最内层（如「属性不存在」），

@@ -7,6 +7,7 @@ import com.wms.wmsclient.dto.RoleVO;
 import com.wms.wmsclient.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.util.Alerts;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -119,7 +120,7 @@ public class UserManageController {
         }
         int newStatus = selected.status == 1 ? 0 : 1;
         String action = newStatus == 1 ? "启用" : "停用";
-        Optional<ButtonType> confirm = new Alert(Alert.AlertType.CONFIRMATION,
+        Optional<ButtonType> confirm = Alerts.of(Alert.AlertType.CONFIRMATION,
                 "确定要" + action + "用户「" + selected.username + "」吗？").showAndWait();
         if (confirm.isEmpty() || confirm.get() != ButtonType.OK) return;
 
@@ -256,11 +257,11 @@ public class UserManageController {
     }
 
     private void alertWarn(String msg) {
-        new Alert(Alert.AlertType.WARNING, msg).showAndWait();
+        Alerts.of(Alert.AlertType.WARNING, msg).showAndWait();
     }
 
     private void alertError(String msg) {
-        new Alert(Alert.AlertType.ERROR, msg).showAndWait();
+        Alerts.of(Alert.AlertType.ERROR, msg).showAndWait();
     }
 
     /** TableView 行模型 */
