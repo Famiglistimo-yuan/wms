@@ -12,8 +12,10 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
@@ -95,7 +97,12 @@ public class UserManageController {
     }
 
     private void openCreateUserDialog() {
-        CreateUserDialog dlg = new CreateUserDialog();
+        showCreateUserDialog(null, null, null);
+    }
+
+    /** 提交失败时不丢已填内容：提示原因后以原值重开弹窗，由操作员决定取消或改后重试 */
+    private void showCreateUserDialog(String username, String password, Long personId) {
+        CreateUserDialog dlg = new CreateUserDialog(username, password, personId);
         dlg.showAndWait().ifPresent(row -> {
             Task<Void> task = new Task<>() {
                 @Override
@@ -114,7 +121,10 @@ public class UserManageController {
             task.setOnFailed(e -> {
                 Throwable t = task.getException();
                 String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-                Platform.runLater(() -> alertError("创建失败：" + msg));
+                Platform.runLater(() -> {
+                    alertError("创建失败：" + msg);
+                    showCreateUserDialog(row.username, row.password, row.personId);
+                });
             });
             new Thread(task, "user-create").start();
         });
@@ -177,26 +187,7 @@ public class UserManageController {
         };
         loadTask.setOnSucceeded(e -> Platform.runLater(() -> {
             List<Long> assignedIds = loadTask.getValue();
-            AssignRolesDialog dlg = new AssignRolesDialog(selected, roleList, assignedIds);
-            dlg.showAndWait().ifPresent(roleIds -> {
-                Task<Void> task = new Task<>() {
-                    @Override
-                    protected Void call() throws Exception {
-                        String json = ApiClient.post("/api/users/" + selected.id + "/roles",
-                                ApiClient.toJson(roleIds));
-                        ApiClient.checkSuccess(json);
-                        return null;
-                    }
-                };
-                task.setOnSucceeded(e2 -> Platform.runLater(() ->
-                        lblStatus.setText("角色分配已保存：" + selected.username)));
-                task.setOnFailed(e2 -> {
-                    Throwable t = task.getException();
-                    String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-                    Platform.runLater(() -> alertError("分配角色失败：" + msg));
-                });
-                new Thread(task, "user-assign-roles").start();
-            });
+            showAssignRolesDialog(selected, assignedIds);
         }));
         loadTask.setOnFailed(e -> {
             Throwable t = loadTask.getException();
@@ -204,6 +195,33 @@ public class UserManageController {
             Platform.runLater(() -> alertError("加载角色失败：" + msg));
         });
         new Thread(loadTask, "user-load-roles").start();
+    }
+
+    /** 提交失败时不丢勾选：提示原因后以当前勾选重开弹窗，由操作员决定取消或改后重试 */
+    private void showAssignRolesDialog(UserRow selected, List<Long> assignedIds) {
+        AssignRolesDialog dlg = new AssignRolesDialog(selected, roleList, assignedIds);
+        dlg.showAndWait().ifPresent(roleIds -> {
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    String json = ApiClient.post("/api/users/" + selected.id + "/roles",
+                            ApiClient.toJson(roleIds));
+                    ApiClient.checkSuccess(json);
+                    return null;
+                }
+            };
+            task.setOnSucceeded(e2 -> Platform.runLater(() ->
+                    lblStatus.setText("角色分配已保存：" + selected.username)));
+            task.setOnFailed(e2 -> {
+                Throwable t = task.getException();
+                String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
+                Platform.runLater(() -> {
+                    alertError("分配角色失败：" + msg);
+                    showAssignRolesDialog(selected, roleIds);
+                });
+            });
+            new Thread(task, "user-assign-roles").start();
+        });
     }
 
     /** 删除用户：二次确认后删除，服务端同事务连带解除其角色关系 */
@@ -334,13 +352,13 @@ public class UserManageController {
         public String getStatusText() { return status == 1 ? "启用" : "停用"; }
     }
 
-    /** 新增用户 Dialog */
+    /** 新增用户 Dialog；username/password/personId 非空时用于失败重试的预填 */
     private class CreateUserDialog extends Dialog<UserRow> {
         private final TextField tfUsername = new TextField();
         private final PasswordField pfPassword = new PasswordField();
         private final ComboBox<PersonOptionVO> cbPerson = new ComboBox<>();
 
-        CreateUserDialog() {
+        CreateUserDialog(String username, String password, Long personId) {
             setTitle("新增用户");
             getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
@@ -349,6 +367,17 @@ public class UserManageController {
             cbPerson.setItems(FXCollections.observableArrayList(personOptions));
             cbPerson.setPromptText("选择关联人员");
 
+            if (username != null) tfUsername.setText(username);
+            if (password != null) pfPassword.setText(password);
+            if (personId != null) {
+                for (PersonOptionVO p : personOptions) {
+                    if (p.getId().equals(personId)) {
+                        cbPerson.setValue(p);
+                        break;
+                    }
+                }
+            }
+
             GridPane grid = new GridPane();
             grid.setHgap(10); grid.setVgap(10);
             grid.addRow(0, new Label("用户名："), tfUsername);
@@ -356,27 +385,34 @@ public class UserManageController {
             grid.addRow(2, new Label("关联人员："), cbPerson);
             getDialogPane().setContent(grid);
 
-            setResultConverter(btn -> {
-                if (btn != ButtonType.OK) return null;
-                String username = tfUsername.getText().trim();
-                String password = pfPassword.getText();
-                PersonOptionVO person = cbPerson.getValue();
-                if (!username.matches(RegexPatterns.USERNAME)) {
-                    alertWarn("用户名须字母开头，4-30 位字母/数字/下划线");
-                    return null;
-                }
-                if (!password.matches(RegexPatterns.PASSWORD)) {
-                    alertWarn("口令须为 6-20 位字母/数字");
-                    return null;
-                }
-                if (person == null) {
-                    alertWarn("请选择关联人员");
-                    return null;
-                }
-                UserRow row = new UserRow(null, username, person.getId(), person.getPersonCode(), person.getRealName(), 1);
-                row.password = password;
-                return row;
+            // 拦截「确定」的默认关窗动作：校验不过只弹警告、弹窗保持打开可继续修改
+            Button okButton = (Button) getDialogPane().lookupButton(ButtonType.OK);
+            okButton.addEventFilter(ActionEvent.ACTION, event -> {
+                event.consume();
+                onSubmit();
             });
+        }
+
+        private void onSubmit() {
+            String username = tfUsername.getText().trim();
+            String password = pfPassword.getText();
+            PersonOptionVO person = cbPerson.getValue();
+            if (!username.matches(RegexPatterns.USERNAME)) {
+                alertWarn("用户名须字母开头，4-30 位字母/数字/下划线");
+                return;
+            }
+            if (!password.matches(RegexPatterns.PASSWORD)) {
+                alertWarn("口令须为 6-20 位字母/数字");
+                return;
+            }
+            if (person == null) {
+                alertWarn("请选择关联人员");
+                return;
+            }
+            UserRow row = new UserRow(null, username, person.getId(), person.getPersonCode(), person.getRealName(), 1);
+            row.password = password;
+            setResult(row);
+            close();
         }
     }
 
