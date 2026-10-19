@@ -44,8 +44,10 @@ public class UserManagementController {
     @PutMapping("/{id}")
     @RequirePermission("menu.auth.user")
     public Result<Void> update(@PathVariable Long id,
-                               @Valid @RequestBody UserUpdateDTO dto) {
-        service.update(id, dto);
+                               @Valid @RequestBody UserUpdateDTO dto,
+                               HttpServletRequest request) {
+        Long currentUserId = (Long) request.getAttribute(JwtInterceptor.ATTR_USER_ID);
+        service.update(id, dto, currentUserId);
         return Result.success();
     }
 

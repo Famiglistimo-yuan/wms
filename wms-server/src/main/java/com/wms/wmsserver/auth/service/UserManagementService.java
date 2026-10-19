@@ -84,9 +84,9 @@ public class UserManagementService {
                 .build();
     }
 
-    /** 修改用户（密码 / 状态） */
+    /** 修改用户（密码 / 状态）；停用时禁止停用当前登录账号、禁止停到无启用账号 */
     @Transactional(rollbackFor = Exception.class)
-    public void update(Long id, UserUpdateDTO dto) {
+    public void update(Long id, UserUpdateDTO dto, Long currentUserId) {
         User u = userMapper.selectById(id);
         if (u == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
 
@@ -94,6 +94,17 @@ public class UserManagementService {
             u.setPassword(encoder.encode(dto.getPassword()));
         }
         if (dto.getStatus() != null) {
+            if (dto.getStatus() == 0) {
+                if (id.equals(currentUserId)) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "不能停用当前登录的账号");
+                }
+                // 至少保留一个启用账号，否则无人可登录、界面无法自救
+                Long enabled = userMapper.selectCount(
+                        Wrappers.<User>lambdaQuery().eq(User::getStatus, 1).ne(User::getId, id));
+                if (enabled == 0) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "至少保留一个启用账号");
+                }
+            }
             u.setStatus(dto.getStatus());
         }
         userMapper.updateById(u);
