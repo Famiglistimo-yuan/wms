@@ -76,7 +76,7 @@ public class UserManageController {
         tvUsers.setItems(rows);
 
         loadUsers();
-        loadPersonOptions();
+        loadPersonOptions(null);
     }
 
     @FXML
@@ -86,6 +86,15 @@ public class UserManageController {
 
     @FXML
     protected void onCreateUserClicked() {
+        // 人员下拉是异步加载：尚未拿到数据时先补取一次，避免弹窗空列表/NPE
+        if (personOptions == null) {
+            loadPersonOptions(this::openCreateUserDialog);
+            return;
+        }
+        openCreateUserDialog();
+    }
+
+    private void openCreateUserDialog() {
         CreateUserDialog dlg = new CreateUserDialog();
         dlg.showAndWait().ifPresent(row -> {
             Task<Void> task = new Task<>() {
@@ -222,7 +231,7 @@ public class UserManageController {
         new Thread(task, "user-list").start();
     }
 
-    private void loadPersonOptions() {
+    private void loadPersonOptions(Runnable onDone) {
         Task<List<PersonOptionVO>> task = new Task<>() {
             @Override
             protected List<PersonOptionVO> call() throws Exception {
@@ -230,9 +239,15 @@ public class UserManageController {
                 return ApiClient.getResultList(json, PersonOptionVO.class);
             }
         };
-        task.setOnSucceeded(e -> Platform.runLater(() -> personOptions = task.getValue()));
-        task.setOnFailed(e -> Platform.runLater(() ->
-                lblStatus.setText("加载人员选项失败，新增用户可能无法选关联人员")));
+        task.setOnSucceeded(e -> Platform.runLater(() -> {
+            personOptions = task.getValue();
+            if (onDone != null) onDone.run();
+        }));
+        task.setOnFailed(e -> {
+            Throwable t = task.getException();
+            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
+            Platform.runLater(() -> alertError("加载人员选项失败：" + msg));
+        });
         new Thread(task, "person-options").start();
     }
 
