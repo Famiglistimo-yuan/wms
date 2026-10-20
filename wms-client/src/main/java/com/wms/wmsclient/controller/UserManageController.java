@@ -3,7 +3,6 @@ package com.wms.wmsclient.controller;
 import com.wms.common.RegexPatterns;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.dto.PersonOptionVO;
-import com.wms.wmsclient.dto.RoleVO;
 import com.wms.wmsclient.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
@@ -20,25 +19,21 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * 用户管理界面：列表 + 新增/启停用/分配角色。
+ * 用户管理界面：列表 + 新增/启停用/删除。
  */
 public class UserManageController {
 
@@ -49,7 +44,6 @@ public class UserManageController {
 
     private final ObservableList<UserRow> rows = FXCollections.observableArrayList();
     private List<PersonOptionVO> personOptions;
-    private List<RoleVO> roleList;
 
     public UserManageController(App app) {
         this.app = app;
@@ -171,65 +165,6 @@ public class UserManageController {
         new Thread(task, "user-toggle").start();
     }
 
-    @FXML
-    protected void onAssignRolesClicked() {
-        UserRow selected = tvUsers.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            alertWarn("请先选择要分配角色的用户");
-            return;
-        }
-        if (roleList == null || roleList.isEmpty()) {
-            loadRoles(() -> onAssignRolesClicked());
-            return;
-        }
-
-        // 加载该用户已分配的角色
-        Task<List<Long>> loadTask = new Task<>() {
-            @Override
-            protected List<Long> call() throws Exception {
-                String json = ApiClient.get("/api/users/" + selected.id + "/roles");
-                return ApiClient.getResultList(json, Long.class);
-            }
-        };
-        loadTask.setOnSucceeded(e -> Platform.runLater(() -> {
-            List<Long> assignedIds = loadTask.getValue();
-            showAssignRolesDialog(selected, assignedIds);
-        }));
-        loadTask.setOnFailed(e -> {
-            Throwable t = loadTask.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> alertError("加载角色失败：" + msg));
-        });
-        new Thread(loadTask, "user-load-roles").start();
-    }
-
-    /** 提交失败时不丢勾选：提示原因后以当前勾选重开弹窗，由操作员决定取消或改后重试 */
-    private void showAssignRolesDialog(UserRow selected, List<Long> assignedIds) {
-        AssignRolesDialog dlg = new AssignRolesDialog(selected, roleList, assignedIds);
-        dlg.showAndWait().ifPresent(roleIds -> {
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() throws Exception {
-                    String json = ApiClient.post("/api/users/" + selected.id + "/roles",
-                            ApiClient.toJson(roleIds));
-                    ApiClient.checkSuccess(json);
-                    return null;
-                }
-            };
-            task.setOnSucceeded(e2 -> Platform.runLater(() ->
-                    lblStatus.setText("角色分配已保存：" + selected.username)));
-            task.setOnFailed(e2 -> {
-                Throwable t = task.getException();
-                String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-                Platform.runLater(() -> {
-                    alertError("分配角色失败：" + msg);
-                    showAssignRolesDialog(selected, roleIds);
-                });
-            });
-            new Thread(task, "user-assign-roles").start();
-        });
-    }
-
     /** 删除用户：二次确认后删除，服务端同事务连带解除其角色关系 */
     @FXML
     protected void onDeleteUserClicked() {
@@ -305,26 +240,6 @@ public class UserManageController {
             Platform.runLater(() -> alertError("加载人员选项失败：" + msg));
         });
         new Thread(task, "person-options").start();
-    }
-
-    private void loadRoles(Runnable onDone) {
-        Task<List<RoleVO>> task = new Task<>() {
-            @Override
-            protected List<RoleVO> call() throws Exception {
-                String json = ApiClient.get("/api/roles");
-                return ApiClient.getResultList(json, RoleVO.class);
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            roleList = task.getValue();
-            if (onDone != null) onDone.run();
-        }));
-        task.setOnFailed(e -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> alertError("加载角色列表失败：" + msg));
-        });
-        new Thread(task, "role-list").start();
     }
 
     private void alertWarn(String msg) {
@@ -419,48 +334,6 @@ public class UserManageController {
             row.password = password;
             setResult(row);
             close();
-        }
-    }
-
-    /** 分配角色 Dialog */
-    private static class AssignRolesDialog extends Dialog<List<Long>> {
-        AssignRolesDialog(UserRow user, List<RoleVO> roles, List<Long> assignedIds) {
-            setTitle("分配角色 - " + user.username);
-            getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-            ListView<RoleItem> lv = new ListView<>();
-            for (RoleVO r : roles) {
-                lv.getItems().add(new RoleItem(r, assignedIds != null && assignedIds.contains(r.getId())));
-            }
-            lv.setCellFactory(CheckBoxListCell.forListView(RoleItem::checkedProperty));
-            getDialogPane().setContent(lv);
-
-            setResultConverter(btn -> {
-                if (btn != ButtonType.OK) return null;
-                return lv.getItems().stream()
-                        .filter(RoleItem::isChecked)
-                        .map(item -> item.role.getId())
-                        .toList();
-            });
-        }
-    }
-
-    /** 角色勾选项 */
-    private static class RoleItem {
-        final RoleVO role;
-        private final BooleanProperty checked;
-
-        RoleItem(RoleVO role, boolean checked) {
-            this.role = role;
-            this.checked = new SimpleBooleanProperty(checked);
-        }
-
-        boolean isChecked() { return checked.get(); }
-        BooleanProperty checkedProperty() { return checked; }
-
-        @Override
-        public String toString() {
-            return role.getRoleName() + " (" + role.getRoleCode() + ")";
         }
     }
 }
