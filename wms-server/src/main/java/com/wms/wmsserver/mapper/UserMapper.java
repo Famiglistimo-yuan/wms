@@ -31,6 +31,8 @@ public interface UserMapper extends BaseMapper<User> {
                     FROM rg2402_11_12_13_user_permission upa
                     WHERE upa.user_id = #{userId} AND upa.effect = 'allow'
                   )
+              -- 下面的 NOT IN deny 子查询因 PK(user_id, perm_id) 不允许同一权限同时 allow+deny，
+              -- 在正常数据下恒为空集；保留作防御：迁移脚本或外部工具破坏约束时仍能正确扣减
               AND p.id NOT IN (
                     SELECT upd.perm_id
                     FROM rg2402_11_12_13_user_permission upd

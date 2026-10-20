@@ -9,10 +9,12 @@ import com.wms.wmsserver.auth.dto.UserPermissionGrantDTO;
 import com.wms.wmsserver.auth.dto.UserPermissionVO;
 import com.wms.wmsserver.auth.dto.UserUpdateDTO;
 import com.wms.wmsserver.auth.dto.UserVO;
+import com.wms.wmsserver.entity.Permission;
 import com.wms.wmsserver.entity.Person;
 import com.wms.wmsserver.entity.User;
 import com.wms.wmsserver.entity.UserPermission;
 import com.wms.wmsserver.entity.UserRole;
+import com.wms.wmsserver.mapper.PermissionMapper;
 import com.wms.wmsserver.mapper.PersonMapper;
 import com.wms.wmsserver.mapper.UserMapper;
 import com.wms.wmsserver.mapper.UserPermissionMapper;
@@ -22,11 +24,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 用户管理：CRUD + 角色分配。
+ * 用户管理：CRUD + 角色分配 + 直接授权。
  */
 @Service
 @RequiredArgsConstructor
@@ -36,8 +40,17 @@ public class UserManagementService {
     private final PersonMapper personMapper;
     private final UserRoleMapper userRoleMapper;
     private final UserPermissionMapper userPermissionMapper;
+    private final PermissionMapper permissionMapper;
 
     private final PasswordEncoder encoder;
+
+    /** 权限码 → 权限 id 缓存（高频查询，同一实例内不变） */
+    private Permission resolvePerm(String permCode) {
+        Permission p = permissionMapper.selectOne(
+                Wrappers.<Permission>lambdaQuery().eq(Permission::getPermCode, permCode));
+        if (p == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "未知权限码：" + permCode);
+        return p;
+    }
 
     /** 人员下拉选项（新增用户时选关联人员） */
     public List<PersonOptionVO> listPersonOptions() {
@@ -89,7 +102,7 @@ public class UserManagementService {
                 .build();
     }
 
-    /** 修改用户（密码 / 状态）；停用时禁止停用当前登录账号、禁止停到无启用账号 */
+    /** 修改用户（密码 / 状态）；停用时禁止停用当前登录账号、禁止停到无启用账号、禁止停掉唯一授权持有者 */
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, UserUpdateDTO dto, Long currentUserId) {
         User u = userMapper.selectById(id);
@@ -109,13 +122,15 @@ public class UserManagementService {
                 if (enabled == 0) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST, "至少保留一个启用账号");
                 }
+                // 禁止停用掉唯一持有 menu.auth.grant 或 menu.auth.user 的启用账号——授权/用户管理界面死锁
+                assertNotLastAuthHolder(id);
             }
             u.setStatus(dto.getStatus());
         }
         userMapper.updateById(u);
     }
 
-    /** 删除用户：同事务解除其角色关系与直接权限再删账号；禁止删除当前登录账号 */
+    /** 删除用户：同事务解除其角色关系与直接权限再删账号；禁止删除当前登录账号、禁止删唯一授权持有者 */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id, Long currentUserId) {
         if (id.equals(currentUserId)) {
@@ -124,9 +139,31 @@ public class UserManagementService {
         if (userMapper.selectById(id) == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
         }
+        assertNotLastAuthHolder(id);
         userRoleMapper.deleteByUserId(id);
         userPermissionMapper.deleteByUserId(id);
         userMapper.deleteById(id);
+    }
+
+    /**
+     * 检查目标用户是否为最后一个持有 menu.auth.grant 或 menu.auth.user 的启用账号。
+     * 若删除/停用该用户会导致无人可进入授权或用户管理界面，则拒绝。
+     */
+    private void assertNotLastAuthHolder(Long targetUserId) {
+        assertNotLastAuthHolderForPerm(targetUserId, "menu.auth.grant", "用户授权");
+        assertNotLastAuthHolderForPerm(targetUserId, "menu.auth.user", "用户管理");
+    }
+
+    private void assertNotLastAuthHolderForPerm(Long targetUserId, String permCode, String permLabel) {
+        Permission perm = resolvePerm(permCode);
+        long totalEnabledHolders = userPermissionMapper.countEnabledAllowUsersByPermCode(permCode);
+        boolean targetHolds = userPermissionMapper
+                .selectPermIdsByUserIdAndEffect(targetUserId, "allow").contains(perm.getId());
+        // 删/停后剩余 = total - (targetHolds ? 1 : 0)
+        if (totalEnabledHolders - (targetHolds ? 1 : 0) == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "系统至少保留一个拥有「" + permLabel + "」权限的启用账号");
+        }
     }
 
     /** 给用户分配角色（全量覆盖） */
@@ -165,16 +202,42 @@ public class UserManagementService {
         if (userMapper.selectById(userId) == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
         }
+
+        // P4 入参校验：allow/deny 无交集
+        List<Long> allow = dto.getAllow() == null ? List.of() : dto.getAllow();
+        List<Long> deny = dto.getDeny() == null ? List.of() : dto.getDeny();
+        Set<Long> overlap = new HashSet<>(allow);
+        overlap.retainAll(new HashSet<>(deny));
+        if (!overlap.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "allow/deny 列表不应包含同一权限项，重复 id：" + overlap);
+        }
+
+        // P4 入参校验：permId 必须都存在于 permission 表
+        Set<Long> allIds = new HashSet<>();
+        allIds.addAll(allow);
+        allIds.addAll(deny);
+        if (!allIds.isEmpty() && permissionMapper.selectBatchIds(allIds).size() != allIds.size()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "存在无效的权限 id");
+        }
+
         userPermissionMapper.deleteByUserId(userId);
-        insertUserPerms(userId, dto.getAllow(), "allow");
-        insertUserPerms(userId, dto.getDeny(), "deny");
-        if (userPermissionMapper.countEnabledAllowUsersByPermCode("menu.auth.grant") == 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "系统至少保留一个拥有「用户授权」权限的启用账号");
+        insertUserPerms(userId, allow, "allow");
+        insertUserPerms(userId, deny, "deny");
+
+        // P3 保底检查：menu.auth.grant 与 menu.auth.user 均需至少保留一个启用持有者
+        assertAtLeastOneEnabledHolder("menu.auth.grant", "用户授权");
+        assertAtLeastOneEnabledHolder("menu.auth.user", "用户管理");
+    }
+
+    private void assertAtLeastOneEnabledHolder(String permCode, String permLabel) {
+        if (userPermissionMapper.countEnabledAllowUsersByPermCode(permCode) == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "系统至少保留一个拥有「" + permLabel + "」权限的启用账号");
         }
     }
 
     private void insertUserPerms(Long userId, List<Long> permIds, String effect) {
-        if (permIds == null) return;
         for (Long permId : permIds) {
             UserPermission up = new UserPermission();
             up.setUserId(userId);

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 public class UserPermission {
     private Long userId;
     private Long permId;
-    /** allow=授予，deny=禁止（覆盖角色继承） */
+    /** allow=授予，deny=禁止；有效权限 = allow − deny，不含角色继承 */
     private String effect;
 
     public Long getUserId() { return userId; }

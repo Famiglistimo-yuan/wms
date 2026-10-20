@@ -1,6 +1,7 @@
 package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
+import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.dto.PermissionVO;
 import com.wms.wmsclient.dto.UserPermissionVO;
 import com.wms.wmsclient.dto.UserVO;
@@ -162,26 +163,49 @@ public class UserGrantController {
         UserVO selected = lvUsers.getSelectionModel().getSelectedItem();
         if (selected == null || allPermissions == null) return;
 
+        final long targetUserId = selected.getId();
+        lvUsers.setDisable(true);
+
         Task<UserPermissionVO> task = new Task<>() {
             @Override
             protected UserPermissionVO call() throws Exception {
-                String json = ApiClient.get("/api/users/" + selected.getId() + "/permissions");
+                String json = ApiClient.get("/api/users/" + targetUserId + "/permissions");
                 return ApiClient.getResultData(json, UserPermissionVO.class);
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            lvUsers.setDisable(false);
+            // 过期响应丢弃：若当前选中项已变更，不再覆盖
+            UserVO current = lvUsers.getSelectionModel().getSelectedItem();
+            if (current == null || current.getId() != targetUserId) return;
+
             UserPermissionVO vo = task.getValue();
             List<Long> allowIds = vo.getAllowPermIds() != null ? vo.getAllowPermIds() : List.of();
+            boolean isSelf = current.getUsername() != null
+                    && current.getUsername().equals(SessionContext.getUsername());
             lvPermissions.getItems().clear();
             for (PermissionVO p : allPermissions) {
                 String choice = allowIds.contains(p.getId()) ? OPT_ALLOW : OPT_DENY;
-                lvPermissions.getItems().add(new PermAssignItem(p, choice));
+                PermAssignItem item = new PermAssignItem(p, choice);
+                // 自救防护：对当前登录用户，关键权限不可选「禁止」——避免 UI 锁死
+                if (isSelf && ("menu.auth.grant".equals(p.getPermCode())
+                        || "menu.auth.user".equals(p.getPermCode()))) {
+                    item.choice.setItems(FXCollections.observableArrayList(OPT_ALLOW));
+                    if (OPT_DENY.equals(choice)) {
+                        item.choice.setValue(OPT_ALLOW);
+                        lblStatus.setText("注意：当前登录用户的「" + p.getPermName() + "」不可设为禁止，已自动保持允许");
+                    }
+                }
+                lvPermissions.getItems().add(item);
             }
         }));
         task.setOnFailed(e -> {
             Throwable t = task.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载用户权限失败：" + msg).showAndWait());
+            Platform.runLater(() -> {
+                lvUsers.setDisable(false);
+                Alerts.of(Alert.AlertType.ERROR, "加载用户权限失败：" + msg).showAndWait();
+            });
         });
         new Thread(task, "user-grant-load").start();
     }

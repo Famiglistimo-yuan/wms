@@ -28,6 +28,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 
@@ -107,9 +110,11 @@ public class UserManageController {
             Task<Void> task = new Task<>() {
                 @Override
                 protected Void call() throws Exception {
-                    String json = ApiClient.post("/api/users",
-                            "{\"username\":\"" + row.username + "\",\"password\":\"" + row.password
-                                    + "\",\"personId\":" + row.personId + "}");
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("username", row.username);
+                    body.put("password", row.password);
+                    body.put("personId", row.personId);
+                    String json = ApiClient.post("/api/users", ApiClient.toJson(body));
                     ApiClient.checkSuccess(json);
                     return null;
                 }
@@ -146,8 +151,9 @@ public class UserManageController {
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                String json = ApiClient.put("/api/users/" + selected.id,
-                        "{\"status\":" + newStatus + "}");
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("status", newStatus);
+                String json = ApiClient.put("/api/users/" + selected.id, ApiClient.toJson(body));
                 ApiClient.checkSuccess(json);
                 return null;
             }
