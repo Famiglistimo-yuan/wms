@@ -285,15 +285,20 @@
 5. **存储过程**：课题原文（课题二子系统二/三）**硬性要求**进出仓通过存储过程实现（FR-2-8 / FR-3-6），本方案**以存储过程为默认实现**——事务提交/回滚、物料存在与库存非负校验、乐观锁（`WHERE stock >= ?` 或 version 列）均在 SP 内完成，锁与事务不分离；Java 侧通过 MyBatis XML mapper 的 `CALL` 语句调用。应用层 `@Transactional` 版本仅作为报告对比素材——说明「事务边界在应用层 vs 数据库层」的优劣，转化为答辩加分项。
 6. **库存一致性纪律（参考样本项目的反面教训，答辩可讲改进点）**：库存增减必须与单据的增/删/改在**同一事务**内冲正——删除或修改单据时同步回滚/调整库存；**禁止用触发器维护库存**（触发器只覆盖 INSERT，删单即漏，样本项目正犯此错）。无论最终用应用层事务还是存储过程，课题要求的两项校验——物料存在、库存非负——必须真实生效并返回明确失败信息（样本的存储过程校验形同虚设，不可效仿）。
 
-### 5.3 权限模型（RBAC）
+### 5.3 权限模型（直授 allow − deny，角色仅作标签）
 
 ```
-用户 ──< 用户角色 >── 角色 ──< 角色权限 >── 权限(菜单项)
+用户 ──< 用户直接权限 >── 权限(菜单项)
+                └─ effect: allow / deny
+
+用户 ──< 用户角色 >── 角色（仅标签，不参与有效权限计算）
 ```
 
+- 有效权限 = 该用户所有 `allow` 项 − 所有 `deny` 项。角色相关表仅作展示标签（种子数据维护，无管理接口），自 2026-10 起不参与有效权限计算（历史 RBAC 继承模型已移除）。
 - 每个菜单项即一个权限资源，编码如 `menu.material.add`。
-- 登录后服务端返回该用户的权限编码集合，客户端据此显隐/禁用菜单项（无权菜单不可见）。
+- 登录后服务端返回该用户的权限编码集合（直授 allow 扣除 deny），客户端据此显隐/禁用菜单项（无权菜单不可见）。
 - 新增功能菜单 = 权限表插一行 + 授权界面配置，**无需修改子系统四代码**（课题明确要求）。
+- 自救防护：`menu.auth.grant`（保存授权）和 `menu.auth.user`（加载用户列表）的持有者不可被停/删，客户端对当前登录用户的这两项权限禁用「禁止」选项，服务端 `grantPermissions` 保底检查。
 
 ## 6. REST 接口设计
 
@@ -328,7 +333,7 @@
 | GET | `/api/auth/me` | 当前用户信息+最新权限集（启动恢复校验+权限刷新；受保护） |
 | POST | `/api/auth/logout` | 注销（语义入口，公开） |
 | GET | `/api/persons?name={字}&page=&size=` | 人员分页查询（支持单字模糊） |
-| POST/PUT/DELETE | `/api/persons` `/api/persons/{id}` | 人员增删改 |
+| POST/PUT/DELETE | `/api/persons` `/api/persons/{id}` | 人员增删改；POST 支持可选 `createUser/username/password`，为 true 时同事务创建关联登录账号（FR-4-1） |
 | GET | `/api/materials?keyword=&page=&size=` | 物料分页模糊查询 |
 | POST/PUT/DELETE | `/api/materials` `/api/materials/{id}` | 物料增删改 |
 | POST | `/api/stock/orders` | 提交进出仓单（单物料/多物料同一接口，明细数组长度 ≥ 1） |
@@ -336,10 +341,11 @@
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
 | GET | `/api/reports/monthly-orders/{yyyyMM}?format=excel\|word` | 导出月度进出仓单（Excel/Word，缺省 excel） |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}?format=excel\|word` | 导出仓库账本（Excel/Word，缺省 excel） |
-| GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用），需 `menu.auth.user` |
-| GET/POST | `/api/users/{id}/roles` | 查询/分配用户角色（逐用户授权，全量覆盖），需 `menu.auth.grant` |
-| GET | `/api/roles`；GET `/api/roles/permissions` | 角色列表（含权限码）/ 权限资源列表（菜单项） |
-| GET/POST | `/api/roles/{roleId}/permissions` | 查询/分配角色权限（逐角色授权，全量覆盖），需 `menu.auth.grant` |
+| GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用；停用需保留至少一个启用账号且不能停用当前登录账号），需 `menu.auth.user` |
+| GET | `/api/users/person-options` | 人员下拉选项（新增用户时选关联人员），需 `menu.auth.user` |
+| DELETE | `/api/users/{id}` | 删除用户（同事务连带解除其角色关系；禁止删除当前登录账号），需 `menu.auth.user` |
+| GET/POST | `/api/users/{id}/permissions` | 用户直接授权：GET 回显 allow/deny 集合；POST 全量覆盖 allow/deny（有效权限=allow−deny，不含角色继承，角色仅作标签），需 `menu.auth.grant` |
+| GET | `/api/roles/permissions` | 权限资源列表（菜单项，授权界面用），需 `menu.auth.grant` |
 | GET | `/api/version` | 客户端版本检测（自动升级） |
 
 ### 6.3 设计约定
@@ -369,9 +375,10 @@
 
 ### 7.3 权限管理（子系统四）
 
-- 登录流程：客户端提交用户名口令 → 服务端 BCrypt 比对 → 签发 JWT（含权限码）→ 客户端按权限码渲染菜单，无权菜单 `setVisible(false)` 且 `setDisable(true)` 双保险。
-- 授权界面：两级 RBAC——「角色 × 权限」勾选授予/收回 +「用户 × 角色」分配；用户实际权限 = 其全部角色的权限并集，操作仅影响对应角色/用户（RBAC 关系表天然满足，FR-4-3/4-6）。
+- 登录流程：客户端提交用户名口令 → 服务端 BCrypt 比对 → 查询该用户有效权限（直授 allow − deny）→ 签发 JWT（含权限码）→ 客户端按权限码渲染菜单，无权菜单 `setVisible(false)` 且 `setDisable(true)` 双保险。
+- 授权界面：单级直授模型——左侧用户列表、右侧权限逐项分配「允许 / 禁止」（全量覆盖保存），有效权限 = allow − deny；角色仅作展示标签（种子数据维护），不参与有效权限计算。
 - 服务端接口级鉴权：自定义注解 `@RequirePermission("menu.xxx")` + 拦截器校验——即使客户端被绕过，接口仍然安全（答辩论述纵深）。
+- 安全防护：删除/停用路径禁止移除最后一个持有 `menu.auth.grant` 或 `menu.auth.user` 的启用账号；授权保存时保底检查。
 
 ### 7.4 统计与报表（子系统五）
 

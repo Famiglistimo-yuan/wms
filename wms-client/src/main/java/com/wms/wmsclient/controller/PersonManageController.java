@@ -185,6 +185,10 @@ public class PersonManageController {
         public String hometown;
         public String address;
         public String remark;
+        /** 新增时勾选「同时创建登录账号」后填充 */
+        public boolean createUser;
+        public String username;
+        public String password;
 
         public PersonRow() {}
         public PersonRow(MapRowVO vo) {
@@ -223,6 +227,11 @@ public class PersonManageController {
             m.put("hometown", hometown);
             m.put("address", address);
             m.put("remark", remark);
+            if (createUser) {
+                m.put("createUser", true);
+                m.put("username", username);
+                m.put("password", password);
+            }
             return ApiClient.toJson(m);
         }
         public String toUpdateJson() throws Exception {
@@ -257,6 +266,7 @@ public class PersonManageController {
     /** 新增/修改 Dialog（内部自建 GridPane 表单） */
     private class PersonDialog extends Dialog<PersonRow> {
         private final PersonRow row;
+        private final boolean isCreate;
         private final TextField tfCode = new TextField();
         private final TextField tfName = new TextField();
         private final ComboBox<String> cbGender = new ComboBox<>(FXCollections.observableArrayList("男", "女"));
@@ -266,11 +276,16 @@ public class PersonManageController {
         private final TextField tfHometown = new TextField();
         private final TextField tfAddress = new TextField();
         private final TextField tfRemark = new TextField();
+        // 仅新增模式显示：勾选后同事务创建关联登录账号（FR-4-1）
+        private final CheckBox cbCreateUser = new CheckBox("同时创建登录账号");
+        private final TextField tfUsername = new TextField();
+        private final PasswordField pfPassword = new PasswordField();
 
         PersonDialog(PersonRow existing) {
             setTitle(existing == null ? "新增人员" : "修改人员");
             setHeaderText("请填写人员信息");
             this.row = existing != null ? existing : new PersonRow();
+            this.isCreate = existing == null;
 
             GridPane grid = new GridPane();
             grid.setHgap(10); grid.setVgap(8);
@@ -283,6 +298,20 @@ public class PersonManageController {
             grid.add(new Label("籍贯"), 0, 6);     grid.add(tfHometown, 1, 6);
             grid.add(new Label("地址"), 0, 7);     grid.add(tfAddress, 1, 7);
             grid.add(new Label("备注"), 0, 8);     grid.add(tfRemark, 1, 8);
+
+            if (isCreate) {
+                tfUsername.setPromptText("字母开头，4-30 位字母/数字/下划线");
+                pfPassword.setPromptText("6-20 位字母/数字");
+                tfUsername.setDisable(true);
+                pfPassword.setDisable(true);
+                cbCreateUser.selectedProperty().addListener((obs, oldVal, checked) -> {
+                    tfUsername.setDisable(!checked);
+                    pfPassword.setDisable(!checked);
+                });
+                grid.add(cbCreateUser, 1, 9);
+                grid.add(new Label("用户名"), 0, 10); grid.add(tfUsername, 1, 10);
+                grid.add(new Label("初始口令"), 0, 11); grid.add(pfPassword, 1, 11);
+            }
 
             if (existing != null) {
                 tfCode.setText(existing.personCode);
@@ -316,6 +345,11 @@ public class PersonManageController {
                     row.hometown = tfHometown.getText() == null ? "" : tfHometown.getText().trim();
                     row.address = tfAddress.getText() == null ? "" : tfAddress.getText().trim();
                     row.remark = tfRemark.getText() == null ? "" : tfRemark.getText().trim();
+                    if (isCreate && cbCreateUser.isSelected()) {
+                        row.createUser = true;
+                        row.username = tfUsername.getText().trim();
+                        row.password = pfPassword.getText();
+                    }
                 }
             });
             setResultConverter(btn -> btn == ButtonType.OK ? row : null);
@@ -327,6 +361,12 @@ public class PersonManageController {
             if (cbGender.getValue() == null) return "请选择性别";
             String idc = tfIdCard.getText() == null ? "" : tfIdCard.getText().trim();
             if (!idc.isEmpty() && !idc.matches(RegexPatterns.ID_CARD)) return "身份证号须为 18 位，最后一位为数字或 X";
+            if (isCreate && cbCreateUser.isSelected()) {
+                String un = tfUsername.getText() == null ? "" : tfUsername.getText().trim();
+                if (!un.matches(RegexPatterns.USERNAME)) return "用户名须字母开头，4-30 位字母/数字/下划线";
+                String pw = pfPassword.getText() == null ? "" : pfPassword.getText();
+                if (!pw.matches(RegexPatterns.PASSWORD)) return "口令须为 6-20 位字母/数字";
+            }
             return null;
         }
     }

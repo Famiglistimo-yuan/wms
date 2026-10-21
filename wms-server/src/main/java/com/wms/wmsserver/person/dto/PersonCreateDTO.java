@@ -35,4 +35,10 @@ public class PersonCreateDTO {
     private String address;
     private String phone;
     private String remark;
+
+    /** 为 true 时同时创建关联登录账号（FR-4-1：操作人员皆可作为用户）；
+     *  条件校验（username/password 必填与格式）在 Service 层复用 RegexPatterns 完成 */
+    private Boolean createUser;
+    private String username;
+    private String password;
 }

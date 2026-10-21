@@ -7,15 +7,19 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <VBox xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.wms.wmsclient.controller.RoleGrantController"
+      fx:controller="com.wms.wmsclient.controller.UserGrantController"
       stylesheets="@../styles.css"
       spacing="8">
   <ToolBar>
     <Button text="刷新" onAction="#onRefreshClicked"/>
+    <Button text="保存授权" onAction="#onSaveClicked" fx:id="btnSave"/>
+    <Button text="全部允许" onAction="#onAllowAllClicked" fx:id="btnAllowAll"/>
+    <Button text="全部禁止" onAction="#onDenyAllClicked" fx:id="btnDenyAll"/>
   </ToolBar>
-  <Label text="角色列表（左） / 权限勾选（右）" styleClass="subtle"/>
+  <Label text="用户列表（左） / 权限分配（右：允许=授予，禁止=不授予）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
-    <ListView prefWidth="200" HBox.hgrow="NEVER" fx:id="lvRoles"/>
+    <ListView prefWidth="240" HBox.hgrow="NEVER" fx:id="lvUsers"
+              onMouseClicked="#onUserSelected"/>
     <ListView HBox.hgrow="ALWAYS" fx:id="lvPermissions"/>
   </HBox>
   <Label fx:id="lblStatus" styleClass="subtle"/>

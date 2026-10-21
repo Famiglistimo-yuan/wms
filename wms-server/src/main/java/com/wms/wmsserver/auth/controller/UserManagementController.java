@@ -3,7 +3,9 @@ package com.wms.wmsserver.auth.controller;
 import com.wms.common.Result;
 import com.wms.wmsserver.auth.annotation.RequirePermission;
 import com.wms.wmsserver.auth.dto.*;
+import com.wms.wmsserver.auth.interceptor.JwtInterceptor;
 import com.wms.wmsserver.auth.service.UserManagementService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -32,26 +34,44 @@ public class UserManagementController {
         return Result.success(service.create(dto));
     }
 
+    /** 人员下拉选项（新增用户时选关联人员） */
+    @GetMapping("/person-options")
+    @RequirePermission("menu.auth.user")
+    public Result<List<PersonOptionVO>> personOptions() {
+        return Result.success(service.listPersonOptions());
+    }
+
     @PutMapping("/{id}")
     @RequirePermission("menu.auth.user")
     public Result<Void> update(@PathVariable Long id,
-                               @Valid @RequestBody UserUpdateDTO dto) {
-        service.update(id, dto);
+                               @Valid @RequestBody UserUpdateDTO dto,
+                               HttpServletRequest request) {
+        Long currentUserId = (Long) request.getAttribute(JwtInterceptor.ATTR_USER_ID);
+        service.update(id, dto, currentUserId);
         return Result.success();
     }
 
-    /** 查询某用户已分配的角色 id（给授权界面用） */
-    @GetMapping("/{id}/roles")
+    /** 删除用户（连带解除其角色关系；禁止删除当前登录账号） */
+    @DeleteMapping("/{id}")
     @RequirePermission("menu.auth.user")
-    public Result<List<Long>> listRoles(@PathVariable Long id) {
-        return Result.success(service.listRoleIds(id));
+    public Result<Void> delete(@PathVariable Long id, HttpServletRequest request) {
+        Long currentUserId = (Long) request.getAttribute(JwtInterceptor.ATTR_USER_ID);
+        service.delete(id, currentUserId);
+        return Result.success();
     }
 
-    /** 给用户分配角色（全量覆盖；与 GET /{id}/roles 同资源嵌套风格） */
-    @PostMapping("/{id}/roles")
+    /** 用户直接授权回显（allow/deny 集合） */
+    @GetMapping("/{id}/permissions")
     @RequirePermission("menu.auth.grant")
-    public Result<Void> assignRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
-        service.assignRoles(id, roleIds);
+    public Result<UserPermissionVO> getPermissions(@PathVariable Long id) {
+        return Result.success(service.getUserPermissions(id));
+    }
+
+    /** 用户直接授权：对单个用户授予/禁止某菜单执行权（全量覆盖，不影响其他用户） */
+    @PostMapping("/{id}/permissions")
+    @RequirePermission("menu.auth.grant")
+    public Result<Void> grantPermissions(@PathVariable Long id, @RequestBody UserPermissionGrantDTO dto) {
+        service.grantPermissions(id, dto);
         return Result.success();
     }
 }

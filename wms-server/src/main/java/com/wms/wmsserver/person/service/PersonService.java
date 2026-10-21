@@ -3,14 +3,18 @@ package com.wms.wmsserver.person.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
+import com.wms.common.RegexPatterns;
 import com.wms.wmsserver.entity.Person;
+import com.wms.wmsserver.entity.User;
 import com.wms.wmsserver.mapper.PersonMapper;
+import com.wms.wmsserver.mapper.UserMapper;
 import com.wms.wmsserver.person.dto.PersonCreateDTO;
 import com.wms.wmsserver.person.dto.PersonUpdateDTO;
 import com.wms.wmsserver.person.dto.PersonVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,8 @@ import java.util.stream.Collectors;
 public class PersonService {
 
     private final PersonMapper personMapper;
+    private final UserMapper userMapper;
+    private final PasswordEncoder encoder;
 
     /** 全部列表（按 person_code 排序，方便下拉选择） */
     public List<PersonVO> listAll() {
@@ -75,7 +81,36 @@ public class PersonService {
             log.warn("新增人员代码冲突：{}", dto.getPersonCode(), e);
             throw new BusinessException(ErrorCode.CONFLICT, "人员代码已存在");
         }
+        // 勾选时同事务创建关联登录账号，失败整体回滚，不留"有档案无账号"半成品
+        if (Boolean.TRUE.equals(dto.getCreateUser())) {
+            createLinkedUser(p.getId(), dto.getUsername(), dto.getPassword());
+        }
         return toVO(p);
+    }
+
+    /** 创建与人员关联的登录账号（FR-4-1）；规则与 UserManagementService.create 对齐 */
+    private void createLinkedUser(Long personId, String username, String password) {
+        if (username == null || !username.matches(RegexPatterns.USERNAME)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "用户名须字母开头，4-30 位字母/数字/下划线");
+        }
+        if (password == null || !password.matches(RegexPatterns.PASSWORD)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "口令须为 6-20 位字母/数字");
+        }
+        Long dup = userMapper.selectCount(Wrappers.<User>lambdaQuery()
+                .eq(User::getUsername, username));
+        if (dup > 0) throw new BusinessException(ErrorCode.CONFLICT, "用户名已存在");
+
+        User u = new User();
+        u.setUsername(username);
+        u.setPersonId(personId);
+        u.setPassword(encoder.encode(password));
+        u.setStatus(1);
+        try {
+            userMapper.insert(u);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("新增人员联动创建账号冲突：{}", username, e);
+            throw new BusinessException(ErrorCode.CONFLICT, "用户名已存在");
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
