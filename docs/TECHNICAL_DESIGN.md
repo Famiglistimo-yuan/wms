@@ -294,7 +294,7 @@
 用户 ──< 用户角色 >── 角色（仅标签，不参与有效权限计算）
 ```
 
-- 有效权限 = 该用户所有 `allow` 项 − 所有 `deny` 项。角色与角色权限关系表仅维护标签属性，自 2026-10 起不参与有效权限计算（历史 RBAC 继承模型已移除）。
+- 有效权限 = 该用户所有 `allow` 项 − 所有 `deny` 项。角色相关表仅作展示标签（种子数据维护，无管理接口），自 2026-10 起不参与有效权限计算（历史 RBAC 继承模型已移除）。
 - 每个菜单项即一个权限资源，编码如 `menu.material.add`。
 - 登录后服务端返回该用户的权限编码集合（直授 allow 扣除 deny），客户端据此显隐/禁用菜单项（无权菜单不可见）。
 - 新增功能菜单 = 权限表插一行 + 授权界面配置，**无需修改子系统四代码**（课题明确要求）。
@@ -344,10 +344,8 @@
 | GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用；停用需保留至少一个启用账号且不能停用当前登录账号），需 `menu.auth.user` |
 | GET | `/api/users/person-options` | 人员下拉选项（新增用户时选关联人员），需 `menu.auth.user` |
 | DELETE | `/api/users/{id}` | 删除用户（同事务连带解除其角色关系；禁止删除当前登录账号），需 `menu.auth.user` |
-| GET/POST | `/api/users/{id}/roles` | 查询/分配用户角色（逐用户授权，全量覆盖），需 `menu.auth.grant` |
 | GET/POST | `/api/users/{id}/permissions` | 用户直接授权：GET 回显 allow/deny 集合；POST 全量覆盖 allow/deny（有效权限=allow−deny，不含角色继承，角色仅作标签），需 `menu.auth.grant` |
-| GET | `/api/roles`；GET `/api/roles/permissions` | 角色列表（含权限码）/ 权限资源列表（菜单项） |
-| GET/POST | `/api/roles/{roleId}/permissions` | 查询/分配角色权限（逐角色授权，全量覆盖），需 `menu.auth.grant` |
+| GET | `/api/roles/permissions` | 权限资源列表（菜单项，授权界面用），需 `menu.auth.grant` |
 | GET | `/api/version` | 客户端版本检测（自动升级） |
 
 ### 6.3 设计约定
@@ -378,7 +376,7 @@
 ### 7.3 权限管理（子系统四）
 
 - 登录流程：客户端提交用户名口令 → 服务端 BCrypt 比对 → 查询该用户有效权限（直授 allow − deny）→ 签发 JWT（含权限码）→ 客户端按权限码渲染菜单，无权菜单 `setVisible(false)` 且 `setDisable(true)` 双保险。
-- 授权界面：单级直授模型——左侧用户列表、右侧权限逐项分配「允许 / 禁止」（全量覆盖保存），有效权限 = allow − deny；角色与角色权限仅维护标签属性，不参与有效权限计算。
+- 授权界面：单级直授模型——左侧用户列表、右侧权限逐项分配「允许 / 禁止」（全量覆盖保存），有效权限 = allow − deny；角色仅作展示标签（种子数据维护），不参与有效权限计算。
 - 服务端接口级鉴权：自定义注解 `@RequirePermission("menu.xxx")` + 拦截器校验——即使客户端被绕过，接口仍然安全（答辩论述纵深）。
 - 安全防护：删除/停用路径禁止移除最后一个持有 `menu.auth.grant` 或 `menu.auth.user` 的启用账号；授权保存时保底检查。
 

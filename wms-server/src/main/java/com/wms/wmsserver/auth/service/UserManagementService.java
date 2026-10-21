@@ -13,7 +13,6 @@ import com.wms.wmsserver.entity.Permission;
 import com.wms.wmsserver.entity.Person;
 import com.wms.wmsserver.entity.User;
 import com.wms.wmsserver.entity.UserPermission;
-import com.wms.wmsserver.entity.UserRole;
 import com.wms.wmsserver.mapper.PermissionMapper;
 import com.wms.wmsserver.mapper.PersonMapper;
 import com.wms.wmsserver.mapper.UserMapper;
@@ -30,7 +29,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 用户管理：CRUD + 角色分配 + 直接授权。
+ * 用户管理：CRUD + 直接授权。
  */
 @Service
 @RequiredArgsConstructor
@@ -44,7 +43,7 @@ public class UserManagementService {
 
     private final PasswordEncoder encoder;
 
-    /** 权限码 → 权限 id 缓存（高频查询，同一实例内不变） */
+    /** 按权限码查询权限记录（自救防护用；权限表为种子数据，运行期不变） */
     private Permission resolvePerm(String permCode) {
         Permission p = permissionMapper.selectOne(
                 Wrappers.<Permission>lambdaQuery().eq(Permission::getPermCode, permCode));
@@ -164,25 +163,6 @@ public class UserManagementService {
             throw new BusinessException(ErrorCode.BAD_REQUEST,
                     "系统至少保留一个拥有「" + permLabel + "」权限的启用账号");
         }
-    }
-
-    /** 给用户分配角色（全量覆盖） */
-    @Transactional(rollbackFor = Exception.class)
-    public void assignRoles(Long userId, List<Long> roleIds) {
-        userRoleMapper.deleteByUserId(userId);
-        if (roleIds != null && !roleIds.isEmpty()) {
-            for (Long roleId : roleIds) {
-                UserRole ur = new UserRole();
-                ur.setUserId(userId);
-                ur.setRoleId(roleId);
-                userRoleMapper.insert(ur);
-            }
-        }
-    }
-
-    /** 查询用户已分配角色 id 列表 */
-    public List<Long> listRoleIds(Long userId) {
-        return userRoleMapper.selectRoleIdsByUserId(userId);
     }
 
     /** 用户授权回显：直授 allow 集 + 禁止 deny 集 */

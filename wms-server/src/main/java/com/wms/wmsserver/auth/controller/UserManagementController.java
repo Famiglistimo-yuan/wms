@@ -60,21 +60,6 @@ public class UserManagementController {
         return Result.success();
     }
 
-    /** 查询某用户已分配的角色 id（给授权界面用） */
-    @GetMapping("/{id}/roles")
-    @RequirePermission("menu.auth.user")
-    public Result<List<Long>> listRoles(@PathVariable Long id) {
-        return Result.success(service.listRoleIds(id));
-    }
-
-    /** 给用户分配角色（全量覆盖；与 GET /{id}/roles 同资源嵌套风格） */
-    @PostMapping("/{id}/roles")
-    @RequirePermission("menu.auth.grant")
-    public Result<Void> assignRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
-        service.assignRoles(id, roleIds);
-        return Result.success();
-    }
-
     /** 用户直接授权回显（allow/deny 集合） */
     @GetMapping("/{id}/permissions")
     @RequirePermission("menu.auth.grant")

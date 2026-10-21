@@ -13,6 +13,7 @@ import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -42,6 +43,9 @@ public class UserGrantController {
     @FXML private Label lblStatus;
     @FXML private ListView<UserVO> lvUsers;
     @FXML private ListView<PermAssignItem> lvPermissions;
+    @FXML private Button btnSave;
+    @FXML private Button btnAllowAll;
+    @FXML private Button btnDenyAll;
 
     private List<PermissionVO> allPermissions;
 
@@ -72,7 +76,10 @@ public class UserGrantController {
     @FXML
     protected void onDenyAllClicked() {
         for (PermAssignItem item : lvPermissions.getItems()) {
-            item.choice.setValue(OPT_DENY);
+            // 自救防护：当前登录用户的关键权限项不可被「全部禁止」置为禁止
+            if (!item.locked) {
+                item.choice.setValue(OPT_DENY);
+            }
         }
     }
 
@@ -116,6 +123,13 @@ public class UserGrantController {
             Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "保存失败：" + msg).showAndWait());
         });
         new Thread(task, "user-grant-save").start();
+    }
+
+    /** 加载用户权限期间锁定编辑操作，防止旧权限集被误保存 */
+    private void setEditingEnabled(boolean enabled) {
+        btnSave.setDisable(!enabled);
+        btnAllowAll.setDisable(!enabled);
+        btnDenyAll.setDisable(!enabled);
     }
 
     private void loadAll() {
@@ -165,6 +179,9 @@ public class UserGrantController {
 
         final long targetUserId = selected.getId();
         lvUsers.setDisable(true);
+        // 加载期间锁定编辑并清空旧内容，防止前一用户的权限集被误保存到当前选中用户
+        setEditingEnabled(false);
+        lvPermissions.getItems().clear();
 
         Task<UserPermissionVO> task = new Task<>() {
             @Override
@@ -175,6 +192,7 @@ public class UserGrantController {
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             lvUsers.setDisable(false);
+            setEditingEnabled(true);
             // 过期响应丢弃：若当前选中项已变更，不再覆盖
             UserVO current = lvUsers.getSelectionModel().getSelectedItem();
             if (current == null || current.getId() != targetUserId) return;
@@ -183,13 +201,13 @@ public class UserGrantController {
             List<Long> allowIds = vo.getAllowPermIds() != null ? vo.getAllowPermIds() : List.of();
             boolean isSelf = current.getUsername() != null
                     && current.getUsername().equals(SessionContext.getUsername());
-            lvPermissions.getItems().clear();
             for (PermissionVO p : allPermissions) {
                 String choice = allowIds.contains(p.getId()) ? OPT_ALLOW : OPT_DENY;
-                PermAssignItem item = new PermAssignItem(p, choice);
                 // 自救防护：对当前登录用户，关键权限不可选「禁止」——避免 UI 锁死
-                if (isSelf && ("menu.auth.grant".equals(p.getPermCode())
-                        || "menu.auth.user".equals(p.getPermCode()))) {
+                boolean locked = isSelf && ("menu.auth.grant".equals(p.getPermCode())
+                        || "menu.auth.user".equals(p.getPermCode()));
+                PermAssignItem item = new PermAssignItem(p, choice, locked);
+                if (locked) {
                     item.choice.setItems(FXCollections.observableArrayList(OPT_ALLOW));
                     if (OPT_DENY.equals(choice)) {
                         item.choice.setValue(OPT_ALLOW);
@@ -204,6 +222,7 @@ public class UserGrantController {
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
             Platform.runLater(() -> {
                 lvUsers.setDisable(false);
+                setEditingEnabled(true);
                 Alerts.of(Alert.AlertType.ERROR, "加载用户权限失败：" + msg).showAndWait();
             });
         });
@@ -230,14 +249,16 @@ public class UserGrantController {
         }
     }
 
-    /** 权限分配行：perm + 当前选择（允许/禁止） */
+    /** 权限分配行：perm + 当前选择（允许/禁止）；locked=当前登录用户的关键权限，不可置为禁止 */
     private static class PermAssignItem {
         final PermissionVO perm;
+        final boolean locked;
         final ComboBox<String> choice = new ComboBox<>(
                 FXCollections.observableArrayList(OPT_ALLOW, OPT_DENY));
 
-        PermAssignItem(PermissionVO perm, String initial) {
+        PermAssignItem(PermissionVO perm, String initial, boolean locked) {
             this.perm = perm;
+            this.locked = locked;
             choice.setValue(initial);
         }
     }

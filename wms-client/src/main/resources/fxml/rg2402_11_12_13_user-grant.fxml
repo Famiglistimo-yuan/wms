@@ -12,9 +12,9 @@
       spacing="8">
   <ToolBar>
     <Button text="刷新" onAction="#onRefreshClicked"/>
-    <Button text="保存授权" onAction="#onSaveClicked"/>
-    <Button text="全部允许" onAction="#onAllowAllClicked"/>
-    <Button text="全部禁止" onAction="#onDenyAllClicked"/>
+    <Button text="保存授权" onAction="#onSaveClicked" fx:id="btnSave"/>
+    <Button text="全部允许" onAction="#onAllowAllClicked" fx:id="btnAllowAll"/>
+    <Button text="全部禁止" onAction="#onDenyAllClicked" fx:id="btnDenyAll"/>
   </ToolBar>
   <Label text="用户列表（左） / 权限分配（右：允许=授予，禁止=不授予）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
