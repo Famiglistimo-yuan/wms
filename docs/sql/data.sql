@@ -6,7 +6,12 @@
 -- 初始口令：全部用户均为 admin123（BCrypt 密文，首次登录后应修改）
 -- 账目平衡：物料期初库存为 0，当前库存 = Σ进仓明细 − Σ出仓明细，
 --          仓库账本/月度报表/流量统计可基于本数据逐笔核对
+-- 执行：单事务包裹，任一语句失败则不 COMMIT、连接断开整体回滚；
+--   mysql --default-character-set=utf8mb4 -u <用户> -p <库名> < docs/sql/data.sql
+--   （连接字符集非 utf8mb4 时 Φ/× 等符号可能乱码入库；MySQL 8 客户端默认即 utf8mb4）
 -- =====================================================================
+
+START TRANSACTION;
 
 -- ---------- 菜单权限清单（FR-4：每个菜单项一个资源，新增功能=插行） ----------
 INSERT INTO rg2402_11_12_13_permission (id, perm_code, perm_name, sort_order) VALUES
@@ -146,5 +151,7 @@ INSERT INTO rg2402_11_12_13_order_seq (seq_prefix, seq_date, current_seq) VALUES
   ('OUT', '2026-09-22', 1),
   ('IN',  '2026-10-08', 1),
   ('OUT', '2026-10-18', 1);
+
+COMMIT;
 
 -- 操作日志由服务端 AOP 切面运行时写入，不做种子数据
