@@ -1,7 +1,9 @@
 -- =====================================================================
--- 仓库管理系统 种子数据 v1.1（依赖 docs/sql/schema.sql，在空库上执行）
--- 内容：菜单权限清单（16 项）+ 初始管理员 + 测试用户体系（权限分档/
---       allow−deny 混合/停用）+ 物料 10 种 + 跨四个月进出仓历史单据
+-- 仓库管理系统 种子数据 v1.2（依赖 docs/sql/schema.sql，在空库上执行）
+-- 内容：菜单权限清单（16 项）+ 测试用户体系（初始管理员/权限分档/
+--       allow−deny 混合/停用/零权限）+ 物料 13 种（零库存/低库存/
+--       无规格/无动态）+ 跨四个月进出仓历史单据 14 张（一单一料/
+--       同日双向/月末/动态清零）
 -- 说明：计量单位为客户端可编辑下拉的预设项（技术方案 §7.1），不入库
 -- 初始口令：全部用户均为 admin123（BCrypt 密文，首次登录后应修改）
 -- 账目平衡：物料期初库存为 0，当前库存 = Σ进仓明细 − Σ出仓明细，
@@ -32,7 +34,7 @@ INSERT INTO rg2402_11_12_13_permission (id, perm_code, perm_name, sort_order) VA
   (15, 'menu.stats.monthly',   '月度进出仓单', 51),
   (16, 'menu.stats.ledger',    '仓库账本',     52);
 
--- ---------- 人员档案（8 人，字段覆盖度分档） ----------
+-- ---------- 人员档案（9 人，字段覆盖度分档） ----------
 INSERT INTO rg2402_11_12_13_person
   (id, person_code, name, gender, birth_date, id_card, hometown, address, phone, remark) VALUES
   (1, 'P0001', '系统管理员', '男', NULL, NULL, NULL, NULL, NULL, '内置初始人员'),
@@ -46,16 +48,19 @@ INSERT INTO rg2402_11_12_13_person
   (6, 'P0006', '陈磊',       '男', '1994-09-08', '11010119940908491X', NULL,
    '北京市海淀区知春路2号', '13604040006', NULL),  -- 身份证以 X 结尾，覆盖正则末位分支
   (7, 'P0007', '赵芳',       '女', '1996-12-30', NULL, NULL, NULL, NULL, '账号已停用'),
-  (8, 'P0008', '周杰',       '男', NULL, NULL, NULL, NULL, NULL, '仅作经手人，无登录账号');
+  (8, 'P0008', '周杰',       '男', NULL, NULL, NULL, NULL, NULL, '仅作经手人，无登录账号'),
+  (9, 'P0009', '孙琪',       '女', '2000-06-15', NULL, NULL, NULL, '13905050009',
+   '新入职，零权限验证');
 
--- ---------- 登录用户（6 个，口令均为 admin123） ----------
+-- ---------- 登录用户（7 个，口令均为 admin123） ----------
 INSERT INTO rg2402_11_12_13_user (id, person_id, username, password, status) VALUES
   (1, 1, 'admin',     '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 1),
   (2, 2, 'zhangwei',  '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 1),
   (3, 3, 'lina',      '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 1),
   (4, 4, 'wangqiang', '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 1),
   (5, 6, 'chenlei',   '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 1),
-  (6, 7, 'zhaofang',  '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 0);  -- 停用，登录应被拒
+  (6, 7, 'zhaofang',  '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 0),  -- 停用，登录应被拒
+  (7, 9, 'sunqi',     '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 1);  -- 零权限，登录成功但无任何菜单
 
 -- ---------- 角色（FR-4-3，角色仅作标签不参与权限继承） ----------
 INSERT INTO rg2402_11_12_13_role (id, role_code, role_name, remark) VALUES
@@ -90,8 +95,9 @@ INSERT INTO rg2402_11_12_13_user_permission (user_id, perm_id, effect) VALUES
 -- chenlei：allow−deny 混合，可增改物料但禁止删除
 INSERT INTO rg2402_11_12_13_user_permission (user_id, perm_id, effect) VALUES
   (5,5,'allow'),(5,6,'allow'),(5,7,'allow'),(5,11,'allow'),(5,8,'deny');
+-- sunqi（user 7）：零权限——不插任何行，验证「登录成功但菜单全隐藏」
 
--- ---------- 物料档案（10 种，当前库存与下方单据明细严格平衡） ----------
+-- ---------- 物料档案（13 种，当前库存与下方单据明细严格平衡） ----------
 INSERT INTO rg2402_11_12_13_material (id, material_code, name, spec, unit, stock, remark) VALUES
   (1,  'M0001', '十字槽螺丝',   'M6×20 镀锌',      '个', 950.000, NULL),
   (2,  'M0002', '六角螺母',     'M6 不锈钢',       '个', 900.000, NULL),
@@ -102,10 +108,14 @@ INSERT INTO rg2402_11_12_13_material (id, material_code, name, spec, unit, stock
   (7,  'M0007', '帆布手套',     '加厚耐磨',        '副', 20.000,  NULL),
   (8,  'M0008', '水砂纸',       '120目 230×280',   '包', 220.000, NULL),
   (9,  'M0009', '三相异步电机', 'Y112M-4 4kW',     '台', 15.000,  '单价高，流动量最小'),
-  (10, 'M0010', '橡胶密封圈',   'Φ50 耐油',        '个', 600.000, NULL);
+  (10, 'M0010', '橡胶密封圈',   'Φ50 耐油',        '个', 600.000, NULL),
+  (11, 'M0011', '钢卷尺',       NULL,              '把', 0.000,   '新品建档，尚无出入库动态'),
+  (12, 'M0012', 'LED 检修灯',   '充电式 5W',       '个', 0.000,   '动态清零：进 100 出 100'),
+  (13, 'M0013', '黄油枪',       '400mL 手动',      '把', 1.500,   '低库存，出仓不足演示用');
 
 -- ---------- 进出仓历史单据（2026-07 ~ 2026-10，期初库存为 0） ----------
--- 库存核算示例：M0001 = 1000+500−200−350 = 950，全表同法逐笔平衡
+-- 库存核算示例：M0001 = 1000+500−200−350 = 950；M0012 = 100−100 = 0（动态清零）；
+--              M0013 = 200−198.5 = 1.5（低库存）；全表同法逐笔平衡
 INSERT INTO rg2402_11_12_13_stock_order
   (id, order_no, order_type, order_date, operator_id, handler_id, remark) VALUES
   (1,  'IN202607010001',  'IN',  '2026-07-01', 1, 8, '建账进仓：五金件'),
@@ -117,7 +127,11 @@ INSERT INTO rg2402_11_12_13_stock_order
   (7,  'IN202609100001',  'IN',  '2026-09-10', 2, 4, NULL),
   (8,  'OUT202609220001', 'OUT', '2026-09-22', 2, 4, NULL),
   (9,  'IN202610080001',  'IN',  '2026-10-08', 2, 5, '四季度备料'),
-  (10, 'OUT202610180001', 'OUT', '2026-10-18', 2, 5, NULL);
+  (10, 'OUT202610180001', 'OUT', '2026-10-18', 2, 5, NULL),
+  (11, 'IN202609300001',  'IN',  '2026-09-30', 1, 8, '月末单据，一单一料'),
+  (12, 'OUT202610190001', 'OUT', '2026-10-19', 2, 5, '整批领用，动态清零'),
+  (13, 'IN202610200001',  'IN',  '2026-10-20', 2, 2, NULL),  -- 经手人=操作人；与下一张构成同日双向
+  (14, 'OUT202610200001', 'OUT', '2026-10-20', 2, 5, '当日即出，同日双向');
 
 INSERT INTO rg2402_11_12_13_stock_order_item (order_id, material_id, quantity) VALUES
   -- 1 建账：五金
@@ -139,7 +153,12 @@ INSERT INTO rg2402_11_12_13_stock_order_item (order_id, material_id, quantity) V
   -- 9 进仓
   (9, 2, 200.000), (9, 4, 100.500), (9, 10, 100.000),
   -- 10 出仓
-  (10, 5, 15.000), (10, 7, 30.000), (10, 8, 80.000);
+  (10, 5, 15.000), (10, 7, 30.000), (10, 8, 80.000),
+  -- 11~14 一单一料（明细长度 1，与多料单走同一 SP 入口）
+  (11, 12, 100.000),
+  (12, 12, 100.000),
+  (13, 13, 200.000),
+  (14, 13, 198.500);
 
 -- ---------- 单号流水（与上方历史单据严格对齐，防 SP 后续生成单号撞 uk_order_no） ----------
 INSERT INTO rg2402_11_12_13_order_seq (seq_prefix, seq_date, current_seq) VALUES
@@ -150,7 +169,11 @@ INSERT INTO rg2402_11_12_13_order_seq (seq_prefix, seq_date, current_seq) VALUES
   ('IN',  '2026-09-10', 1),
   ('OUT', '2026-09-22', 1),
   ('IN',  '2026-10-08', 1),
-  ('OUT', '2026-10-18', 1);
+  ('OUT', '2026-10-18', 1),
+  ('IN',  '2026-09-30', 1),
+  ('OUT', '2026-10-19', 1),
+  ('IN',  '2026-10-20', 1),
+  ('OUT', '2026-10-20', 1);
 
 COMMIT;
 

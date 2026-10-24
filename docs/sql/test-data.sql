@@ -3,24 +3,28 @@
 -- 目的：验证「大量用户大量数据时功能实现是否仍有较好性能」
 --       （课题质量要求；技术方案 §10 阶段 3 既定的 test-data.sql）
 -- 前置：空库已按序执行 schema.sql → data.sql（本脚本叠加在种子之上）
--- 执行：mysql -u root -p wms_dev < docs/sql/test-data.sql   （约半分钟内）
--- 规模：人员 10,000 + 登录用户 100 + 物料 1,000
---       + 进出仓单 100,000（进/出各 5 万，一单一料）+ 明细 100,000
+-- 执行：mysql --default-character-set=utf8mb4 -u root -p wms_dev < docs/sql/test-data.sql
+--       （约 230 万行，视机器 2~5 分钟；连接字符集非 utf8mb4 时中文会乱码）
+-- 规模：人员 50,000 + 登录用户 500 + 物料 5,000
+--       + 进出仓单 1,000,000（进/出各 50 万，一单一料）+ 明细 1,000,000
+--       + 操作日志 200,000
 -- 窗口：2025-07-01 ~ 2026-06-30（完整 12 个月，避开种子单据 2026-07 起
 --       的单号段，防撞 uk_order_no）
 -- 守恒：每物料「配对进出」——第 i 笔出仓数量 ≤ 第 i 笔进仓且晚一天，
 --       任意时点库存 ≥ 0；期末 stock = Σ进 − Σ出，账实一致（与 data.sql
 --       同口径，账本/流量统计可逐笔核对）
+-- 操作人：约 30% 单据取 perf 登录用户（契合「操作人=当前登录用户」，
+--       可按操作人筛选演示），其余为无账号人员（视作历史离岗操作人）
 -- 幂等：非幂等，重复执行因 person_code 唯一键冲突报错中止（天然防重）
--- 事务：刻意不包整体事务（21 万行单事务 undo log 压力大、耗时翻倍）——
+-- 事务：刻意不包整体事务（数百万行单事务 undo log 压力大、耗时翻倍）——
 --       中途失败会残留已提交的前几步数据，执行文末清理块后重跑即可
 -- =====================================================================
 
--- ---------- 1. 人员档案 10,000 人（TP00001..，高频姓名组合便于 LIKE 压测） ----------
+-- ---------- 1. 人员档案 50,000 人（TP00001..TP50000，高频姓名组合便于 LIKE 压测） ----------
 INSERT INTO rg2402_11_12_13_person
   (person_code, name, gender, birth_date, id_card, hometown, address, phone, remark)
 WITH nums AS (
-  SELECT d1.i + d2.i * 10 + d3.i * 100 + d4.i * 1000 + 1 AS n
+  SELECT d1.i + d2.i * 10 + d3.i * 100 + d4.i * 1000 + d5.i * 10000 + 1 AS n
   FROM (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
         UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d1
   JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
@@ -29,6 +33,7 @@ WITH nums AS (
         UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d3
   JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
         UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d4
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) d5
 )
 SELECT
   CONCAT('TP', LPAD(n, 5, '0')),
@@ -47,14 +52,14 @@ SELECT
   NULL
 FROM nums;
 
--- ---------- 2. 登录用户 100 个（perf001..100，口令同种子 admin123） ----------
+-- ---------- 2. 登录用户 500 个（perf001..500，口令同种子 admin123） ----------
 INSERT INTO rg2402_11_12_13_user (person_id, username, password, status)
 SELECT id, CONCAT('perf', LPAD(ROW_NUMBER() OVER (ORDER BY id), 3, '0')),
        '$2a$10$W6Scx1oVlyQs1fdb1ros3OKvP0M5VP.CkRQ32iQBssouY32xGQqHi', 1
 FROM rg2402_11_12_13_person
 WHERE person_code LIKE 'TP%'
 ORDER BY id
-LIMIT 100;
+LIMIT 500;
 
 -- 授予查询 + 进出仓 + 统计报表权限（并发登录/录单演示可用）
 INSERT INTO rg2402_11_12_13_user_permission (user_id, perm_id, effect)
@@ -64,16 +69,17 @@ JOIN rg2402_11_12_13_permission p
   ON p.id IN (1, 5, 9, 10, 11, 14, 15, 16)
 WHERE u.username LIKE 'perf%';
 
--- ---------- 3. 物料档案 1,000 种（TM0001..，名称/规格含可模糊命中词） ----------
+-- ---------- 3. 物料档案 5,000 种（TM0001..TM5000，名称/规格含可模糊命中词） ----------
 INSERT INTO rg2402_11_12_13_material (material_code, name, spec, unit, stock, remark)
 WITH nums AS (
-  SELECT d1.i + d2.i * 10 + d3.i * 100 + 1 AS n   -- 1..1000
+  SELECT d1.i + d2.i * 10 + d3.i * 100 + d4.i * 1000 + 1 AS n   -- 1..5000
   FROM (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
         UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d1
   JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
         UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d2
   JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
         UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d3
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) d4
 )
 SELECT
   CONCAT('TM', LPAD(n, 4, '0')),
@@ -81,21 +87,24 @@ SELECT
                           '电机','传感器','继电器','开关','线缆','接头'), LPAD(n, 4, '0'), '型'),
   CONCAT('规格-', 10 + n % 90, '系列'),
   ELT(1 + n % 8, '件','套','公斤','吨','升','米','毫米','个'),
-  0,   -- 库存先置 0，第 6 步按明细重算（账实一致）
+  0,   -- 库存先置 0，第 7 步按明细重算（账实一致）
   '性能测试数据'
 FROM nums;
 
--- ---------- 4. 进出仓单 100,000 张（1000 物料 × 50 组配对进出） ----------
--- 组 p 的进仓日 = 2025-07-01 + floor((p-1)*7.3) 天 + 物料序号%7（错开铺满 12 个月），
--- 出仓日 = 进仓日 + 1；出仓量(30~100) ≤ 进仓量(100~500)，保库存非负
+-- ---------- 4. 进出仓单 1,000,000 张（5,000 物料 × 100 组配对进出） ----------
+-- 组 p 的进仓日 = 2025-07-01 + floor((p-1)*358/100) 天 + 物料序号%7（错开铺满 12 个月，
+-- 最大进仓日 2026-06-26、出仓日 06-27，不越窗口、不撞种子单号段）；
+-- 出仓日 = 进仓日 + 1；出仓量(30~100) ≤ 进仓量(100~500)，保库存非负；
+-- 操作人约 30% 取 perf 登录用户（见头部说明），其余取无账号人员
 INSERT INTO rg2402_11_12_13_stock_order
   (order_no, order_type, order_date, operator_id, handler_id, remark)
 WITH
-pairs AS (  -- 1..50
+pairs AS (  -- 1..100
   SELECT d1.i + d2.i * 10 + 1 AS p
   FROM (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
         UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d1
-  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) d2
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
+        UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d2
 ),
 mats AS (
   SELECT id AS mat_id, ROW_NUMBER() OVER (ORDER BY id) - 1 AS m
@@ -112,11 +121,14 @@ gen AS (
   SELECT
     ty.t AS order_type,
     DATE_ADD(
-      DATE_ADD('2025-07-01', INTERVAL FLOOR((pa.p - 1) * 365 / 50) + ma.m % 7 DAY),
+      DATE_ADD('2025-07-01', INTERVAL FLOOR((pa.p - 1) * 358 / 100) + ma.m % 7 DAY),
       INTERVAL IF(ty.t = 'OUT', 1, 0) DAY) AS order_date,
     CASE WHEN ty.t = 'IN'
          THEN 100 + ((ma.m * 17 + pa.p * 7) % 401)     -- 100 ~ 500
          ELSE 30 + ((ma.m * 3 + pa.p) % 71) END AS qty, -- 30 ~ 100
+    IF((ma.m + pa.p) % 10 < 3, (ma.m + pa.p) % 500,
+       500 + (ma.m * 7 + pa.p * 13) % 49500) AS op_r,  -- <500 即 perf 用户
+    (ma.m * 3 + pa.p * 5) % 50000 AS hd_r,
     ma.mat_id, pa.p, ma.m
   FROM mats ma CROSS JOIN pairs pa CROSS JOIN typ ty
 )
@@ -127,17 +139,18 @@ SELECT
   g.order_type, g.order_date,
   op.pid, hd.pid, '性能测试'
 FROM gen g
-JOIN opers op ON op.r =  (g.m + g.p)     % 10000
-JOIN opers hd ON hd.r = (g.m + g.p * 2) % 10000;
+JOIN opers op ON op.r =  g.op_r
+JOIN opers hd ON hd.r = g.hd_r;
 
--- ---------- 5. 明细 100,000 行（按单号回联主表取 id；单号表达式与上一步完全一致） ----------
+-- ---------- 5. 明细 1,000,000 行（按单号回联主表取 id；单号表达式与上一步完全一致） ----------
 INSERT INTO rg2402_11_12_13_stock_order_item (order_id, material_id, quantity)
 WITH
 pairs AS (
   SELECT d1.i + d2.i * 10 + 1 AS p
   FROM (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
         UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d1
-  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) d2
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
+        UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d2
 ),
 mats AS (
   SELECT id AS mat_id, ROW_NUMBER() OVER (ORDER BY id) - 1 AS m
@@ -149,7 +162,7 @@ gen AS (
   SELECT
     ty.t AS order_type,
     DATE_ADD(
-      DATE_ADD('2025-07-01', INTERVAL FLOOR((pa.p - 1) * 365 / 50) + ma.m % 7 DAY),
+      DATE_ADD('2025-07-01', INTERVAL FLOOR((pa.p - 1) * 358 / 100) + ma.m % 7 DAY),
       INTERVAL IF(ty.t = 'OUT', 1, 0) DAY) AS order_date,
     CASE WHEN ty.t = 'IN'
          THEN 100 + ((ma.m * 17 + pa.p * 7) % 401)
@@ -169,7 +182,38 @@ SELECT o.id, n.mat_id, n.qty
 FROM numbered n
 JOIN rg2402_11_12_13_stock_order o ON o.order_no = n.order_no;
 
--- ---------- 6. 库存重算：stock = Σ进 − Σ出（含种子物料，全表账实一致） ----------
+-- ---------- 6. 操作日志 200,000 条（op_log 查询/分页的大数据量场景，时间铺满窗口） ----------
+INSERT INTO rg2402_11_12_13_op_log (user_id, action, detail, created_at)
+WITH nums AS (  -- 1..200000
+  SELECT d1.i + d2.i * 10 + d3.i * 100 + d4.i * 1000 + d5.i * 10000 + d6.i * 100000 + 1 AS n
+  FROM (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
+        UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d1
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
+        UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d2
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
+        UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d3
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
+        UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d4
+  JOIN (SELECT 0 i UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
+        UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d5
+  JOIN (SELECT 0 i UNION SELECT 1) d6
+),
+us AS (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY id) - 1 AS rn
+  FROM rg2402_11_12_13_user
+  WHERE username LIKE 'perf%'
+)
+SELECT
+  IF(n % 97 = 0, NULL, us.id),   -- 少量系统级动作无操作人
+  ELT(1 + n % 8, 'LOGIN', 'ORDER_CREATE', 'ORDER_UPDATE', 'ORDER_DELETE',
+                    'PERSON_ADD', 'PERSON_UPDATE', 'MATERIAL_ADD', 'MATERIAL_UPDATE'),
+  CONCAT(ELT(1 + n % 8, '登录成功', '提交进出仓单', '修改进出仓单', '删除进出仓单',
+                       '新增人员', '修改人员', '新增物料', '修改物料'), ' #', LPAD(n, 6, '0')),
+  DATE_ADD('2025-07-01 08:00:00', INTERVAL (n * 157) % 31449600 SECOND)  -- ≤ 2026-06-30 08:00
+FROM nums
+JOIN us ON us.rn = n % 500;
+
+-- ---------- 7. 库存重算：stock = Σ进 − Σ出（含种子物料，全表账实一致） ----------
 UPDATE rg2402_11_12_13_material m
 JOIN (
   SELECT i.material_id,
@@ -180,11 +224,11 @@ JOIN (
 ) t ON t.material_id = m.id
 SET m.stock = t.net;
 
--- ---------- 7. 单号流水回写（每天取 MAX，防 SP 后续生成撞 uk_order_no） ----------
+-- ---------- 8. 单号流水回写（每天取 MAX，防 SP 后续生成撞 uk_order_no） ----------
 -- 注：8.0.19+ 的行别名（AS）不支持 INSERT...SELECT 形态，无法在 ODKU 里引用新行，
 --     故改两步等价实现（INSERT IGNORE 建行 + UPDATE 抬高既有行，天然幂等），
 --     同时避开 8.0.20 起弃用的 VALUES()
---     （IGNORE 命中种子已登记的 8 个日期时会产生 Code 1062 提示性 warning，属预期）
+--     （IGNORE 命中种子已登记的 12 个日期时会产生 Code 1062 提示性 warning，属预期）
 INSERT IGNORE INTO rg2402_11_12_13_order_seq (seq_prefix, seq_date, current_seq)
 SELECT order_type, order_date, COUNT(*)
 FROM rg2402_11_12_13_stock_order
@@ -198,13 +242,15 @@ JOIN (
 ) t ON t.order_type = s.seq_prefix AND t.order_date = s.seq_date
 SET s.current_seq = GREATEST(s.current_seq, t.c);
 
--- ---------- 8. 灌入校验（行数 + 账实一致，最后一条应返回 0 行） ----------
+-- ---------- 9. 灌入校验（行数 + 账实一致，最后一条应返回 0 行） ----------
 SELECT '人员' AS 项, COUNT(*) AS 行数 FROM rg2402_11_12_13_person WHERE person_code LIKE 'TP%'
 UNION ALL SELECT '登录用户', COUNT(*) FROM rg2402_11_12_13_user WHERE username LIKE 'perf%'
 UNION ALL SELECT '物料',     COUNT(*) FROM rg2402_11_12_13_material WHERE material_code LIKE 'TM%'
 UNION ALL SELECT '进出仓单', COUNT(*) FROM rg2402_11_12_13_stock_order WHERE remark = '性能测试'
 UNION ALL SELECT '明细',     COUNT(*) FROM rg2402_11_12_13_stock_order_item i
-  JOIN rg2402_11_12_13_stock_order o ON o.id = i.order_id WHERE o.remark = '性能测试';
+  JOIN rg2402_11_12_13_stock_order o ON o.id = i.order_id WHERE o.remark = '性能测试'
+UNION ALL SELECT '操作日志', COUNT(*) FROM rg2402_11_12_13_op_log WHERE created_at < '2026-07-01';
+-- 期望：50000 / 500 / 5000 / 1000000 / 1000000 / 200000
 
 SELECT m.material_code, m.stock AS 账面, IFNULL(t.net, 0) AS 明细净额
 FROM rg2402_11_12_13_material m
@@ -217,26 +263,31 @@ LEFT JOIN (
 ) t ON t.material_id = m.id
 WHERE m.stock <> IFNULL(t.net, 0);   -- 应 0 行
 
--- ---------- 9. 性能探针（配合 EXPLAIN 观察索引命中，记录耗时入报告） ----------
+-- ---------- 10. 性能探针（配合 EXPLAIN 观察索引命中，记录耗时入报告） ----------
 -- 单字查人（姓名高频字，大结果集）：   SELECT COUNT(*) FROM rg2402_11_12_13_person WHERE name LIKE '%伟%';
 -- 物料模糊（名称/规格）：              SELECT * FROM rg2402_11_12_13_material WHERE name LIKE '%轴承%' OR spec LIKE '%50%';
--- 深分页（单据表第 4501 页）：          SELECT * FROM rg2402_11_12_13_stock_order ORDER BY id LIMIT 20 OFFSET 90000;
--- 月度聚合（10 万单取一个月）：         SELECT o.order_type, COUNT(*), SUM(i.quantity)
+-- 深分页（单据表第 45001 页）：        SELECT * FROM rg2402_11_12_13_stock_order ORDER BY id LIMIT 20 OFFSET 900000;
+-- 月度聚合（百万单取一个月）：         SELECT o.order_type, COUNT(*), SUM(i.quantity)
 --                                      FROM rg2402_11_12_13_stock_order o
 --                                      JOIN rg2402_11_12_13_stock_order_item i ON i.order_id = o.id
 --                                      WHERE o.order_date BETWEEN '2025-09-01' AND '2025-09-30'
 --                                      GROUP BY o.order_type;
--- 账本聚合（单物料全年逐日）：          SELECT o.order_date, o.order_type, i.quantity
+-- 账本聚合（单物料全年逐日）：         SELECT o.order_date, o.order_type, i.quantity
 --                                      FROM rg2402_11_12_13_stock_order_item i
 --                                      JOIN rg2402_11_12_13_stock_order o ON o.id = i.order_id
 --                                      WHERE i.material_id = 500 AND o.order_date >= '2026-01-01'
 --                                      ORDER BY o.order_date;
--- 组合查询（日期+物料+操作人）：        SELECT COUNT(*) FROM rg2402_11_12_13_stock_order
+-- 组合查询（日期+物料+操作人）：       SELECT COUNT(*) FROM rg2402_11_12_13_stock_order
 --                                      WHERE order_date BETWEEN '2026-03-01' AND '2026-03-31'
 --                                        AND operator_id = 500;
+-- 日志按人过滤（user+时间索引）：      SELECT * FROM rg2402_11_12_13_op_log
+--                                      WHERE user_id = 100 AND created_at >= '2026-01-01'
+--                                      ORDER BY created_at LIMIT 20;
 
 -- =====================================================================
--- 清理（如需重新灌入，按序执行后重跑本脚本；第 6 步的库存重算再执行一次）
+-- 清理（如需重新灌入，按序执行后重跑本脚本；第 7 步的库存重算再执行一次；
+--       百万行级 DELETE 较慢，属预期）
+-- DELETE FROM rg2402_11_12_13_op_log WHERE created_at < '2026-07-01';
 -- DELETE FROM rg2402_11_12_13_stock_order_item WHERE order_id IN
 --   (SELECT id FROM (SELECT id FROM rg2402_11_12_13_stock_order WHERE remark = '性能测试') x);
 -- DELETE FROM rg2402_11_12_13_stock_order WHERE remark = '性能测试';
