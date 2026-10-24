@@ -9,6 +9,9 @@
     -fx-base: #3a3f45;
     -fx-background: #24292e;
     -fx-control-inner-background: #2b3138;
+    /* 奇数行斑马纹底色（表格/列表/下拉共用）：Modena 默认 derive(base,-2%)
+       在深色上仅差 1/255 不可见，显式定值提对比（实测 #2b3138 ⇄ #22272e） */
+    -fx-control-inner-background-alt: #22272e;
     -fx-text-fill: #ececec;
 }
 .title {
