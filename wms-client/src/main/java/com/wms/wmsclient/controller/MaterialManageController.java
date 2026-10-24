@@ -239,6 +239,7 @@ public class MaterialManageController {
         private final TextField tfRemark = new TextField();
 
         MaterialDialog(MaterialRow existing) {
+            Alerts.theme(this);
             setTitle(existing == null ? "新增物料" : "修改物料");
             setHeaderText("请填写物料信息");
             this.row = existing != null ? existing : new MaterialRow();

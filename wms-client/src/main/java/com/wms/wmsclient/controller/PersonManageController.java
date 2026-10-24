@@ -282,6 +282,7 @@ public class PersonManageController {
         private final PasswordField pfPassword = new PasswordField();
 
         PersonDialog(PersonRow existing) {
+            Alerts.theme(this);
             setTitle(existing == null ? "新增人员" : "修改人员");
             setHeaderText("请填写人员信息");
             this.row = existing != null ? existing : new PersonRow();

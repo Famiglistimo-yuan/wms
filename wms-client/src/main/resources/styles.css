@@ -36,7 +36,8 @@
     -fx-text-fill: #D85A30;
 }
 
-/* vfx 面板宿主（ADR-010）：vfx 场景为深色主题，FXML 面板为浅色配色，统一浅底保证对比度 */
+/* vfx 面板宿主（ADR-010）：与 LightTheme.sceneBackgroundColor (#f2f2f4) 同色，
+   标题栏/抽屉菜单与面板区无缝衔接（深色侧同法，见 styles-dark.css） */
 .panel-host {
-    -fx-background-color: white;
+    -fx-background-color: #f2f2f4;
 }
