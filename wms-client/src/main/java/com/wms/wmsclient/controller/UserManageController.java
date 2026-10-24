@@ -280,6 +280,7 @@ public class UserManageController {
         private final ComboBox<PersonOptionVO> cbPerson = new ComboBox<>();
 
         CreateUserDialog(String username, String password, Long personId) {
+            Alerts.theme(this);
             setTitle("新增用户");
             getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
