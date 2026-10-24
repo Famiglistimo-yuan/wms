@@ -11,8 +11,9 @@
 -- 守恒：每物料「配对进出」——第 i 笔出仓数量 ≤ 第 i 笔进仓且晚一天，
 --       任意时点库存 ≥ 0；期末 stock = Σ进 − Σ出，账实一致（与 data.sql
 --       同口径，账本/流量统计可逐笔核对）
--- 幂等：非幂等，重复执行因 person_code 唯一键冲突报错中止（天然防重）；
---       清理见文末注释块
+-- 幂等：非幂等，重复执行因 person_code 唯一键冲突报错中止（天然防重）
+-- 事务：刻意不包整体事务（21 万行单事务 undo log 压力大、耗时翻倍）——
+--       中途失败会残留已提交的前几步数据，执行文末清理块后重跑即可
 -- =====================================================================
 
 -- ---------- 1. 人员档案 10,000 人（TP00001..，高频姓名组合便于 LIKE 压测） ----------
@@ -180,11 +181,22 @@ JOIN (
 SET m.stock = t.net;
 
 -- ---------- 7. 单号流水回写（每天取 MAX，防 SP 后续生成撞 uk_order_no） ----------
-INSERT INTO rg2402_11_12_13_order_seq (seq_prefix, seq_date, current_seq)
+-- 注：8.0.19+ 的行别名（AS）不支持 INSERT...SELECT 形态，无法在 ODKU 里引用新行，
+--     故改两步等价实现（INSERT IGNORE 建行 + UPDATE 抬高既有行，天然幂等），
+--     同时避开 8.0.20 起弃用的 VALUES()
+--     （IGNORE 命中种子已登记的 8 个日期时会产生 Code 1062 提示性 warning，属预期）
+INSERT IGNORE INTO rg2402_11_12_13_order_seq (seq_prefix, seq_date, current_seq)
 SELECT order_type, order_date, COUNT(*)
 FROM rg2402_11_12_13_stock_order
-GROUP BY order_type, order_date
-ON DUPLICATE KEY UPDATE current_seq = GREATEST(current_seq, VALUES(current_seq));
+GROUP BY order_type, order_date;
+
+UPDATE rg2402_11_12_13_order_seq s
+JOIN (
+  SELECT order_type, order_date, COUNT(*) AS c
+  FROM rg2402_11_12_13_stock_order
+  GROUP BY order_type, order_date
+) t ON t.order_type = s.seq_prefix AND t.order_date = s.seq_date
+SET s.current_seq = GREATEST(s.current_seq, t.c);
 
 -- ---------- 8. 灌入校验（行数 + 账实一致，最后一条应返回 0 行） ----------
 SELECT '人员' AS 项, COUNT(*) AS 行数 FROM rg2402_11_12_13_person WHERE person_code LIKE 'TP%'
@@ -234,5 +246,5 @@ WHERE m.stock <> IFNULL(t.net, 0);   -- 应 0 行
 -- DELETE FROM rg2402_11_12_13_person WHERE person_code LIKE 'TP%';
 -- DELETE FROM rg2402_11_12_13_material WHERE material_code LIKE 'TM%';
 -- DELETE FROM rg2402_11_12_13_order_seq
---   WHERE seq_date BETWEEN '2025-07-01' AND '2026-06-30' AND current_seq > 3;
+--   WHERE seq_date BETWEEN '2025-07-01' AND '2026-06-30';
 -- =====================================================================
