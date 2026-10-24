@@ -97,7 +97,7 @@
 | 口令加密 | spring-security-crypto（BCrypt） | 7.x | 单独引入 crypto 模块，不引入全家桶（随 Spring Boot 4 配套） |
 | 校验注解 | jakarta.validation-api | 3.1.x | 纯注解 API，版本随 Spring Boot BOM；wms-common 共享 DTO（`LoginRequest` 等）双端校验用，不引实现——hibernate-validator 仅 server 端经 `spring-boot-starter-validation` 传递引入 |
 | 报表导出 | Apache POI | 5.5.x | 单库出 Excel(.xlsx) + Word(.docx)，不做 PDF，见 ADR-009 |
-| 构建 | Maven | 3.9.x | 三模块反应堆构建，根 pom 挂 SB starter parent 统一版本与插件配置 |
+| 构建 | Maven | 3.9.x | 四模块反应堆构建，根 pom 挂 SB starter parent 统一版本与插件配置 |
 | 打包 | jpackage | JDK 21 内置 | Windows 队友机器上出 exe/msi |
 | 版本控制 | Git | — | GitHub 公开仓库（Collaborator 模式） |
 
@@ -339,6 +339,7 @@
 | POST | `/api/stock/orders` | 提交进出仓单（单物料/多物料同一接口，明细数组长度 ≥ 1） |
 | GET | `/api/stock/orders?dateFrom=&dateTo=&material=&operator=&remark=` | 单据组合查询 |
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
+| GET | `/api/stats/material-options` | 物料选项列表（统计/账本面板下拉用，避开档案查询接口） |
 | GET | `/api/reports/monthly-orders/{yyyyMM}?format=excel\|word` | 导出月度进出仓单（Excel/Word，缺省 excel） |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}?format=excel\|word` | 导出仓库账本（Excel/Word，缺省 excel） |
 | GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用；停用需保留至少一个启用账号且不能停用当前登录账号），需 `menu.auth.user` |
@@ -353,7 +354,7 @@
 1. 分页统一 `page`（从 1 起）+ `size`（默认 20，上限 100）参数，响应携带 `total`。
 2. 所有写操作以 DTO 接收，`@Valid` 注解 + `BindingResult` 输出字段级错误信息。
 3. 报表导出接口返回文件流（`Content-Type: application/octet-stream`），客户端经 FileChooser 保存后不自动打开，保存路径显示在面板状态栏，由用户自行打开。
-4. 接口文档用 SpringDoc（OpenAPI 3）自动生成，开发期浏览器查看，前后端联调以它为契约。
+4. 接口契约以本节 §6.2 清单 + wms-common 共享 DTO 为准；未引入 SpringDoc/OpenAPI（新增依赖需团队共识，见 AGENTS.md）。
 
 ## 7. 关键功能实现方案
 
@@ -406,8 +407,8 @@
 
 1. `./mvnw versions:set -DnewVersion=x.y.z -DgenerateBackupPoms=false`（版本单一来源，`version.txt` 经 resources filtering 随之注入主 jar）
 2. `./scripts/package-appimage.sh x.y.z`——产物 `target/jpackage/WMS.app`（Windows 同参数），末尾打印主 jar 的 MD5
-3. 主 jar（固定名 `wms-client.jar`）拷入服务端 `static/download/`
-4. 版本号与 MD5 填入 `application.yaml` 的 `wms.update` 块，重启服务端。客户端下次启动即检测到新版本
+3. 主 jar（固定名 `wms-client.jar`）拷入服务端启动 CWD 下的 `downloads/` 目录（由 `WebMvcConfig` 映射到 `/download/**`，详见 ADR-008）
+4. 版本号与 MD5 填入 `application.yaml` 的 `wms.update` 块并重启服务端（yaml 仅启动时读取，重启不可省）。客户端下次启动即检测到新版本
 
 **升级包的替换粒度与文件名（实现约束，详见 ADR-008）**：主 jar 为 shade fat jar（含 wms-common 与 Jackson 等纯 Java 依赖）且**固定名 `wms-client.jar` 不带版本号**——jpackage 启动配置 `WMS.cfg` 写死 classpath 文件名，带版本号会导致升级后启动器找不到文件；版本信息由 jar 内 `version.txt` 承载。JavaFX 及其 native lib 不随升级变更（由打包的 `app/` 目录提供，升级需整包重装）。
 
@@ -428,7 +429,7 @@
 | 多用户并发冲突 | 条件更新乐观锁防超卖 | 双客户端并发出仓演示 |
 | 功能时空优化 | 连接池复用、批量插入明细、索引覆盖 | 答辩讲解 + 报告分析 |
 
-## 9. 工程结构（单仓库三模块）
+## 9. 工程结构（单仓库四模块）
 
 ```
 wms/
@@ -441,7 +442,9 @@ wms/
 │   ├── src/main/java/...      # Controller、HTTP 客户端、DTO
 │   └── src/main/resources/fxml/  # 界面文件
 ├── wms-common/          # 两端共享 DTO / 常量 / Result<T>
-├── docs/                # 接口文档、数据库脚本、报告草稿
+├── wms-updater/         # 独立升级器（纯 JDK + Swing，替换主 jar 并重启主程序）
+├── docs/                # 需求、技术方案、开发规范、SQL 脚本
+├── scripts/             # jpackage 打包脚本、图标矢量源
 └── .gitignore
 ```
 

@@ -4,13 +4,14 @@
 
 ## 项目概述
 
-仓库管理系统（C/S 架构）：JavaFX 21 桌面客户端 + Spring Boot 4.0.8 REST 服务端 + MySQL 8 + MyBatis-Plus 3.5.17。三 Maven 模块：
+仓库管理系统（C/S 架构）：JavaFX 21 桌面客户端 + Spring Boot 4.0.8 REST 服务端 + MySQL 8 + MyBatis-Plus 3.5.17。四 Maven 模块：
 
 | 模块 | 职责 |
 |------|------|
 | `wms-common` | 共享 DTO、常量、错误码、`Result<T>`（两端复用，不依赖 Spring/JavaFX） |
 | `wms-server` | Spring Boot 服务端（REST API，内嵌 Tomcat，端口 8080） |
 | `wms-client` | JavaFX 客户端（FXML + Controller，classpath 项目，无 module-info.java） |
+| `wms-updater` | 独立升级器（纯 JDK + Swing：下载、MD5 校验、原子替换主 jar 并重启主程序，无 JavaFX 依赖） |
 
 ## 常用命令
 
