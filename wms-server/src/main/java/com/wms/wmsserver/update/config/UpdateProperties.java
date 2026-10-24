@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 自动升级发布信息（FR-6）：绑定 application.yaml 的 wms.update 块，
- * 发版时改配置 + 换 static/download/ 下的升级包即可，无需改代码。
+ * 发版时改配置 + 换服务端启动 CWD 下 downloads/ 里的升级包即可，无需改代码。
  */
 @Getter
 @Setter
@@ -21,7 +21,7 @@ public class UpdateProperties {
     /** 最新版本号（三段数字） */
     private String version;
 
-    /** 升级包下载地址（相对路径，指向 static/ 下文件） */
+    /** 升级包下载地址（/download/** 路径，实际文件在服务端启动 CWD 下的 downloads/ 目录，WebMvcConfig 映射） */
     private String downloadUrl;
 
     /** 升级包 MD5 指纹 */

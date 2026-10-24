@@ -56,7 +56,7 @@ CREATE DATABASE wms_dev DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 
 ```bash
 mysql -u root -p wms_dev < docs/sql/schema.sql   # 11 张表（含存储过程契约注释）
-mysql -u root -p wms_dev < docs/sql/data.sql     # 13 项菜单权限 + 初始管理员 admin / admin123
+mysql -u root -p wms_dev < docs/sql/data.sql     # 种子数据 v1.1：16 项菜单权限 + 初始管理员与测试用户（初始口令均为 admin123）+ 物料 10 种 + 跨月历史单据
 ```
 
 脚本入库规则见 §7.4；schema 变更须提交 PR 并在群里同步（§7.5）。
@@ -77,7 +77,7 @@ mysql -u root -p wms_dev < docs/sql/data.sql     # 13 项菜单权限 + 初始�
 ### 0.6 启动验证
 
 - **服务端**：IDEA 里打开 `wms-server/src/main/java/com/wms/wmsserver/WmsServerApplication.java`，点左侧绿箭头 Run。期望看到 Spring Boot 横幅 + `Tomcat started on port 8080` + HikariCP 连上 MySQL。
-- **客户端**：根目录执行 `./mvnw -pl wms-client -am javafx:run`，或 IDEA 里运行入口类 `com.wms.wmsclient.Launcher`（`App` 没有 main 方法，入口就是 `Launcher`；直接 `java -cp` 会报 `JavaFX runtime components are missing`）。
+- **客户端**：根目录执行 `./mvnw -f wms-client/pom.xml javafx:run`，或 IDEA 里运行入口类 `com.wms.wmsclient.Launcher`（`App` 没有 main 方法，入口就是 `Launcher`；直接 `java -cp` 会报 `JavaFX runtime components are missing`）。
 
 两端都跑通即环境就绪，可以开始按子系统分工开发了。
 
@@ -252,7 +252,7 @@ feat(client): 物料档案界面支持分页与模糊查询
 
 ## 6. REST API 规范
 
-1. URL 路径**以技术方案 §6.2 接口清单为准**（既有清单内 `stock/orders` 嵌套与 `material-flow` 中划线并存，不再回头统一）；新增接口沿用清单内同类资源的既有风格，先在 SpringDoc 补文档再开发。
+1. URL 路径**以技术方案 §6.2 接口清单为准**（既有清单内 `stock/orders` 嵌套与 `material-flow` 中划线并存，不再回头统一）；新增接口沿用清单内同类资源的既有风格，先在技术方案 §6.2 接口清单登记再开发。
 2. HTTP 方法语义：查 GET、增 POST、改 PUT、删 DELETE，禁止用 GET 做写操作。
 3. 分页参数统一 `page`（从 1 起）+ `size`（默认 20、上限 100），与技术方案 §6.3 一致。
 4. 时间字段 JSON 统一 `yyyy-MM-dd HH:mm:ss` 字符串，两端 Jackson 配置保持一致。
