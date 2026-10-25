@@ -169,6 +169,7 @@ public class App extends Application {
 
     /** 登录场景 */
     public void showLogin() throws IOException {
+        purgeRetiredScenes();
         if (loginScene == null) {
             loginScene = new PanelScene(this, "rg2402_11_12_13_login");
             sceneGroup.addScene(loginScene);
@@ -194,13 +195,7 @@ public class App extends Application {
      *                 如 "rg2402_11_12_13_person-manage"
      */
     public void showPanel(String fxmlName) throws IOException {
-        for (Iterator<VScene> it = retiredScenes.iterator(); it.hasNext(); ) {
-            VScene retired = it.next();
-            if (retired != sceneGroup.getCurrentMainScene()) {
-                sceneGroup.removeScene(retired);
-                it.remove();
-            }
-        }
+        purgeRetiredScenes();
         VScene old = panelScenes.remove(fxmlName);
         if (old != null) {
             if (old == sceneGroup.getCurrentMainScene()) {
@@ -213,6 +208,17 @@ public class App extends Application {
         panelScenes.put(fxmlName, scene);
         sceneGroup.addScene(scene);
         sceneGroup.show(scene, VSceneShowMethod.FROM_RIGHT);
+    }
+
+    /** 清理退役面板场景；仍是 currentMainScene 的（切换动画未完成）留到下次再清 */
+    private void purgeRetiredScenes() {
+        for (Iterator<VScene> it = retiredScenes.iterator(); it.hasNext(); ) {
+            VScene retired = it.next();
+            if (retired != sceneGroup.getCurrentMainScene()) {
+                sceneGroup.removeScene(retired);
+                it.remove();
+            }
+        }
     }
 
     /** 收起抽屉菜单 */
