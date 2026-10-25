@@ -11,8 +11,10 @@ import javafx.fxml.FXML;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
+import javafx.scene.layout.StackPane;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,8 +30,12 @@ public class StatsFlowController {
 
     @FXML private DatePicker dpFrom;
     @FXML private DatePicker dpTo;
+    @FXML private Button btnQuery;
     @FXML private BarChart<String, Number> chartFlow;
+    @FXML private StackPane maskLoading;
     @FXML private Label lblMinFlow;
+
+    private boolean loading;
 
     public StatsFlowController(App app) {
         this.app = app;
@@ -41,11 +47,13 @@ public class StatsFlowController {
         LocalDate today = LocalDate.now();
         dpFrom.setValue(today.withDayOfMonth(1));
         dpTo.setValue(today);
-        onQueryClicked();
+        // 大数据量统计耗时长，进面板不自动查询，避免打开卡顿，等用户点「统计」
+        lblMinFlow.setText("区间已预填本月，点击「统计」开始查询");
     }
 
     @FXML
     protected void onQueryClicked() {
+        if (loading) return;
         LocalDate from = dpFrom.getValue();
         LocalDate to = dpTo.getValue();
         if (from == null || to == null) {
@@ -57,6 +65,7 @@ public class StatsFlowController {
             return;
         }
         // JavaFX 线程规则：HTTP 走后台 Task，渲染回 UI 线程（CONTRIBUTING §3.4）
+        setLoading(true);
         Task<MaterialFlowReport> task = new Task<>() {
             @Override
             protected MaterialFlowReport call() throws Exception {
@@ -65,8 +74,12 @@ public class StatsFlowController {
                 return ApiClient.getResultData(json, MaterialFlowReport.class);
             }
         };
-        task.setOnSucceeded(e -> Platform.runLater(() -> render(task.getValue())));
+        task.setOnSucceeded(e -> Platform.runLater(() -> {
+            setLoading(false);
+            render(task.getValue());
+        }));
         task.setOnFailed(e -> Platform.runLater(() -> {
+            setLoading(false);
             Throwable ex = task.getException();
             Alerts.of(Alert.AlertType.ERROR, "统计失败：" + (ex == null ? "未知错误" : ex.getMessage()))
                     .showAndWait();
@@ -74,6 +87,14 @@ public class StatsFlowController {
         Thread t = new Thread(task, "stats-flow-query");
         t.setDaemon(true);
         t.start();
+    }
+
+    /** 加载态：图表遮罩 + 统计按钮禁用（大数据量统计耗时长，防重复触发并发查询） */
+    private void setLoading(boolean on) {
+        loading = on;
+        maskLoading.setVisible(on);
+        maskLoading.setManaged(on);
+        btnQuery.setDisable(on);
     }
 
     private void render(MaterialFlowReport report) {

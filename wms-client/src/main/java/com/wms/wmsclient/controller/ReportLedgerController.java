@@ -29,6 +29,9 @@ import java.util.Map;
  */
 public class ReportLedgerController {
 
+    /** 状态栏默认提示，导出/物料列表加载结束后恢复 */
+    private static final String STATUS_HINT = "选择物料与年份后导出：按日期列出进仓、出仓与结存";
+
     private final App app;
 
     @FXML private ComboBox<MaterialOption> cbMaterial;
@@ -36,6 +39,8 @@ public class ReportLedgerController {
     @FXML private ChoiceBox<String> cbFormat;
     @FXML private Button btnExport;
     @FXML private Label lblStatus;
+
+    private boolean loading;
 
     public ReportLedgerController(App app) {
         this.app = app;
@@ -61,11 +66,12 @@ public class ReportLedgerController {
                 return null; // 不可编辑下拉，用不到
             }
         });
-        lblStatus.setText("选择物料与年份后导出：按日期列出进仓、出仓与结存");
+        lblStatus.setText(STATUS_HINT);
         loadMaterials();
     }
 
     private void loadMaterials() {
+        lblStatus.setText("物料列表加载中…");
         Task<List<MaterialOption>> task = new Task<>() {
             @Override
             protected List<MaterialOption> call() throws Exception {
@@ -74,6 +80,7 @@ public class ReportLedgerController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            lblStatus.setText(STATUS_HINT);
             cbMaterial.getItems().setAll(task.getValue());
             cbMaterial.getSelectionModel().selectFirst();
         }));
@@ -86,6 +93,7 @@ public class ReportLedgerController {
 
     @FXML
     protected void onExportClicked() {
+        if (loading) return;
         MaterialOption material = cbMaterial.getValue();
         if (material == null) {
             Alerts.of(Alert.AlertType.WARNING, "请选择物料").showAndWait();
@@ -93,6 +101,7 @@ public class ReportLedgerController {
         }
         int year = cbYear.getValue();
         String fmt = ExportHelper.formatKey(cbFormat.getValue());
+        setLoading(true);
         Task<byte[]> task = new Task<>() {
             @Override
             protected byte[] call() throws Exception {
@@ -103,6 +112,7 @@ public class ReportLedgerController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            setLoading(false);
             try {
                 File saved = ExportHelper.save(btnExport.getScene().getWindow(),
                         "仓库账本_" + material.getMaterialCode() + "_" + year + ExportHelper.extensionOf(fmt),
@@ -112,11 +122,21 @@ public class ReportLedgerController {
                 Alerts.of(Alert.AlertType.ERROR, "文件保存失败：" + ex.getCause().getMessage()).showAndWait();
             }
         }));
-        task.setOnFailed(e -> Platform.runLater(() ->
-                Alerts.of(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
-                        .showAndWait()));
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            setLoading(false);
+            Alerts.of(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
+                    .showAndWait();
+        }));
         Thread t = new Thread(task, "report-ledger-export");
         t.setDaemon(true);
         t.start();
+    }
+
+    /** 导出中：按钮禁用变文案 + 状态栏提示（百万级单据导出耗时长，防重复触发） */
+    private void setLoading(boolean on) {
+        loading = on;
+        btnExport.setDisable(on);
+        btnExport.setText(on ? "导出中…" : "导出");
+        lblStatus.setText(on ? "正在导出…" : STATUS_HINT);
     }
 }
