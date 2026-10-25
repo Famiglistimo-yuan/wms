@@ -24,7 +24,10 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -42,6 +45,8 @@ public class App extends Application {
     private FusionButton menuBtn;
     /** 面板场景登记表（每次 showPanel 重建场景，保证数据新鲜，与原 setCenter 重载 FXML 行为一致） */
     private final Map<String, VScene> panelScenes = new HashMap<>();
+    /** 同面板重进时退役的旧场景（vfx 禁止移除正在显示的 MAIN 场景，推迟到下次切换时清理） */
+    private final List<VScene> retiredScenes = new ArrayList<>();
 
     @Override
     public void start(Stage primaryStage) throws IOException {
@@ -189,9 +194,20 @@ public class App extends Application {
      *                 如 "rg2402_11_12_13_person-manage"
      */
     public void showPanel(String fxmlName) throws IOException {
+        for (Iterator<VScene> it = retiredScenes.iterator(); it.hasNext(); ) {
+            VScene retired = it.next();
+            if (retired != sceneGroup.getCurrentMainScene()) {
+                sceneGroup.removeScene(retired);
+                it.remove();
+            }
+        }
         VScene old = panelScenes.remove(fxmlName);
         if (old != null) {
-            sceneGroup.removeScene(old);
+            if (old == sceneGroup.getCurrentMainScene()) {
+                retiredScenes.add(old);
+            } else {
+                sceneGroup.removeScene(old);
+            }
         }
         VScene scene = new PanelScene(this, fxmlName);
         panelScenes.put(fxmlName, scene);
