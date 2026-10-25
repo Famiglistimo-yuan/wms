@@ -4,7 +4,9 @@
 <?import javafx.scene.control.ChoiceBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <VBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.wms.wmsclient.controller.ReportMonthlyOrdersController"
@@ -16,8 +18,15 @@
     <ChoiceBox fx:id="cbMonth"/>
     <Label text="格式"/>
     <ChoiceBox fx:id="cbFormat" prefWidth="130"/>
+    <Button fx:id="btnPreview" text="预览" onAction="#onPreviewClicked"/>
     <Button fx:id="btnExport" text="导出" onAction="#onExportClicked"/>
   </ToolBar>
   <Separator/>
+  <TableView fx:id="tvPreview" VBox.vgrow="ALWAYS"/>
+  <HBox spacing="8">
+    <Button fx:id="btnPrev" text="上一页" onAction="#onPrevClicked" disable="true"/>
+    <Button fx:id="btnNext" text="下一页" onAction="#onNextClicked" disable="true"/>
+    <Label fx:id="lblPage" styleClass="subtle"/>
+  </HBox>
   <Label fx:id="lblStatus" styleClass="subtle"/>
 </VBox>

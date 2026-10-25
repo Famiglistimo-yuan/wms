@@ -1,5 +1,6 @@
 package com.wms.wmsclient.http;
 
+import com.wms.common.PageResult;
 import com.wms.common.Result;
 import tools.jackson.databind.ObjectMapper;
 
@@ -161,6 +162,14 @@ public final class ApiClient {
         // 通用 List 反序列化
         return MAPPER.convertValue(result.getData(),
                 MAPPER.getTypeFactory().constructCollectionType(java.util.List.class, elementClass));
+    }
+
+    /** 同上，但 data 是分页对象（PageResult<T>），records 按 elementClass 反序列化 */
+    public static <T> PageResult<T> getResultPage(String jsonResponse, Class<T> elementClass) throws IOException {
+        Result<?> result = MAPPER.readValue(jsonResponse, Result.class);
+        assertSuccess(result);
+        return MAPPER.convertValue(result.getData(),
+                MAPPER.getTypeFactory().constructParametricType(PageResult.class, elementClass));
     }
 
     /** 仅校验 code == 0，data 丢弃（如 logout） */
