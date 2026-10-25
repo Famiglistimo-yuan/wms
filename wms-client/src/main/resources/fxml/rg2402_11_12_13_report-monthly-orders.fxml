@@ -8,7 +8,6 @@
 <?import javafx.scene.layout.VBox?>
 <VBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.wms.wmsclient.controller.ReportMonthlyOrdersController"
-      stylesheets="@../styles.css"
       spacing="8">
   <ToolBar>
     <Label text="年份"/>

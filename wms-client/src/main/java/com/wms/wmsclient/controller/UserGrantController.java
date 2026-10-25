@@ -2,19 +2,15 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
-import com.wms.wmsclient.dto.PermissionVO;
-import com.wms.wmsclient.dto.UserPermissionVO;
-import com.wms.wmsclient.dto.UserVO;
+import com.wms.common.dto.PermissionVO;
+import com.wms.common.dto.UserPermissionVO;
+import com.wms.common.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
-import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
-import javafx.application.Platform;
+import com.wms.wmsclient.util.ApiTasks;
 import javafx.collections.FXCollections;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -26,7 +22,6 @@ import javafx.scene.layout.Region;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 用户授权界面：左侧用户列表，右侧权限逐项分配（允许/禁止）。
@@ -38,8 +33,6 @@ public class UserGrantController {
     private static final String OPT_ALLOW = "允许";
     private static final String OPT_DENY = "禁止";
 
-    private final App app;
-
     @FXML private Label lblStatus;
     @FXML private ListView<UserVO> lvUsers;
     @FXML private ListView<PermAssignItem> lvPermissions;
@@ -49,8 +42,9 @@ public class UserGrantController {
 
     private List<PermissionVO> allPermissions;
 
+    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public UserGrantController(App app) {
-        this.app = app;
+        // app 仅为工厂注入约定保留，面板内未使用
     }
 
     @FXML
@@ -87,7 +81,7 @@ public class UserGrantController {
     protected void onSaveClicked() {
         UserVO selected = lvUsers.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            Alerts.of(Alert.AlertType.WARNING, "请先选择用户").showAndWait();
+            Alerts.warn("请先选择用户");
             return;
         }
 
@@ -98,31 +92,21 @@ public class UserGrantController {
                 .filter(item -> OPT_DENY.equals(item.choice.getValue()))
                 .map(item -> item.perm.getId()).toList();
 
-        Optional<ButtonType> confirm = Alerts.of(Alert.AlertType.CONFIRMATION,
-                "确定保存用户「" + selected.getUsername() + "」的直接授权吗？允许 " + allowIds.size()
-                        + " 项，禁止 " + denyIds.size() + " 项").showAndWait();
-        if (confirm.isEmpty() || confirm.get() != ButtonType.OK) return;
+        if (!Alerts.confirm("确定保存用户「" + selected.getUsername() + "」的直接授权吗？允许 " + allowIds.size()
+                + " 项，禁止 " + denyIds.size() + " 项")) return;
 
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("allow", allowIds);
-                body.put("deny", denyIds);
-                String json = ApiClient.post("/api/users/" + selected.getId() + "/permissions",
-                        ApiClient.toJson(body));
-                ApiClient.checkSuccess(json);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() ->
-                lblStatus.setText("已保存用户「" + displayName(selected) + "」的直接授权（重新登录或刷新权限后生效）")));
-        task.setOnFailed(e -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "保存失败：" + msg).showAndWait());
-        });
-        new Thread(task, "user-grant-save").start();
+        ApiTasks.run("user-grant-save",
+                () -> {
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("allow", allowIds);
+                    body.put("deny", denyIds);
+                    String json = ApiClient.post("/api/users/" + selected.getId() + "/permissions",
+                            ApiClient.toJson(body));
+                    ApiClient.checkSuccess(json);
+                    return null;
+                },
+                v -> lblStatus.setText("已保存用户「" + displayName(selected) + "」的直接授权（重新登录或刷新权限后生效）"),
+                ex -> Alerts.error("保存失败：" + ex.getMessage()));
     }
 
     /** 加载用户权限期间锁定编辑操作，防止旧权限集被误保存 */
@@ -133,43 +117,27 @@ public class UserGrantController {
     }
 
     private void loadAll() {
-        Task<List<UserVO>> userTask = new Task<>() {
-            @Override
-            protected List<UserVO> call() throws Exception {
-                String json = ApiClient.get("/api/users");
-                return ApiClient.getResultList(json, UserVO.class);
-            }
-        };
-        Task<List<PermissionVO>> permTask = new Task<>() {
-            @Override
-            protected List<PermissionVO> call() throws Exception {
-                String json = ApiClient.get("/api/roles/permissions");
-                return ApiClient.getResultList(json, PermissionVO.class);
-            }
-        };
+        ApiTasks.run("user-grant-users",
+                () -> {
+                    String json = ApiClient.get("/api/users");
+                    return ApiClient.getResultList(json, UserVO.class);
+                },
+                users -> {
+                    lvUsers.setItems(FXCollections.observableArrayList(users));
+                    lblStatus.setText("已加载 " + users.size() + " 个用户");
+                },
+                ex -> Alerts.error("加载用户失败：" + ex.getMessage()));
 
-        userTask.setOnSucceeded(e -> Platform.runLater(() -> {
-            lvUsers.setItems(FXCollections.observableArrayList(userTask.getValue()));
-            lblStatus.setText("已加载 " + userTask.getValue().size() + " 个用户");
-        }));
-        userTask.setOnFailed(e -> {
-            Throwable t = userTask.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载用户失败：" + msg).showAndWait());
-        });
-
-        permTask.setOnSucceeded(e -> Platform.runLater(() -> {
-            allPermissions = permTask.getValue();
-            lblStatus.setText(lblStatus.getText() + "，" + allPermissions.size() + " 项权限");
-        }));
-        permTask.setOnFailed(e -> {
-            Throwable t = permTask.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载权限失败：" + msg).showAndWait());
-        });
-
-        new Thread(userTask, "user-grant-users").start();
-        new Thread(permTask, "user-grant-perms").start();
+        ApiTasks.run("user-grant-perms",
+                () -> {
+                    String json = ApiClient.get("/api/roles/permissions");
+                    return ApiClient.getResultList(json, PermissionVO.class);
+                },
+                perms -> {
+                    allPermissions = perms;
+                    lblStatus.setText(lblStatus.getText() + "，" + allPermissions.size() + " 项权限");
+                },
+                ex -> Alerts.error("加载权限失败：" + ex.getMessage()));
     }
 
     @FXML
@@ -183,50 +151,42 @@ public class UserGrantController {
         setEditingEnabled(false);
         lvPermissions.getItems().clear();
 
-        Task<UserPermissionVO> task = new Task<>() {
-            @Override
-            protected UserPermissionVO call() throws Exception {
-                String json = ApiClient.get("/api/users/" + targetUserId + "/permissions");
-                return ApiClient.getResultData(json, UserPermissionVO.class);
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            lvUsers.setDisable(false);
-            setEditingEnabled(true);
-            // 过期响应丢弃：若当前选中项已变更，不再覆盖
-            UserVO current = lvUsers.getSelectionModel().getSelectedItem();
-            if (current == null || current.getId() != targetUserId) return;
+        ApiTasks.run("user-grant-load",
+                () -> {
+                    String json = ApiClient.get("/api/users/" + targetUserId + "/permissions");
+                    return ApiClient.getResultData(json, UserPermissionVO.class);
+                },
+                vo -> {
+                    lvUsers.setDisable(false);
+                    setEditingEnabled(true);
+                    // 过期响应丢弃：若当前选中项已变更，不再覆盖
+                    UserVO current = lvUsers.getSelectionModel().getSelectedItem();
+                    if (current == null || current.getId() != targetUserId) return;
 
-            UserPermissionVO vo = task.getValue();
-            List<Long> allowIds = vo.getAllowPermIds() != null ? vo.getAllowPermIds() : List.of();
-            boolean isSelf = current.getUsername() != null
-                    && current.getUsername().equals(SessionContext.getUsername());
-            for (PermissionVO p : allPermissions) {
-                String choice = allowIds.contains(p.getId()) ? OPT_ALLOW : OPT_DENY;
-                // 自救防护：对当前登录用户，关键权限不可选「禁止」——避免 UI 锁死
-                boolean locked = isSelf && ("menu.auth.grant".equals(p.getPermCode())
-                        || "menu.auth.user".equals(p.getPermCode()));
-                PermAssignItem item = new PermAssignItem(p, choice, locked);
-                if (locked) {
-                    item.choice.setItems(FXCollections.observableArrayList(OPT_ALLOW));
-                    if (OPT_DENY.equals(choice)) {
-                        item.choice.setValue(OPT_ALLOW);
-                        lblStatus.setText("注意：当前登录用户的「" + p.getPermName() + "」不可设为禁止，已自动保持允许");
+                    List<Long> allowIds = vo.getAllowPermIds() != null ? vo.getAllowPermIds() : List.of();
+                    boolean isSelf = current.getUsername() != null
+                            && current.getUsername().equals(SessionContext.getUsername());
+                    for (PermissionVO p : allPermissions) {
+                        String choice = allowIds.contains(p.getId()) ? OPT_ALLOW : OPT_DENY;
+                        // 自救防护：对当前登录用户，关键权限不可选「禁止」——避免 UI 锁死
+                        boolean locked = isSelf && ("menu.auth.grant".equals(p.getPermCode())
+                                || "menu.auth.user".equals(p.getPermCode()));
+                        PermAssignItem item = new PermAssignItem(p, choice, locked);
+                        if (locked) {
+                            item.choice.setItems(FXCollections.observableArrayList(OPT_ALLOW));
+                            if (OPT_DENY.equals(choice)) {
+                                item.choice.setValue(OPT_ALLOW);
+                                lblStatus.setText("注意：当前登录用户的「" + p.getPermName() + "」不可设为禁止，已自动保持允许");
+                            }
+                        }
+                        lvPermissions.getItems().add(item);
                     }
-                }
-                lvPermissions.getItems().add(item);
-            }
-        }));
-        task.setOnFailed(e -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> {
-                lvUsers.setDisable(false);
-                setEditingEnabled(true);
-                Alerts.of(Alert.AlertType.ERROR, "加载用户权限失败：" + msg).showAndWait();
-            });
-        });
-        new Thread(task, "user-grant-load").start();
+                },
+                ex -> {
+                    lvUsers.setDisable(false);
+                    setEditingEnabled(true);
+                    Alerts.error("加载用户权限失败：" + ex.getMessage());
+                });
     }
 
     /** 显示名：用户名（真实姓名） */

@@ -31,11 +31,11 @@ final class ExcelTableRenderer {
             int cols = model.getHeaders().size();
 
             XSSFCellStyle titleStyle = borderedStyle(wb, HorizontalAlignment.CENTER);
-            titleStyle.setFont(boldFont(wb, 14));
+            titleStyle.setFont(font(wb, 14, true));
             XSSFCellStyle metaStyle = wb.createCellStyle();
-            metaStyle.setFont(plainFont(wb, 10));
+            metaStyle.setFont(font(wb, 10, false));
             XSSFCellStyle headerStyle = borderedStyle(wb, HorizontalAlignment.CENTER);
-            headerStyle.setFont(boldFont(wb, 11));
+            headerStyle.setFont(font(wb, 11, true));
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             XSSFCellStyle[] dataStyles = new XSSFCellStyle[3]; // 按 align 索引：0 left 1 center 2 right
@@ -103,15 +103,9 @@ final class ExcelTableRenderer {
         return style;
     }
 
-    private static XSSFFont boldFont(XSSFWorkbook wb, int size) {
+    private static XSSFFont font(XSSFWorkbook wb, int size, boolean bold) {
         XSSFFont font = wb.createFont();
-        font.setBold(true);
-        font.setFontHeightInPoints((short) size);
-        return font;
-    }
-
-    private static XSSFFont plainFont(XSSFWorkbook wb, int size) {
-        XSSFFont font = wb.createFont();
+        font.setBold(bold);
         font.setFontHeightInPoints((short) size);
         return font;
     }

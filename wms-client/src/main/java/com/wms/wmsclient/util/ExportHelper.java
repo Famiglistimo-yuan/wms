@@ -1,5 +1,8 @@
 package com.wms.wmsclient.util;
 
+import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Label;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
@@ -7,10 +10,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 报表导出辅助（FR-5）：两个报表面板共用的「FileChooser 保存」与格式转换。
+ * 报表导出辅助（FR-5）：两个报表面板共用的「FileChooser 保存」、格式转换与导出状态。
  */
 public final class ExportHelper {
 
@@ -37,6 +41,29 @@ public final class ExportHelper {
     /** 任务异常的展示文案（根因消息，无则「未知错误」） */
     public static String rootMessage(Throwable ex) {
         return ex == null ? "未知错误" : ex.getMessage();
+    }
+
+    /** 年份下拉填充：当前年−5…+1，默认当前年（两个报表面板共用） */
+    public static void fillYears(ChoiceBox<Integer> cbYear) {
+        int thisYear = LocalDate.now().getYear();
+        for (int y = thisYear - 5; y <= thisYear + 1; y++) {
+            cbYear.getItems().add(y);
+        }
+        cbYear.setValue(thisYear);
+    }
+
+    /**
+     * 保存导出文件并生成状态栏文案（「已导出：路径」/「已取消保存」）。
+     * 写盘失败弹窗提示后返回 null，调用方跳过状态栏更新。
+     */
+    public static String saveAndDescribe(Window owner, String suggestedName, String extension, byte[] bytes) {
+        try {
+            File saved = save(owner, suggestedName, extension, bytes);
+            return saved == null ? "已取消保存" : "已导出：" + saved.getAbsolutePath();
+        } catch (UncheckedIOException ex) {
+            Alerts.error("文件保存失败：" + ex.getCause().getMessage());
+            return null;
+        }
     }
 
     /**

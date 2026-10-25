@@ -8,7 +8,7 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<VBox alignment="CENTER" spacing="16.0" stylesheets="@../styles.css"
+<VBox alignment="CENTER" spacing="16.0"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.wms.wmsclient.controller.LoginController">
   <padding>

@@ -5,12 +5,10 @@ import com.wms.common.dto.MaterialFlowStat;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
-import javafx.application.Platform;
-import javafx.concurrent.Task;
+import com.wms.wmsclient.util.ApiTasks;
 import javafx.fxml.FXML;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
@@ -26,8 +24,6 @@ import java.util.Map;
  */
 public class StatsFlowController {
 
-    private final App app;
-
     @FXML private DatePicker dpFrom;
     @FXML private DatePicker dpTo;
     @FXML private Button btnQuery;
@@ -37,8 +33,9 @@ public class StatsFlowController {
 
     private boolean loading;
 
+    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public StatsFlowController(App app) {
-        this.app = app;
+        // app 仅为工厂注入约定保留，面板内未使用
     }
 
     @FXML
@@ -57,36 +54,29 @@ public class StatsFlowController {
         LocalDate from = dpFrom.getValue();
         LocalDate to = dpTo.getValue();
         if (from == null || to == null) {
-            Alerts.of(Alert.AlertType.WARNING, "请选择起始与截止日期").showAndWait();
+            Alerts.warn("请选择起始与截止日期");
             return;
         }
         if (from.isAfter(to)) {
-            Alerts.of(Alert.AlertType.WARNING, "起始日期不能晚于截止日期").showAndWait();
+            Alerts.warn("起始日期不能晚于截止日期");
             return;
         }
-        // JavaFX 线程规则：HTTP 走后台 Task，渲染回 UI 线程（CONTRIBUTING §3.4）
+        // JavaFX 线程规则：HTTP 走后台线程，渲染回 UI 线程（CONTRIBUTING §3.4）
         setLoading(true);
-        Task<MaterialFlowReport> task = new Task<>() {
-            @Override
-            protected MaterialFlowReport call() throws Exception {
-                String json = ApiClient.get("/api/stats/material-flow",
-                        Map.of("from", from.toString(), "to", to.toString()));
-                return ApiClient.getResultData(json, MaterialFlowReport.class);
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            setLoading(false);
-            render(task.getValue());
-        }));
-        task.setOnFailed(e -> Platform.runLater(() -> {
-            setLoading(false);
-            Throwable ex = task.getException();
-            Alerts.of(Alert.AlertType.ERROR, "统计失败：" + (ex == null ? "未知错误" : ex.getMessage()))
-                    .showAndWait();
-        }));
-        Thread t = new Thread(task, "stats-flow-query");
-        t.setDaemon(true);
-        t.start();
+        ApiTasks.run("stats-flow-query",
+                () -> {
+                    String json = ApiClient.get("/api/stats/material-flow",
+                            Map.of("from", from.toString(), "to", to.toString()));
+                    return ApiClient.getResultData(json, MaterialFlowReport.class);
+                },
+                report -> {
+                    setLoading(false);
+                    render(report);
+                },
+                ex -> {
+                    setLoading(false);
+                    Alerts.error("统计失败：" + (ex == null ? "未知错误" : ex.getMessage()));
+                });
     }
 
     /** 加载态：图表遮罩 + 统计按钮禁用（大数据量统计耗时长，防重复触发并发查询） */

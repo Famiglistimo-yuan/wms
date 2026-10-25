@@ -127,14 +127,14 @@ public final class ApiClient {
         applyAuth(builder);
         HttpResponse<byte[]> response = HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
         if (response.statusCode() != 200) {
-            throw new ApiException(response.statusCode(), "服务端返回 HTTP " + response.statusCode());
+            throw new ApiException("服务端返回 HTTP " + response.statusCode());
         }
         String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase();
         if (contentType.contains("json")) {
             // 文件接口的失败路径：全局异常处理返回的 Result JSON，401 触发统一回调
             Result<?> result = MAPPER.readValue(new String(response.body(), StandardCharsets.UTF_8), Result.class);
             fireOnUnauthorizedIf401(result.getCode());
-            throw new ApiException(result.getCode(), result.getMessage());
+            throw new ApiException(result.getMessage());
         }
         return response.body();
     }
@@ -190,7 +190,7 @@ public final class ApiClient {
     private static void assertSuccess(Result<?> result) {
         if (result.getCode() != 0) {
             fireOnUnauthorizedIf401(result.getCode());
-            throw new ApiException(result.getCode(), result.getMessage());
+            throw new ApiException(result.getMessage());
         }
     }
 
@@ -211,7 +211,7 @@ public final class ApiClient {
     private static String sendAndGetBody(HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() != 200) {
-            throw new ApiException(response.statusCode(), "服务端返回 HTTP " + response.statusCode());
+            throw new ApiException("服务端返回 HTTP " + response.statusCode());
         }
         return response.body();
     }

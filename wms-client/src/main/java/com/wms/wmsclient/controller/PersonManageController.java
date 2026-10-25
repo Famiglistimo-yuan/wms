@@ -3,16 +3,13 @@ package com.wms.wmsclient.controller;
 import com.wms.common.RegexPatterns;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
-import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TableState;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 
 import java.time.LocalDate;
@@ -24,7 +21,6 @@ import java.util.*;
  */
 public class PersonManageController {
 
-    private final App app;
     private final ObservableList<PersonRow> rows = FXCollections.observableArrayList();
     /** 加载互斥：在途时忽略按钮/回车触发，串行化请求避免响应乱序覆盖 */
     private boolean loading;
@@ -36,28 +32,21 @@ public class PersonManageController {
 
     /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public PersonManageController(App app) {
-        this.app = app;
+        // app 仅为工厂注入约定保留，面板内未使用
     }
 
     @FXML
     protected void initialize() {
         tvPersons.setItems(rows);
-        addCol("ID", "idStr", 60);
-        addCol("人员代码", "personCode", 120);
-        addCol("姓名", "name", 100);
-        addCol("性别", "gender", 60);
-        addCol("出生日期", "birthDateStr", 110);
-        addCol("身份证号", "idCard", 160);
-        addCol("电话", "phone", 120);
-        addCol("备注", "remark", 200);
+        TableState.addCol(tvPersons, "ID", "idStr", 60);
+        TableState.addCol(tvPersons, "人员代码", "personCode", 120);
+        TableState.addCol(tvPersons, "姓名", "name", 100);
+        TableState.addCol(tvPersons, "性别", "gender", 60);
+        TableState.addCol(tvPersons, "出生日期", "birthDateStr", 110);
+        TableState.addCol(tvPersons, "身份证号", "idCard", 160);
+        TableState.addCol(tvPersons, "电话", "phone", 120);
+        TableState.addCol(tvPersons, "备注", "remark", 200);
         onRefreshClicked();
-    }
-
-    private void addCol(String title, String prop, double w) {
-        TableColumn<PersonRow, String> c = new TableColumn<>(title);
-        c.setCellValueFactory(new PropertyValueFactory<>(prop));
-        c.setPrefWidth(w);
-        tvPersons.getColumns().add(c);
     }
 
     /** FR-1-2-7：单字模糊（搜索框输入任何单字即可按姓名 LIKE '%x%'） */
@@ -74,115 +63,83 @@ public class PersonManageController {
                 ? "/api/persons"
                 : "/api/persons?keyword=" + ApiClient.urlEncode(keyword);
 
-        Task<List<PersonRow>> task = new Task<>() {
-            @Override
-            protected List<PersonRow> call() throws Exception {
-                String json = ApiClient.get(path);
-                List<MapRowVO> vos = ApiClient.getResultList(json, MapRowVO.class);
-                return vos.stream().map(PersonRow::new).toList();
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            loading = false;
-            rows.setAll(task.getValue());
-            lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
-            TableState.empty(tvPersons, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
-            btnRefresh.setDisable(false);
-        }));
-        task.setOnFailed(e -> Platform.runLater(() -> {
-            loading = false;
-            btnRefresh.setDisable(false);
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            lblStatus.setText("加载失败：" + msg);
-            TableState.failed(tvPersons, msg);
-        }));
-        new Thread(task, "person-refresh").start();
+        ApiTasks.run("person-refresh",
+                () -> {
+                    String json = ApiClient.get(path);
+                    List<MapRowVO> vos = ApiClient.getResultList(json, MapRowVO.class);
+                    return vos.stream().map(PersonRow::new).toList();
+                },
+                list -> {
+                    loading = false;
+                    rows.setAll(list);
+                    lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+                    TableState.empty(tvPersons, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
+                    btnRefresh.setDisable(false);
+                },
+                ex -> {
+                    loading = false;
+                    btnRefresh.setDisable(false);
+                    String msg = ex.getMessage();
+                    lblStatus.setText("加载失败：" + msg);
+                    TableState.failed(tvPersons, msg);
+                });
     }
 
     @FXML
     protected void onCreateClicked() {
         PersonDialog dlg = new PersonDialog(null);
         dlg.showAndWait().ifPresent(row -> {
-            Task<PersonRow> task = new Task<>() {
-                @Override
-                protected PersonRow call() throws Exception {
-                    String json = ApiClient.post("/api/persons", row.toCreateJson());
-                    return new PersonRow(ApiClient.getResultData(json, MapRowVO.class));
-                }
-            };
-            task.setOnSucceeded(e -> Platform.runLater(() -> {
-                rows.add(task.getValue());
-                lblStatus.setText("新增成功：" + row.personCode + " " + row.name);
-            }));
-            task.setOnFailed(e -> {
-                Throwable t = task.getException();
-                String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-                Platform.runLater(() -> alertError("新增失败：" + msg));
-            });
-            new Thread(task, "person-create").start();
+            ApiTasks.run("person-create",
+                    () -> {
+                        String json = ApiClient.post("/api/persons", row.toCreateJson());
+                        return new PersonRow(ApiClient.getResultData(json, MapRowVO.class));
+                    },
+                    created -> {
+                        rows.add(created);
+                        lblStatus.setText("新增成功：" + row.personCode + " " + row.name);
+                    },
+                    ex -> Alerts.error("新增失败：" + ex.getMessage()));
         });
     }
 
     @FXML
     protected void onEditClicked() {
         PersonRow selected = tvPersons.getSelectionModel().getSelectedItem();
-        if (selected == null) { alertInfo("请先选择要修改的人员"); return; }
+        if (selected == null) { Alerts.info("请先选择要修改的人员"); return; }
         PersonDialog dlg = new PersonDialog(selected);
         dlg.showAndWait().ifPresent(row -> {
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() throws Exception {
-                    String json = ApiClient.put("/api/persons/" + row.id, row.toUpdateJson());
-                    ApiClient.checkSuccess(json);
-                    return null;
-                }
-            };
-            task.setOnSucceeded(e -> Platform.runLater(() -> {
-                int idx = rows.indexOf(selected);
-                rows.set(idx, row);
-                lblStatus.setText("修改成功：" + row.personCode);
-            }));
-            task.setOnFailed(e -> {
-                Throwable t = task.getException();
-                String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-                Platform.runLater(() -> alertError("修改失败：" + msg));
-            });
-            new Thread(task, "person-update").start();
+            ApiTasks.run("person-update",
+                    () -> {
+                        String json = ApiClient.put("/api/persons/" + row.id, row.toUpdateJson());
+                        ApiClient.checkSuccess(json);
+                        return null;
+                    },
+                    v -> {
+                        int idx = rows.indexOf(selected);
+                        rows.set(idx, row);
+                        lblStatus.setText("修改成功：" + row.personCode);
+                    },
+                    ex -> Alerts.error("修改失败：" + ex.getMessage()));
         });
     }
 
     @FXML
     protected void onDeleteClicked() {
         PersonRow selected = tvPersons.getSelectionModel().getSelectedItem();
-        if (selected == null) { alertInfo("请先选择要删除的人员"); return; }
-        if (!confirm("确定删除人员「" + selected.name + "」（" + selected.personCode + "）？\n已关联登录账号的人员无法删除。")) return;
+        if (selected == null) { Alerts.info("请先选择要删除的人员"); return; }
+        if (!Alerts.confirm("确定删除人员「" + selected.name + "」（" + selected.personCode + "）？\n已关联登录账号的人员无法删除。")) return;
 
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                String json = ApiClient.delete("/api/persons/" + selected.id);
-                ApiClient.checkSuccess(json);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            rows.remove(selected);
-            lblStatus.setText("已删除");
-        }));
-        task.setOnFailed(e -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> alertError("删除失败：" + msg));
-        });
-        new Thread(task, "person-delete").start();
-    }
-
-    private void alertInfo(String msg) { Alerts.of(Alert.AlertType.INFORMATION, msg).showAndWait(); }
-    private void alertError(String msg) { Alerts.of(Alert.AlertType.ERROR, msg).showAndWait(); }
-    private boolean confirm(String msg) {
-        return Alerts.of(Alert.AlertType.CONFIRMATION, msg, ButtonType.OK, ButtonType.CANCEL)
-                .showAndWait().filter(b -> b == ButtonType.OK).isPresent();
+        ApiTasks.run("person-delete",
+                () -> {
+                    String json = ApiClient.delete("/api/persons/" + selected.id);
+                    ApiClient.checkSuccess(json);
+                    return null;
+                },
+                v -> {
+                    rows.remove(selected);
+                    lblStatus.setText("已删除");
+                },
+                ex -> Alerts.error("删除失败：" + ex.getMessage()));
     }
 
     /** TableView 行模型 + Dialog 表单承载（Simple Bean，PropertyValueFactory 直接读） */
@@ -224,8 +181,6 @@ public class PersonManageController {
         public String getGender() { return gender; }
         public String getIdCard() { return idCard == null ? "" : idCard; }
         public String getPhone() { return phone == null ? "" : phone; }
-        public String getHometown() { return hometown == null ? "" : hometown; }
-        public String getAddress() { return address == null ? "" : address; }
         public String getRemark() { return remark == null ? "" : remark; }
 
         public String toCreateJson() throws Exception {
@@ -346,7 +301,7 @@ public class PersonManageController {
                 String error = validate();
                 if (error != null) {
                     e.consume();
-                    alertError(error);
+                    Alerts.error(error);
                 } else {
                     row.personCode = tfCode.getText().trim();
                     row.name = tfName.getText().trim();

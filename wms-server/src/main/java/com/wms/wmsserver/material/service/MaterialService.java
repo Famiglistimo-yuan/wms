@@ -45,12 +45,6 @@ public class MaterialService {
                 .stream().map(this::toVO).collect(Collectors.toList());
     }
 
-    public MaterialVO get(Long id) {
-        Material m = materialMapper.selectById(id);
-        if (m == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "物料不存在");
-        return toVO(m);
-    }
-
     @Transactional(rollbackFor = Exception.class)
     public MaterialVO create(MaterialCreateDTO dto) {
         Long dup = materialMapper.selectCount(Wrappers.<Material>lambdaQuery()

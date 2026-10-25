@@ -2,16 +2,13 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
-import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TableState;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 
 import java.math.BigDecimal;
@@ -22,8 +19,6 @@ import java.util.*;
  * FR-1-3-2 代码非空唯一、FR-1-3-3 单位可选+可输入、FR-1-3-4 库存默认 0、FR-1-3-5 三字段模糊。
  */
 public class MaterialManageController {
-
-    private final App app;
 
     /** FR-1-3-3 预设单位，ComboBox 还允许自由输入 */
     private static final List<String> UNIT_PRESETS = List.of("件", "套", "公斤", "吨", "升", "米", "毫米", "个", "箱", "包");
@@ -38,27 +33,20 @@ public class MaterialManageController {
 
     /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public MaterialManageController(App app) {
-        this.app = app;
+        // app 仅为工厂注入约定保留，面板内未使用
     }
 
     @FXML
     protected void initialize() {
         tvMaterials.setItems(rows);
-        addCol("ID", "idStr", 60);
-        addCol("物料代码", "materialCode", 130);
-        addCol("名称", "name", 150);
-        addCol("规格型号", "spec", 150);
-        addCol("单位", "unit", 70);
-        addCol("库存", "stockStr", 100);
-        addCol("备注", "remark", 200);
+        TableState.addCol(tvMaterials, "ID", "idStr", 60);
+        TableState.addCol(tvMaterials, "物料代码", "materialCode", 130);
+        TableState.addCol(tvMaterials, "名称", "name", 150);
+        TableState.addCol(tvMaterials, "规格型号", "spec", 150);
+        TableState.addCol(tvMaterials, "单位", "unit", 70);
+        TableState.addCol(tvMaterials, "库存", "stockStr", 100);
+        TableState.addCol(tvMaterials, "备注", "remark", 200);
         onRefreshClicked();
-    }
-
-    private void addCol(String title, String prop, double w) {
-        TableColumn<MaterialRow, String> c = new TableColumn<>(title);
-        c.setCellValueFactory(new PropertyValueFactory<>(prop));
-        c.setPrefWidth(w);
-        tvMaterials.getColumns().add(c);
     }
 
     /** FR-1-3-5：keyword 同时匹配代码/名称/规格 */
@@ -73,113 +61,81 @@ public class MaterialManageController {
                 ? "/api/materials"
                 : "/api/materials?keyword=" + ApiClient.urlEncode(keyword);
 
-        Task<List<MaterialRow>> task = new Task<>() {
-            @Override
-            protected List<MaterialRow> call() throws Exception {
-                String json = ApiClient.get(path);
-                List<MapRowVO> vos = ApiClient.getResultList(json, MapRowVO.class);
-                return vos.stream().map(MaterialRow::new).toList();
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            loading = false;
-            rows.setAll(task.getValue());
-            lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
-            TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
-        }));
-        task.setOnFailed(e -> Platform.runLater(() -> {
-            loading = false;
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            lblStatus.setText("加载失败：" + msg);
-            TableState.failed(tvMaterials, msg);
-        }));
-        new Thread(task, "material-refresh").start();
+        ApiTasks.run("material-refresh",
+                () -> {
+                    String json = ApiClient.get(path);
+                    List<MapRowVO> vos = ApiClient.getResultList(json, MapRowVO.class);
+                    return vos.stream().map(MaterialRow::new).toList();
+                },
+                list -> {
+                    loading = false;
+                    rows.setAll(list);
+                    lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+                    TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
+                },
+                ex -> {
+                    loading = false;
+                    String msg = ex.getMessage();
+                    lblStatus.setText("加载失败：" + msg);
+                    TableState.failed(tvMaterials, msg);
+                });
     }
 
     @FXML
     protected void onCreateClicked() {
         MaterialDialog dlg = new MaterialDialog(null);
         dlg.showAndWait().ifPresent(row -> {
-            Task<MaterialRow> task = new Task<>() {
-                @Override
-                protected MaterialRow call() throws Exception {
-                    String json = ApiClient.post("/api/materials", row.toCreateJson());
-                    return new MaterialRow(ApiClient.getResultData(json, MapRowVO.class));
-                }
-            };
-            task.setOnSucceeded(e -> Platform.runLater(() -> {
-                rows.add(task.getValue());
-                lblStatus.setText("新增成功：" + row.materialCode + " " + row.name);
-            }));
-            task.setOnFailed(e -> {
-                Throwable t = task.getException();
-                String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-                Platform.runLater(() -> alertError("新增失败：" + msg));
-            });
-            new Thread(task, "material-create").start();
+            ApiTasks.run("material-create",
+                    () -> {
+                        String json = ApiClient.post("/api/materials", row.toCreateJson());
+                        return new MaterialRow(ApiClient.getResultData(json, MapRowVO.class));
+                    },
+                    created -> {
+                        rows.add(created);
+                        lblStatus.setText("新增成功：" + row.materialCode + " " + row.name);
+                    },
+                    ex -> Alerts.error("新增失败：" + ex.getMessage()));
         });
     }
 
     @FXML
     protected void onEditClicked() {
         MaterialRow selected = tvMaterials.getSelectionModel().getSelectedItem();
-        if (selected == null) { alertInfo("请先选择要修改的物料"); return; }
+        if (selected == null) { Alerts.info("请先选择要修改的物料"); return; }
         MaterialDialog dlg = new MaterialDialog(selected);
         dlg.showAndWait().ifPresent(row -> {
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() throws Exception {
-                    String json = ApiClient.put("/api/materials/" + row.id, row.toUpdateJson());
-                    ApiClient.checkSuccess(json);
-                    return null;
-                }
-            };
-            task.setOnSucceeded(e -> Platform.runLater(() -> {
-                int idx = rows.indexOf(selected);
-                rows.set(idx, row);
-                lblStatus.setText("修改成功：" + row.materialCode);
-            }));
-            task.setOnFailed(e -> {
-                Throwable t = task.getException();
-                String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-                Platform.runLater(() -> alertError("修改失败：" + msg));
-            });
-            new Thread(task, "material-update").start();
+            ApiTasks.run("material-update",
+                    () -> {
+                        String json = ApiClient.put("/api/materials/" + row.id, row.toUpdateJson());
+                        ApiClient.checkSuccess(json);
+                        return null;
+                    },
+                    v -> {
+                        int idx = rows.indexOf(selected);
+                        rows.set(idx, row);
+                        lblStatus.setText("修改成功：" + row.materialCode);
+                    },
+                    ex -> Alerts.error("修改失败：" + ex.getMessage()));
         });
     }
 
     @FXML
     protected void onDeleteClicked() {
         MaterialRow selected = tvMaterials.getSelectionModel().getSelectedItem();
-        if (selected == null) { alertInfo("请先选择要删除的物料"); return; }
-        if (!confirm("确定删除物料「" + selected.name + "」（" + selected.materialCode + "）？\n已被进出仓单引用的物料无法删除。")) return;
+        if (selected == null) { Alerts.info("请先选择要删除的物料"); return; }
+        if (!Alerts.confirm("确定删除物料「" + selected.name + "」（" + selected.materialCode + "）？\n已被进出仓单引用的物料无法删除。")) return;
 
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                String json = ApiClient.delete("/api/materials/" + selected.id);
-                ApiClient.checkSuccess(json);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            rows.remove(selected);
-            lblStatus.setText("已删除");
-        }));
-        task.setOnFailed(e -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> alertError("删除失败：" + msg));
-        });
-        new Thread(task, "material-delete").start();
-    }
-
-    private void alertInfo(String msg) { Alerts.of(Alert.AlertType.INFORMATION, msg).showAndWait(); }
-    private void alertError(String msg) { Alerts.of(Alert.AlertType.ERROR, msg).showAndWait(); }
-    private boolean confirm(String msg) {
-        return Alerts.of(Alert.AlertType.CONFIRMATION, msg, ButtonType.OK, ButtonType.CANCEL)
-                .showAndWait().filter(b -> b == ButtonType.OK).isPresent();
+        ApiTasks.run("material-delete",
+                () -> {
+                    String json = ApiClient.delete("/api/materials/" + selected.id);
+                    ApiClient.checkSuccess(json);
+                    return null;
+                },
+                v -> {
+                    rows.remove(selected);
+                    lblStatus.setText("已删除");
+                },
+                ex -> Alerts.error("删除失败：" + ex.getMessage()));
     }
 
     public static class MaterialRow {
@@ -282,7 +238,7 @@ public class MaterialManageController {
             Button okBtn = (Button) getDialogPane().lookupButton(ButtonType.OK);
             okBtn.addEventFilter(javafx.event.ActionEvent.ACTION, e -> {
                 String error = validate();
-                if (error != null) { e.consume(); alertError(error); }
+                if (error != null) { e.consume(); Alerts.error(error); }
                 else {
                     row.materialCode = tfCode.getText() == null ? "" : tfCode.getText().trim();
                     row.name = tfName.getText() == null ? "" : tfName.getText().trim();

@@ -1,7 +1,5 @@
 package com.wms.wmsserver.reports.service;
 
-import com.wms.common.BusinessException;
-import com.wms.common.ErrorCode;
 import com.wms.wmsserver.mapper.ReportMapper;
 import com.wms.wmsserver.reports.dto.MonthlyOrderRow;
 import com.wms.wmsserver.reports.dto.ReportModel;
@@ -10,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -61,10 +58,6 @@ public class MonthlyOrderReportService {
                 .build();
 
         log.info("月度进出仓单导出 {}-{}：{} 条明细，格式 {}", year, month, display.size(), format);
-        try {
-            return ReportRenderers.render(model, format);
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.SERVER_ERROR, "报表生成失败：" + e.getMessage());
-        }
+        return ReportRenderers.renderOrThrow(model, format);
     }
 }

@@ -3,12 +3,13 @@ package com.wms.wmsserver.auth.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
-import com.wms.wmsserver.auth.dto.PersonOptionVO;
+import com.wms.common.dto.PersonOptionVO;
+import com.wms.common.dto.PermissionVO;
 import com.wms.wmsserver.auth.dto.UserCreateDTO;
 import com.wms.wmsserver.auth.dto.UserPermissionGrantDTO;
-import com.wms.wmsserver.auth.dto.UserPermissionVO;
+import com.wms.common.dto.UserPermissionVO;
 import com.wms.wmsserver.auth.dto.UserUpdateDTO;
-import com.wms.wmsserver.auth.dto.UserVO;
+import com.wms.common.dto.UserVO;
 import com.wms.wmsserver.entity.Permission;
 import com.wms.wmsserver.entity.Person;
 import com.wms.wmsserver.entity.User;
@@ -65,6 +66,18 @@ public class UserManagementService {
     /** 用户列表（联表人员档案） */
     public List<UserVO> listUsers() {
         return userMapper.selectUserVOs();
+    }
+
+    /** 权限资源列表（菜单项，按 sort_order 排序）；新增权限 → 权限表插行 → 授权界面自动出现（FR-4-7） */
+    public List<PermissionVO> listPermissions() {
+        return permissionMapper.selectList(
+                        Wrappers.<Permission>lambdaQuery().orderByAsc(Permission::getSortOrder))
+                .stream().map(p -> PermissionVO.builder()
+                        .id(p.getId())
+                        .permCode(p.getPermCode())
+                        .permName(p.getPermName())
+                        .sortOrder(p.getSortOrder())
+                        .build()).collect(Collectors.toList());
     }
 
     /** 新增用户 */

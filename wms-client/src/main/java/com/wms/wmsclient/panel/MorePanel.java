@@ -38,6 +38,13 @@ public final class MorePanel {
     private MorePanel() {
     }
 
+    /** 行内弹性占位：把行尾按钮推到最右 */
+    private static Region hspacer() {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        return spacer;
+    }
+
     /** 弹出「更多」面板。传入 App：HostServices 打开浏览器、initOwner/定位都以主窗口为基准 */
     public static void show(App app) {
         Stage panel = new Stage(StageStyle.TRANSPARENT);
@@ -85,19 +92,13 @@ public final class MorePanel {
             }, "ping-server").start();
         });
 
-        Region spacer1 = new Region();
-        HBox.setHgrow(spacer1, Priority.ALWAYS);
-        HBox row1 = new HBox(12, new Label("当前版本"), versionValue, spacer1, btnCheck);
+        HBox row1 = new HBox(12, new Label("当前版本"), versionValue, hspacer(), btnCheck);
         row1.setAlignment(Pos.CENTER_LEFT);
 
-        Region spacer2 = new Region();
-        HBox.setHgrow(spacer2, Priority.ALWAYS);
-        HBox row2 = new HBox(12, new Label("关于 WMS"), spacer2, btnGitHub);
+        HBox row2 = new HBox(12, new Label("关于 WMS"), hspacer(), btnGitHub);
         row2.setAlignment(Pos.CENTER_LEFT);
 
-        Region spacer3 = new Region();
-        HBox.setHgrow(spacer3, Priority.ALWAYS);
-        HBox row3 = new HBox(12, new Label("服务器"), serverUrl, spacer3, btnPing, pingStatus);
+        HBox row3 = new HBox(12, new Label("服务器"), serverUrl, hspacer(), btnPing, pingStatus);
         row3.setAlignment(Pos.CENTER_LEFT);
 
         // ====== 第四行：主题切换（浅色 ⇄ 深色，重启后生效，ADR-010）======
@@ -117,9 +118,7 @@ public final class MorePanel {
             });
         });
 
-        Region spacer4 = new Region();
-        HBox.setHgrow(spacer4, Priority.ALWAYS);
-        HBox row4 = new HBox(12, new Label("主题"), spacer4, btnTheme);
+        HBox row4 = new HBox(12, new Label("主题"), hspacer(), btnTheme);
         row4.setAlignment(Pos.CENTER_LEFT);
 
         VBox root = new VBox(14, row1, row2, row3, row4);

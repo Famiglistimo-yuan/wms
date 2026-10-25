@@ -3,17 +3,13 @@ package com.wms.wmsclient.controller;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.ExportHelper;
-import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 
-import java.io.File;
-import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -25,8 +21,6 @@ public class ReportMonthlyOrdersController {
     /** 状态栏默认提示，导出结束后恢复 */
     private static final String STATUS_HINT = "选择月份后导出：该月进出仓单全部按单号顺序打印";
 
-    private final App app;
-
     @FXML private ChoiceBox<Integer> cbYear;
     @FXML private ChoiceBox<Integer> cbMonth;
     @FXML private ChoiceBox<String> cbFormat;
@@ -35,17 +29,14 @@ public class ReportMonthlyOrdersController {
 
     private boolean loading;
 
+    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public ReportMonthlyOrdersController(App app) {
-        this.app = app;
+        // app 仅为工厂注入约定保留，面板内未使用
     }
 
     @FXML
     protected void initialize() {
-        int thisYear = LocalDate.now().getYear();
-        for (int y = thisYear - 5; y <= thisYear + 1; y++) {
-            cbYear.getItems().add(y);
-        }
-        cbYear.setValue(thisYear);
+        ExportHelper.fillYears(cbYear);
         for (int m = 1; m <= 12; m++) {
             cbMonth.getItems().add(m);
         }
@@ -60,33 +51,21 @@ public class ReportMonthlyOrdersController {
         if (loading) return;
         String ym = String.format("%d%02d", cbYear.getValue(), cbMonth.getValue());
         String fmt = ExportHelper.formatKey(cbFormat.getValue());
-        // JavaFX 线程规则：下载走后台 Task（CONTRIBUTING §3.4）
+        // JavaFX 线程规则：下载走后台线程（CONTRIBUTING §3.4）
         setLoading(true);
-        Task<byte[]> task = new Task<>() {
-            @Override
-            protected byte[] call() throws Exception {
-                return ApiClient.downloadFile("/api/reports/monthly-orders/" + ym, Map.of("format", fmt));
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            setLoading(false);
-            try {
-                File saved = ExportHelper.save(btnExport.getScene().getWindow(),
-                        "月度进出仓单_" + ym + ExportHelper.extensionOf(fmt),
-                        ExportHelper.extensionOf(fmt), task.getValue());
-                lblStatus.setText(saved == null ? "已取消保存" : "已导出：" + saved.getAbsolutePath());
-            } catch (UncheckedIOException ex) {
-                Alerts.of(Alert.AlertType.ERROR, "文件保存失败：" + ex.getCause().getMessage()).showAndWait();
-            }
-        }));
-        task.setOnFailed(e -> Platform.runLater(() -> {
-            setLoading(false);
-            Alerts.of(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
-                    .showAndWait();
-        }));
-        Thread t = new Thread(task, "report-monthly-export");
-        t.setDaemon(true);
-        t.start();
+        ApiTasks.run("report-monthly-export",
+                () -> ApiClient.downloadFile("/api/reports/monthly-orders/" + ym, Map.of("format", fmt)),
+                bytes -> {
+                    setLoading(false);
+                    String status = ExportHelper.saveAndDescribe(btnExport.getScene().getWindow(),
+                            "月度进出仓单_" + ym + ExportHelper.extensionOf(fmt),
+                            ExportHelper.extensionOf(fmt), bytes);
+                    if (status != null) lblStatus.setText(status);
+                },
+                ex -> {
+                    setLoading(false);
+                    Alerts.error("导出失败：" + ExportHelper.rootMessage(ex));
+                });
     }
 
     /** 导出中：按钮禁用变文案 + 状态栏提示（百万级单据导出耗时长，防重复触发） */

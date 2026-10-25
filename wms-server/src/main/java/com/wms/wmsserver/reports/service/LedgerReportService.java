@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -71,10 +70,6 @@ public class LedgerReportService {
 
         log.info("仓库账本导出 {} {} 年：{} 日流水，期初 {}，格式 {}",
                 materialCode, year, rows.size(), opening, format);
-        try {
-            return ReportRenderers.render(model, format);
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.SERVER_ERROR, "报表生成失败：" + e.getMessage());
-        }
+        return ReportRenderers.renderOrThrow(model, format);
     }
 }
