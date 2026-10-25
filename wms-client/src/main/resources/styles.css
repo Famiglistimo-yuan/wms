@@ -46,3 +46,21 @@
 .chart-loading-mask {
     -fx-background-color: rgba(255, 255, 255, 0.82);
 }
+
+/* 焦点指示收敛：Modena 默认给聚焦控件画外扩 1.4px 的半透明蓝大框
+   （-fx-faint-focus-color，#039ED322），点选表格行/聚焦输入框时出现，
+   观感突兀——全局关闭；贴边紧凑焦点环（-fx-focus-color）保留，键盘焦点仍可见。
+   深色版见 styles-dark.css（同套规则） */
+.root, .panel-host {
+    -fx-faint-focus-color: transparent;
+}
+
+/* 聚焦的表格/列表不再画容器级焦点描边（恢复与非聚焦一致的底色）：
+   行选中高亮 + 聚焦单元格内环已足够指示焦点 */
+.table-view:focused,
+.tree-view:focused,
+.list-view:focused,
+.tree-table-view:focused {
+    -fx-background-color: -fx-box-border, -fx-control-inner-background;
+    -fx-background-insets: 0, 1;
+}

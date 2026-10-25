@@ -13,6 +13,8 @@
        在深色上仅差 1/255 不可见，显式定值提对比（实测 #2b3138 ⇄ #22272e） */
     -fx-control-inner-background-alt: #22272e;
     -fx-text-fill: #ececec;
+    /* 聚焦控件外圈 halo（Modena 默认半透明蓝大框）：关闭，紧凑焦点环保留（浅色侧同配） */
+    -fx-faint-focus-color: transparent;
 }
 .title {
     -fx-font-size: 20px;
@@ -49,4 +51,13 @@
 /* 物料流量统计加载遮罩——深色版（底色同 -fx-control-inner-background） */
 .chart-loading-mask {
     -fx-background-color: rgba(43, 49, 56, 0.85);
+}
+
+/* 聚焦的表格/列表不画容器焦点描边（浅色侧同配）：行选中高亮 + 单元格内环足够 */
+.table-view:focused,
+.tree-view:focused,
+.list-view:focused,
+.tree-table-view:focused {
+    -fx-background-color: -fx-box-border, -fx-control-inner-background;
+    -fx-background-insets: 0, 1;
 }
