@@ -8,9 +8,8 @@ import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.ExportHelper;
+import com.wms.wmsclient.util.PreviewPager;
 import com.wms.wmsclient.util.TableState;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
@@ -26,6 +25,7 @@ import java.util.Map;
 /**
  * 仓库账本导出面板（FR-5-3）：选择物料与年份，可先「预览」查看该物料按日期的进仓/出仓/结存，
  * 再导出（Excel/Word）。物料下拉数据来自 /api/stats/material-options（stats 包内接口，不依赖 FR-1 的 /api/materials）。
+ * 预览分页逻辑见 PreviewPager。
  */
 public class ReportLedgerController {
 
@@ -47,13 +47,8 @@ public class ReportLedgerController {
     @FXML private Label lblPage;
     @FXML private Label lblMeta;
 
-    private final ObservableList<LedgerPreviewRow> previewRows = FXCollections.observableArrayList();
     private boolean loading;
-    private boolean previewing;
-    private long totalRows;
-    private int page = 1;
-    /** 查询代次：条件变更或重新预览时自增，在途响应落地时代次不符则丢弃，防旧数据回填 */
-    private int loadSeq;
+    private PreviewPager<LedgerPreviewRow> pager;
 
     /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public ReportLedgerController(App app) {
@@ -77,12 +72,23 @@ public class ReportLedgerController {
             }
         });
         lblStatus.setText(STATUS_HINT);
-        tvPreview.setItems(previewRows);
         TableState.addCol(tvPreview, "日期", "orderDate", 140);
         TableState.addCol(tvPreview, "进仓数量", "inQty", 120);
         TableState.addCol(tvPreview, "出仓数量", "outQty", 120);
         TableState.addCol(tvPreview, "结存", "balance", 120);
         TableState.empty(tvPreview, "点击「预览」查看将导出的数据");
+        pager = new PreviewPager<>(tvPreview, btnPreview, btnPrev, btnNext, lblPage,
+                PAGE_SIZE, "日流水", "report-ledger-preview",
+                () -> ApiClient.getResultData(ApiClient.get(previewPath()), LedgerPreview.class),
+                pv -> pv.getRecords(), pv -> pv.getTotal(),
+                pv -> {
+                    lblMeta.setText("物料：" + pv.getMaterialCode() + " " + pv.getMaterialName()
+                            + " · 规格：" + pv.getSpec()
+                            + " · 单位：" + pv.getUnit()
+                            + " · 期初结存：" + pv.getOpeningBalance() + " " + pv.getUnit());
+                    if (pv.getRecords().isEmpty())
+                        TableState.empty(tvPreview, pv.getMaterialName() + " " + cbYear.getValue() + "年无进出仓流水");
+                });
         // 监听器加在初值设定之后；物料列表异步加载 selectFirst() 触发一次，仅重设占位符，无副作用
         cbMaterial.valueProperty().addListener((o, ov, nv) -> resetPreview());
         cbYear.valueProperty().addListener((o, ov, nv) -> resetPreview());
@@ -135,89 +141,37 @@ public class ReportLedgerController {
                 });
     }
 
-    // ====== 导出前预览 ======
-
     @FXML
     protected void onPreviewClicked() {
-        page = 1;
-        loadPreview();
+        if (cbMaterial.getValue() == null) {
+            Alerts.warn("请选择物料");
+            return;
+        }
+        pager.first();
     }
 
     @FXML
     protected void onPrevClicked() {
-        if (!previewing && page > 1) {
-            page--;
-            loadPreview();
-        }
+        pager.prev();
     }
 
     @FXML
     protected void onNextClicked() {
-        if (!previewing && page < pages()) {
-            page++;
-            loadPreview();
-        }
+        pager.next();
     }
 
-    private long pages() {
-        return Math.max(1, (totalRows + PAGE_SIZE - 1) / PAGE_SIZE);
-    }
-
-    private void loadPreview() {
-        if (previewing) return;
-        MaterialOption material = cbMaterial.getValue();
-        if (material == null) {
-            Alerts.warn("请选择物料");
-            return;
-        }
-        previewing = true;
-        btnPreview.setDisable(true);
-        btnPrev.setDisable(true);
-        btnNext.setDisable(true);
-        TableState.loading(tvPreview);
-        int seq = ++loadSeq;
-        int year = cbYear.getValue();
+    /** 预览取数路径（当前物料 + 年份 + 页码） */
+    private String previewPath() {
         // 物料代码 URL 编码：万一含 / ? # 空格等字符不破坏路径（服务端路径变量自动解码）
-        String code = URLEncoder.encode(material.getMaterialCode(), StandardCharsets.UTF_8);
-        String path = "/api/reports/ledger/" + code + "/" + year + "/preview?page=" + page + "&size=" + PAGE_SIZE;
-        // JavaFX 线程规则：HTTP 走后台线程，回调经 ApiTasks 保证在 FX 线程
-        ApiTasks.run("report-ledger-preview",
-                () -> ApiClient.getResultData(ApiClient.get(path), LedgerPreview.class),
-                pv -> {
-                    previewing = false;
-                    btnPreview.setDisable(false);
-                    if (seq != loadSeq) return; // 期间条件已变更或已重新预览，本页作废
-                    previewRows.setAll(pv.getRecords());
-                    totalRows = pv.getTotal();
-                    lblPage.setText("第 " + page + "/" + pages() + " 页 · 共 " + totalRows + " 日流水");
-                    lblMeta.setText("物料：" + pv.getMaterialCode() + " " + pv.getMaterialName()
-                            + " · 规格：" + pv.getSpec()
-                            + " · 单位：" + pv.getUnit()
-                            + " · 期初结存：" + pv.getOpeningBalance() + " " + pv.getUnit());
-                    btnPrev.setDisable(page <= 1);
-                    btnNext.setDisable(page >= pages());
-                    TableState.empty(tvPreview, material.getName() + " " + year + "年无进出仓流水");
-                },
-                ex -> {
-                    previewing = false;
-                    btnPreview.setDisable(false);
-                    if (seq != loadSeq) return;
-                    TableState.failed(tvPreview, ExportHelper.rootMessage(ex));
-                    lblPage.setText("预览失败");
-                });
+        String code = URLEncoder.encode(cbMaterial.getValue().getMaterialCode(), StandardCharsets.UTF_8);
+        return "/api/reports/ledger/" + code + "/" + cbYear.getValue()
+                + "/preview?page=" + pager.page() + "&size=" + PAGE_SIZE;
     }
 
-    /** 物料/年份变更：清空旧预览防陈旧数据（进面板不自动查询，对齐 stats-flow 的决策） */
+    /** 物料/年份变更：清空旧预览与摘要防陈旧数据（进面板不自动查询，对齐 stats-flow 的决策） */
     private void resetPreview() {
-        loadSeq++;
-        previewRows.clear();
-        page = 1;
-        totalRows = 0;
-        lblPage.setText("");
+        pager.reset();
         lblMeta.setText("");
-        btnPrev.setDisable(true);
-        btnNext.setDisable(true);
-        TableState.empty(tvPreview, "条件已变更，点击「预览」查看");
     }
 
     /** 导出中：按钮禁用变文案 + 状态栏提示（百万级单据导出耗时长，防重复触发） */

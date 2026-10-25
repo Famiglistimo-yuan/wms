@@ -6,9 +6,8 @@ import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.ExportHelper;
+import com.wms.wmsclient.util.PreviewPager;
 import com.wms.wmsclient.util.TableState;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
@@ -20,7 +19,7 @@ import java.util.Map;
 
 /**
  * 月度进出仓单导出面板（FR-5-2）：选择时间与格式（Excel/Word），可先「预览」查看将导出的数据；
- * 导出后保存，路径显示在状态栏。
+ * 导出后保存，路径显示在状态栏。预览分页逻辑见 PreviewPager。
  */
 public class ReportMonthlyOrdersController {
 
@@ -41,13 +40,8 @@ public class ReportMonthlyOrdersController {
     @FXML private Button btnNext;
     @FXML private Label lblPage;
 
-    private final ObservableList<MonthlyOrderPreviewRow> previewRows = FXCollections.observableArrayList();
     private boolean loading;
-    private boolean previewing;
-    private long totalRows;
-    private int page = 1;
-    /** 查询代次：条件变更或重新预览时自增，在途响应落地时代次不符则丢弃，防旧数据回填 */
-    private int loadSeq;
+    private PreviewPager<MonthlyOrderPreviewRow> pager;
 
     /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public ReportMonthlyOrdersController(App app) {
@@ -64,7 +58,6 @@ public class ReportMonthlyOrdersController {
         cbFormat.getItems().addAll(ExportHelper.formatLabels());
         cbFormat.setValue(ExportHelper.formatLabels().get(0));
         lblStatus.setText(STATUS_HINT);
-        tvPreview.setItems(previewRows);
         TableState.addCol(tvPreview, "单号", "orderNo", 160);
         TableState.addCol(tvPreview, "类型", "typeLabel", 70);
         TableState.addCol(tvPreview, "日期", "orderDate", 120);
@@ -76,9 +69,17 @@ public class ReportMonthlyOrdersController {
         TableState.addCol(tvPreview, "数量", "quantity", 100);
         TableState.addCol(tvPreview, "备注", "remark", 220);
         TableState.empty(tvPreview, "点击「预览」查看将导出的数据");
+        pager = new PreviewPager<>(tvPreview, btnPreview, btnPrev, btnNext, lblPage,
+                PAGE_SIZE, "条明细", "report-monthly-preview",
+                () -> ApiClient.getResultPage(ApiClient.get(previewPath()), MonthlyOrderPreviewRow.class),
+                pg -> pg.getRecords(), pg -> pg.getTotal(),
+                pg -> {
+                    if (pg.getRecords().isEmpty())
+                        TableState.empty(tvPreview, cbYear.getValue() + "年" + cbMonth.getValue() + "月无进出仓单据");
+                });
         // 监听器加在初值设定之后，避免初始化期间误触发清空
-        cbYear.valueProperty().addListener((o, ov, nv) -> resetPreview());
-        cbMonth.valueProperty().addListener((o, ov, nv) -> resetPreview());
+        cbYear.valueProperty().addListener((o, ov, nv) -> pager.reset());
+        cbMonth.valueProperty().addListener((o, ov, nv) -> pager.reset());
     }
 
     @FXML
@@ -103,79 +104,26 @@ public class ReportMonthlyOrdersController {
                 });
     }
 
-    // ====== 导出前预览 ======
-
     @FXML
     protected void onPreviewClicked() {
-        page = 1;
-        loadPreview();
+        pager.first();
     }
 
     @FXML
     protected void onPrevClicked() {
-        if (!previewing && page > 1) {
-            page--;
-            loadPreview();
-        }
+        pager.prev();
     }
 
     @FXML
     protected void onNextClicked() {
-        if (!previewing && page < pages()) {
-            page++;
-            loadPreview();
-        }
+        pager.next();
     }
 
-    private long pages() {
-        return Math.max(1, (totalRows + PAGE_SIZE - 1) / PAGE_SIZE);
-    }
-
-    private void loadPreview() {
-        if (previewing) return;
-        previewing = true;
-        btnPreview.setDisable(true);
-        btnPrev.setDisable(true);
-        btnNext.setDisable(true);
-        TableState.loading(tvPreview);
-        int seq = ++loadSeq;
-        int year = cbYear.getValue();
-        int month = cbMonth.getValue();
-        String ym = String.format("%d%02d", year, month);
-        String path = "/api/reports/monthly-orders/" + ym + "/preview?page=" + page + "&size=" + PAGE_SIZE;
-        // JavaFX 线程规则：HTTP 走后台线程，回调经 ApiTasks 保证在 FX 线程
-        ApiTasks.run("report-monthly-preview",
-                () -> ApiClient.getResultPage(ApiClient.get(path), MonthlyOrderPreviewRow.class),
-                pg -> {
-                    previewing = false;
-                    btnPreview.setDisable(false);
-                    if (seq != loadSeq) return; // 期间条件已变更或已重新预览，本页作废
-                    previewRows.setAll(pg.getRecords());
-                    totalRows = pg.getTotal();
-                    lblPage.setText("第 " + page + "/" + pages() + " 页 · 共 " + totalRows + " 条明细");
-                    btnPrev.setDisable(page <= 1);
-                    btnNext.setDisable(page >= pages());
-                    TableState.empty(tvPreview, year + "年" + month + "月无进出仓单据");
-                },
-                ex -> {
-                    previewing = false;
-                    btnPreview.setDisable(false);
-                    if (seq != loadSeq) return;
-                    TableState.failed(tvPreview, ExportHelper.rootMessage(ex));
-                    lblPage.setText("预览失败");
-                });
-    }
-
-    /** 年/月变更：清空旧预览防陈旧数据（进面板不自动查询，对齐 stats-flow 的决策） */
-    private void resetPreview() {
-        loadSeq++;
-        previewRows.clear();
-        page = 1;
-        totalRows = 0;
-        lblPage.setText("");
-        btnPrev.setDisable(true);
-        btnNext.setDisable(true);
-        TableState.empty(tvPreview, "条件已变更，点击「预览」查看");
+    /** 预览取数路径（当前年月 + 页码） */
+    private String previewPath() {
+        return "/api/reports/monthly-orders/"
+                + String.format("%d%02d", cbYear.getValue(), cbMonth.getValue())
+                + "/preview?page=" + pager.page() + "&size=" + PAGE_SIZE;
     }
 
     /** 导出中：按钮禁用变文案 + 状态栏提示（百万级单据导出耗时长，防重复触发） */
