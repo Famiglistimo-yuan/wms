@@ -40,6 +40,12 @@
     </dependency>
     <!-- vfx 内部图片处理用到 javafx.embed.swing，补齐模块（与现有 JavaFX 同族同版本） -->
     <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-swing</artifactId>
+      <version>21.0.6</version>
+    </dependency>
+    <!-- JSON 反序列化（FR-6 升级检查；与 SB4 服务端对齐 Jackson 3，版本由 SB parent 链托管） -->
+    <dependency>
       <groupId>tools.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
     </dependency>
