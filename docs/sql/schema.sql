@@ -44,7 +44,7 @@ CREATE TABLE rg2402_11_12_13_user (
     REFERENCES rg2402_11_12_13_person (id)
 ) COMMENT '登录用户';
 
--- ---------- RBAC（FR-4-3 / FR-4-7） ----------
+-- ---------- 权限体系（FR-4-3 / FR-4-7）：直授 allow−deny，角色仅展示标签 ----------
 CREATE TABLE rg2402_11_12_13_role (
   id        BIGINT      AUTO_INCREMENT PRIMARY KEY,
   role_code VARCHAR(30) NOT NULL,

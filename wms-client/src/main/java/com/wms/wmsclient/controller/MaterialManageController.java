@@ -4,6 +4,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.TableState;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -28,6 +29,8 @@ public class MaterialManageController {
     private static final List<String> UNIT_PRESETS = List.of("件", "套", "公斤", "吨", "升", "米", "毫米", "个", "箱", "包");
 
     private final ObservableList<MaterialRow> rows = FXCollections.observableArrayList();
+    /** 加载互斥：在途时忽略按钮/回车触发，串行化请求避免响应乱序覆盖 */
+    private boolean loading;
 
     @FXML private TextField tfSearch;
     @FXML private TableView<MaterialRow> tvMaterials;
@@ -61,6 +64,10 @@ public class MaterialManageController {
     /** FR-1-3-5：keyword 同时匹配代码/名称/规格 */
     @FXML
     protected void onRefreshClicked() {
+        if (loading) return;
+        loading = true;
+        TableState.loading(tvMaterials);
+        lblStatus.setText("加载中…");
         String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
         String path = keyword.isEmpty()
                 ? "/api/materials"
@@ -75,12 +82,17 @@ public class MaterialManageController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            loading = false;
             rows.setAll(task.getValue());
             lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+            TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
         }));
         task.setOnFailed(e -> Platform.runLater(() -> {
+            loading = false;
             Throwable t = task.getException();
-            lblStatus.setText("加载失败：" + (t instanceof ApiException ae ? ae.getMessage() : t.getMessage()));
+            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
+            lblStatus.setText("加载失败：" + msg);
+            TableState.failed(tvMaterials, msg);
         }));
         new Thread(task, "material-refresh").start();
     }
