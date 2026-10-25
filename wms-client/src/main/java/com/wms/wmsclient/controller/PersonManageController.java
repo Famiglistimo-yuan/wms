@@ -26,6 +26,8 @@ public class PersonManageController {
 
     private final App app;
     private final ObservableList<PersonRow> rows = FXCollections.observableArrayList();
+    /** 加载互斥：在途时忽略按钮/回车触发，串行化请求避免响应乱序覆盖 */
+    private boolean loading;
 
     @FXML private TextField tfSearch;
     @FXML private Button btnRefresh;
@@ -61,8 +63,11 @@ public class PersonManageController {
     /** FR-1-2-7：单字模糊（搜索框输入任何单字即可按姓名 LIKE '%x%'） */
     @FXML
     protected void onRefreshClicked() {
+        if (loading) return;
+        loading = true;
         btnRefresh.setDisable(true);
         TableState.loading(tvPersons);
+        lblStatus.setText("加载中…");
         String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
         // 任何非空输入都带 keyword；后端自动单字模糊
         String path = keyword.isEmpty()
@@ -78,12 +83,14 @@ public class PersonManageController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            loading = false;
             rows.setAll(task.getValue());
             lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
             TableState.empty(tvPersons, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
             btnRefresh.setDisable(false);
         }));
         task.setOnFailed(e -> Platform.runLater(() -> {
+            loading = false;
             btnRefresh.setDisable(false);
             Throwable t = task.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();

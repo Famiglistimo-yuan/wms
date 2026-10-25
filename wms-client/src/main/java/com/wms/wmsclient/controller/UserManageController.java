@@ -44,6 +44,8 @@ public class UserManageController {
     @FXML private Label lblStatus;
 
     private final ObservableList<UserRow> rows = FXCollections.observableArrayList();
+    /** 加载互斥：在途时忽略刷新触发，串行化请求避免响应乱序覆盖 */
+    private boolean loading;
     private List<PersonOptionVO> personOptions;
 
     public UserManageController(App app) {
@@ -199,7 +201,10 @@ public class UserManageController {
     }
 
     private void loadUsers() {
+        if (loading) return;
+        loading = true;
         TableState.loading(tvUsers);
+        lblStatus.setText("加载中…");
         Task<List<UserVO>> task = new Task<>() {
             @Override
             protected List<UserVO> call() throws Exception {
@@ -208,6 +213,7 @@ public class UserManageController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            loading = false;
             List<UserVO> users = task.getValue();
             rows.clear();
             for (UserVO u : users) {
@@ -221,6 +227,7 @@ public class UserManageController {
             Throwable t = task.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
             Platform.runLater(() -> {
+                loading = false;
                 TableState.failed(tvUsers, msg);
                 alertError("加载用户列表失败：" + msg);
             });
