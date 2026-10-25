@@ -6,15 +6,11 @@ import com.wms.wmsclient.dto.PermissionVO;
 import com.wms.wmsclient.dto.UserPermissionVO;
 import com.wms.wmsclient.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
-import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -26,7 +22,6 @@ import javafx.scene.layout.Region;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 用户授权界面：左侧用户列表，右侧权限逐项分配（允许/禁止）。
@@ -38,8 +33,6 @@ public class UserGrantController {
     private static final String OPT_ALLOW = "允许";
     private static final String OPT_DENY = "禁止";
 
-    private final App app;
-
     @FXML private Label lblStatus;
     @FXML private ListView<UserVO> lvUsers;
     @FXML private ListView<PermAssignItem> lvPermissions;
@@ -49,8 +42,9 @@ public class UserGrantController {
 
     private List<PermissionVO> allPermissions;
 
+    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
     public UserGrantController(App app) {
-        this.app = app;
+        // app 仅为工厂注入约定保留，面板内未使用
     }
 
     @FXML
@@ -87,7 +81,7 @@ public class UserGrantController {
     protected void onSaveClicked() {
         UserVO selected = lvUsers.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            Alerts.of(Alert.AlertType.WARNING, "请先选择用户").showAndWait();
+            Alerts.warn("请先选择用户");
             return;
         }
 
@@ -98,10 +92,8 @@ public class UserGrantController {
                 .filter(item -> OPT_DENY.equals(item.choice.getValue()))
                 .map(item -> item.perm.getId()).toList();
 
-        Optional<ButtonType> confirm = Alerts.of(Alert.AlertType.CONFIRMATION,
-                "确定保存用户「" + selected.getUsername() + "」的直接授权吗？允许 " + allowIds.size()
-                        + " 项，禁止 " + denyIds.size() + " 项").showAndWait();
-        if (confirm.isEmpty() || confirm.get() != ButtonType.OK) return;
+        if (!Alerts.confirm("确定保存用户「" + selected.getUsername() + "」的直接授权吗？允许 " + allowIds.size()
+                + " 项，禁止 " + denyIds.size() + " 项")) return;
 
         Task<Void> task = new Task<>() {
             @Override
@@ -115,13 +107,9 @@ public class UserGrantController {
                 return null;
             }
         };
-        task.setOnSucceeded(e -> Platform.runLater(() ->
-                lblStatus.setText("已保存用户「" + displayName(selected) + "」的直接授权（重新登录或刷新权限后生效）")));
-        task.setOnFailed(e -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "保存失败：" + msg).showAndWait());
-        });
+        task.setOnSucceeded(e ->
+                lblStatus.setText("已保存用户「" + displayName(selected) + "」的直接授权（重新登录或刷新权限后生效）"));
+        task.setOnFailed(e -> Alerts.error("保存失败：" + task.getException().getMessage()));
         new Thread(task, "user-grant-save").start();
     }
 
@@ -148,25 +136,17 @@ public class UserGrantController {
             }
         };
 
-        userTask.setOnSucceeded(e -> Platform.runLater(() -> {
+        userTask.setOnSucceeded(e -> {
             lvUsers.setItems(FXCollections.observableArrayList(userTask.getValue()));
             lblStatus.setText("已加载 " + userTask.getValue().size() + " 个用户");
-        }));
-        userTask.setOnFailed(e -> {
-            Throwable t = userTask.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载用户失败：" + msg).showAndWait());
         });
+        userTask.setOnFailed(e -> Alerts.error("加载用户失败：" + userTask.getException().getMessage()));
 
-        permTask.setOnSucceeded(e -> Platform.runLater(() -> {
+        permTask.setOnSucceeded(e -> {
             allPermissions = permTask.getValue();
             lblStatus.setText(lblStatus.getText() + "，" + allPermissions.size() + " 项权限");
-        }));
-        permTask.setOnFailed(e -> {
-            Throwable t = permTask.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR, "加载权限失败：" + msg).showAndWait());
         });
+        permTask.setOnFailed(e -> Alerts.error("加载权限失败：" + permTask.getException().getMessage()));
 
         new Thread(userTask, "user-grant-users").start();
         new Thread(permTask, "user-grant-perms").start();
@@ -190,7 +170,7 @@ public class UserGrantController {
                 return ApiClient.getResultData(json, UserPermissionVO.class);
             }
         };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
+        task.setOnSucceeded(e -> {
             lvUsers.setDisable(false);
             setEditingEnabled(true);
             // 过期响应丢弃：若当前选中项已变更，不再覆盖
@@ -216,15 +196,11 @@ public class UserGrantController {
                 }
                 lvPermissions.getItems().add(item);
             }
-        }));
+        });
         task.setOnFailed(e -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> {
-                lvUsers.setDisable(false);
-                setEditingEnabled(true);
-                Alerts.of(Alert.AlertType.ERROR, "加载用户权限失败：" + msg).showAndWait();
-            });
+            lvUsers.setDisable(false);
+            setEditingEnabled(true);
+            Alerts.error("加载用户权限失败：" + task.getException().getMessage());
         });
         new Thread(task, "user-grant-load").start();
     }

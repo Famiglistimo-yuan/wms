@@ -9,6 +9,7 @@ import javafx.scene.control.Dialog;
  * Dialog/Alert 主题工厂（ADR-010 深色主题）：弹窗是独立 scene，拿不到面板级样式表，
  * 须经 dialogPane 单独挂载才能跟随主题。全应用 Alert 一律经 of() 创建；
  * 自建 Dialog 子类在构造器调 theme(this) 走同一机制。
+ * info/warn/error/confirm 为最常用四态的便捷封装。
  */
 public final class Alerts {
 
@@ -26,5 +27,15 @@ public final class Alerts {
     public static <D extends Dialog<?>> D theme(D dialog) {
         dialog.getDialogPane().getStylesheets().add(ThemeManager.stylesheetUrl());
         return dialog;
+    }
+
+    public static void info(String msg) { of(Alert.AlertType.INFORMATION, msg).showAndWait(); }
+    public static void warn(String msg) { of(Alert.AlertType.WARNING, msg).showAndWait(); }
+    public static void error(String msg) { of(Alert.AlertType.ERROR, msg).showAndWait(); }
+
+    /** 确认框：选 OK 返回 true，取消/关闭返回 false */
+    public static boolean confirm(String msg) {
+        return of(Alert.AlertType.CONFIRMATION, msg, ButtonType.OK, ButtonType.CANCEL)
+                .showAndWait().filter(b -> b == ButtonType.OK).isPresent();
     }
 }

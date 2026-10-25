@@ -32,7 +32,6 @@ public class JwtInterceptor implements HandlerInterceptor {
     /** request attribute key，供 Controller 层取当前用户信息 */
     public static final String ATTR_USER_ID = "wms.userId";
     public static final String ATTR_USERNAME = "wms.username";
-    public static final String ATTR_PERMISSIONS = "wms.permissions";
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
@@ -71,7 +70,6 @@ public class JwtInterceptor implements HandlerInterceptor {
         List<String> permissions = claims.get("permissions", List.class);
         request.setAttribute(ATTR_USER_ID, userId);
         request.setAttribute(ATTR_USERNAME, username);
-        request.setAttribute(ATTR_PERMISSIONS, permissions == null ? List.of() : permissions);
 
         // 4) 权限校验
         RequirePermission rp = hm.getMethodAnnotation(RequirePermission.class);

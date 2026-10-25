@@ -42,13 +42,13 @@ public class PersonService {
                 .stream().map(this::toVO).collect(Collectors.toList());
     }
 
-    /** FR-1-2-7：按姓名模糊查询（LIKE '%keyword%'，天然兼容单字） */
-    public List<PersonVO> searchBySingleChar(String ch) {
-        if (ch == null || ch.isBlank()) {
+    /** FR-1-2-7：按姓名模糊查询（LIKE '%name%'，天然兼容单字）；空参回退全部列表 */
+    public List<PersonVO> search(String name) {
+        if (name == null || name.isBlank()) {
             return listAll();
         }
         return personMapper.selectList(Wrappers.<Person>lambdaQuery()
-                        .like(Person::getName, ch)
+                        .like(Person::getName, name)
                         .orderByAsc(Person::getPersonCode))
                 .stream().map(this::toVO).collect(Collectors.toList());
     }

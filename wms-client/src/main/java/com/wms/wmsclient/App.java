@@ -146,7 +146,7 @@ public class App extends Application {
                 return ApiClient.getResultData(json, LoginResponse.class);
             }
         };
-        verifyTask.setOnSucceeded(e -> Platform.runLater(() -> {
+        verifyTask.setOnSucceeded(e -> {
             LoginResponse fresh = verifyTask.getValue();
             // 用数据库最新权限集覆盖落盘陈旧值（管理员收回权限后自动同步）
             SessionContext.set(fresh);
@@ -156,7 +156,7 @@ public class App extends Application {
                 menuScene.refreshUser();
                 menuScene.applyMenuPermissions();
             }
-        }));
+        });
         verifyTask.setOnFailed(e -> {
             // 401：ApiClient.setOnUnauthorized 已清态回登录场景；
             // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底

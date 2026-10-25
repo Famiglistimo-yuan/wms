@@ -23,14 +23,11 @@ public class PersonController {
 
     private final PersonService service;
 
-    /** 全部人员（下拉用 + 搜索框清空时回退） */
+    /** 全部人员（下拉用；带 keyword 时按姓名模糊查询，空参由 Service 回退全部） */
     @GetMapping
     @RequirePermission("menu.person.view")
     public Result<List<PersonVO>> list(@RequestParam(required = false) String keyword) {
-        if (keyword != null && !keyword.isEmpty()) {
-            return Result.success(service.searchBySingleChar(keyword));
-        }
-        return Result.success(service.listAll());
+        return Result.success(service.search(keyword));
     }
 
     @GetMapping("/{id}")

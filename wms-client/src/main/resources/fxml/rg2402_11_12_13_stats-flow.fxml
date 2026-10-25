@@ -13,8 +13,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.wms.wmsclient.controller.StatsFlowController"
-            stylesheets="@../styles.css">
+            fx:controller="com.wms.wmsclient.controller.StatsFlowController">
   <top>
     <ToolBar>
       <Label text="起始日期"/>

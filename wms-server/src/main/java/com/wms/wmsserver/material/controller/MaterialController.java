@@ -26,10 +26,7 @@ public class MaterialController {
     @GetMapping
     @RequirePermission("menu.material.view")
     public Result<List<MaterialVO>> list(@RequestParam(required = false) String keyword) {
-        if (keyword != null && !keyword.isEmpty()) {
-            return Result.success(service.search(keyword));
-        }
-        return Result.success(service.listAll());
+        return Result.success(service.search(keyword));
     }
 
     @GetMapping("/{id}")

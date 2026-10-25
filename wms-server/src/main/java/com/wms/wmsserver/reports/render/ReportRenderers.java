@@ -1,5 +1,7 @@
 package com.wms.wmsserver.reports.render;
 
+import com.wms.common.BusinessException;
+import com.wms.common.ErrorCode;
 import com.wms.wmsserver.reports.dto.ReportModel;
 
 import java.io.IOException;
@@ -17,6 +19,15 @@ public final class ReportRenderers {
         return "word".equalsIgnoreCase(format)
                 ? WordTableRenderer.render(model)
                 : ExcelTableRenderer.render(model);
+    }
+
+    /** 渲染并统一转业务异常（IOException → SERVER_ERROR），Service 出口走这里 */
+    public static byte[] renderOrThrow(ReportModel model, String format) {
+        try {
+            return render(model, format);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.SERVER_ERROR, "报表生成失败：" + e.getMessage());
+        }
     }
 
     /** 去掉 BigDecimal 多余的小数零（800.000 → 800），报表展示用 */
