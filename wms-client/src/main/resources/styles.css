@@ -41,3 +41,8 @@
 .panel-host {
     -fx-background-color: #f2f2f4;
 }
+
+/* 物料流量统计加载遮罩：盖住图表表示统计进行中——深色版见 styles-dark.css */
+.chart-loading-mask {
+    -fx-background-color: rgba(255, 255, 255, 0.82);
+}

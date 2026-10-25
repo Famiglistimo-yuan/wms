@@ -22,6 +22,9 @@ import java.util.Map;
  */
 public class ReportMonthlyOrdersController {
 
+    /** 状态栏默认提示，导出结束后恢复 */
+    private static final String STATUS_HINT = "选择月份后导出：该月进出仓单全部按单号顺序打印";
+
     private final App app;
 
     @FXML private ChoiceBox<Integer> cbYear;
@@ -29,6 +32,8 @@ public class ReportMonthlyOrdersController {
     @FXML private ChoiceBox<String> cbFormat;
     @FXML private Button btnExport;
     @FXML private Label lblStatus;
+
+    private boolean loading;
 
     public ReportMonthlyOrdersController(App app) {
         this.app = app;
@@ -47,14 +52,16 @@ public class ReportMonthlyOrdersController {
         cbMonth.setValue(LocalDate.now().getMonthValue());
         cbFormat.getItems().addAll(ExportHelper.formatLabels());
         cbFormat.setValue(ExportHelper.formatLabels().get(0));
-        lblStatus.setText("选择月份后导出：该月进出仓单全部按单号顺序打印");
+        lblStatus.setText(STATUS_HINT);
     }
 
     @FXML
     protected void onExportClicked() {
+        if (loading) return;
         String ym = String.format("%d%02d", cbYear.getValue(), cbMonth.getValue());
         String fmt = ExportHelper.formatKey(cbFormat.getValue());
         // JavaFX 线程规则：下载走后台 Task（CONTRIBUTING §3.4）
+        setLoading(true);
         Task<byte[]> task = new Task<>() {
             @Override
             protected byte[] call() throws Exception {
@@ -62,6 +69,7 @@ public class ReportMonthlyOrdersController {
             }
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            setLoading(false);
             try {
                 File saved = ExportHelper.save(btnExport.getScene().getWindow(),
                         "月度进出仓单_" + ym + ExportHelper.extensionOf(fmt),
@@ -71,11 +79,21 @@ public class ReportMonthlyOrdersController {
                 Alerts.of(Alert.AlertType.ERROR, "文件保存失败：" + ex.getCause().getMessage()).showAndWait();
             }
         }));
-        task.setOnFailed(e -> Platform.runLater(() ->
-                Alerts.of(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
-                        .showAndWait()));
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            setLoading(false);
+            Alerts.of(Alert.AlertType.ERROR, "导出失败：" + ExportHelper.rootMessage(task.getException()))
+                    .showAndWait();
+        }));
         Thread t = new Thread(task, "report-monthly-export");
         t.setDaemon(true);
         t.start();
+    }
+
+    /** 导出中：按钮禁用变文案 + 状态栏提示（百万级单据导出耗时长，防重复触发） */
+    private void setLoading(boolean on) {
+        loading = on;
+        btnExport.setDisable(on);
+        btnExport.setText(on ? "导出中…" : "导出");
+        lblStatus.setText(on ? "正在导出…" : STATUS_HINT);
     }
 }

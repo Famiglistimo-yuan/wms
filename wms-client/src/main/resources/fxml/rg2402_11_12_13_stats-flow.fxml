@@ -6,9 +6,12 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.wms.wmsclient.controller.StatsFlowController"
             stylesheets="@../styles.css">
@@ -18,18 +21,27 @@
       <DatePicker fx:id="dpFrom" prefWidth="140"/>
       <Label text="截止日期"/>
       <DatePicker fx:id="dpTo" prefWidth="140"/>
-      <Button text="统计" onAction="#onQueryClicked"/>
+      <Button fx:id="btnQuery" text="统计" onAction="#onQueryClicked"/>
     </ToolBar>
   </top>
   <center>
-    <BarChart fx:id="chartFlow" title="各物料进出仓数量" animated="false">
-      <xAxis>
-        <CategoryAxis label="物料"/>
-      </xAxis>
-      <yAxis>
-        <NumberAxis label="数量" autoRanging="true"/>
-      </yAxis>
-    </BarChart>
+    <StackPane>
+      <BarChart fx:id="chartFlow" title="各物料进出仓数量" animated="false">
+        <xAxis>
+          <CategoryAxis label="物料"/>
+        </xAxis>
+        <yAxis>
+          <NumberAxis label="数量" autoRanging="true"/>
+        </yAxis>
+      </BarChart>
+      <StackPane fx:id="maskLoading" styleClass="chart-loading-mask"
+                 visible="false" managed="false">
+        <VBox spacing="10" alignment="CENTER">
+          <ProgressIndicator prefWidth="32" prefHeight="32"/>
+          <Label text="统计中…"/>
+        </VBox>
+      </StackPane>
+    </StackPane>
   </center>
   <bottom>
     <Label fx:id="lblMinFlow" styleClass="subtle"/>

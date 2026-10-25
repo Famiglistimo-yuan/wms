@@ -45,3 +45,8 @@
 .panel-host {
     -fx-background-color: #24292e;
 }
+
+/* 物料流量统计加载遮罩——深色版（底色同 -fx-control-inner-background） */
+.chart-loading-mask {
+    -fx-background-color: rgba(43, 49, 56, 0.85);
+}
