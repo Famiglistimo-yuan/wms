@@ -1,8 +1,8 @@
 package com.wms.wmsserver.auth.controller;
 
 import com.wms.common.Result;
+import com.wms.common.dto.PermissionVO;
 import com.wms.wmsserver.auth.annotation.RequirePermission;
-import com.wms.wmsserver.auth.dto.PermissionVO;
 import com.wms.wmsserver.auth.service.UserManagementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

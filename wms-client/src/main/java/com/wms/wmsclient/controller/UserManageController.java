@@ -1,9 +1,9 @@
 package com.wms.wmsclient.controller;
 
 import com.wms.common.RegexPatterns;
+import com.wms.common.dto.PersonOptionVO;
+import com.wms.common.dto.UserVO;
 import com.wms.wmsclient.App;
-import com.wms.wmsclient.dto.PersonOptionVO;
-import com.wms.wmsclient.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;

@@ -2,9 +2,9 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
-import com.wms.wmsclient.dto.PermissionVO;
-import com.wms.wmsclient.dto.UserPermissionVO;
-import com.wms.wmsclient.dto.UserVO;
+import com.wms.common.dto.PermissionVO;
+import com.wms.common.dto.UserPermissionVO;
+import com.wms.common.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;

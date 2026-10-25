@@ -1,4 +1,4 @@
-package com.wms.wmsserver.auth.dto;
+package com.wms.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
@@ -7,19 +7,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 用户列表/详情 VO（不返回口令）。
+ * 权限资源 VO（菜单项），两端共享。
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UserVO {
-
+public class PermissionVO {
     private Long id;
-    private String username;
-    private Long personId;
-    private String personCode;
-    private String realName;
-    private Integer status; // 1=启用 0=停用
+    private String permCode;
+    private String permName;
+    private Integer sortOrder;
 }

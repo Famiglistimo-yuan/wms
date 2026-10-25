@@ -25,6 +25,12 @@
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
         </dependency>
+        <!-- jackson-annotations：纯注解 API（@JsonInclude 等），两端共享 VO 使用，不引 databind 实现；
+             版本由 spring-boot-starter-parent BOM 托管 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

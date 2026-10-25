@@ -1,7 +1,7 @@
 package com.wms.wmsserver.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.wms.wmsserver.auth.dto.UserVO;
+import com.wms.common.dto.UserVO;
 import com.wms.wmsserver.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
