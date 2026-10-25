@@ -47,7 +47,8 @@ public class StatsFlowController {
         LocalDate today = LocalDate.now();
         dpFrom.setValue(today.withDayOfMonth(1));
         dpTo.setValue(today);
-        onQueryClicked();
+        // 大数据量统计耗时长，进面板不自动查询，避免打开卡顿，等用户点「统计」
+        lblMinFlow.setText("区间已预填本月，点击「统计」开始查询");
     }
 
     @FXML
