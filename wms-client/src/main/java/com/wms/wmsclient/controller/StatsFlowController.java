@@ -5,7 +5,7 @@ import com.wms.common.dto.MaterialFlowStat;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
-import javafx.concurrent.Task;
+import com.wms.wmsclient.util.ApiTasks;
 import javafx.fxml.FXML;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.XYChart;
@@ -61,29 +61,22 @@ public class StatsFlowController {
             Alerts.warn("起始日期不能晚于截止日期");
             return;
         }
-        // JavaFX 线程规则：HTTP 走后台 Task，渲染回 UI 线程（CONTRIBUTING §3.4）
+        // JavaFX 线程规则：HTTP 走后台线程，渲染回 UI 线程（CONTRIBUTING §3.4）
         setLoading(true);
-        Task<MaterialFlowReport> task = new Task<>() {
-            @Override
-            protected MaterialFlowReport call() throws Exception {
-                String json = ApiClient.get("/api/stats/material-flow",
-                        Map.of("from", from.toString(), "to", to.toString()));
-                return ApiClient.getResultData(json, MaterialFlowReport.class);
-            }
-        };
-        // Task 回调本就在 FX 线程执行（CONTRIBUTING §3.4）
-        task.setOnSucceeded(e -> {
-            setLoading(false);
-            render(task.getValue());
-        });
-        task.setOnFailed(e -> {
-            setLoading(false);
-            Throwable ex = task.getException();
-            Alerts.error("统计失败：" + (ex == null ? "未知错误" : ex.getMessage()));
-        });
-        Thread t = new Thread(task, "stats-flow-query");
-        t.setDaemon(true);
-        t.start();
+        ApiTasks.run("stats-flow-query",
+                () -> {
+                    String json = ApiClient.get("/api/stats/material-flow",
+                            Map.of("from", from.toString(), "to", to.toString()));
+                    return ApiClient.getResultData(json, MaterialFlowReport.class);
+                },
+                report -> {
+                    setLoading(false);
+                    render(report);
+                },
+                ex -> {
+                    setLoading(false);
+                    Alerts.error("统计失败：" + (ex == null ? "未知错误" : ex.getMessage()));
+                });
     }
 
     /** 加载态：图表遮罩 + 统计按钮禁用（大数据量统计耗时长，防重复触发并发查询） */

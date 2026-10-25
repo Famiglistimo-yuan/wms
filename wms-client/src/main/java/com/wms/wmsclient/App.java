@@ -6,6 +6,7 @@ import com.wms.wmsclient.scene.HomeScene;
 import com.wms.wmsclient.scene.MenuScene;
 import com.wms.wmsclient.scene.PanelScene;
 import com.wms.wmsclient.update.UpdateService;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TokenStore;
 import com.wms.wmsclient.theme.ThemeManager;
 import io.vproxy.vfx.control.globalscreen.GlobalScreenUtils;
@@ -19,7 +20,6 @@ import io.vproxy.vfx.ui.stage.VStage;
 import io.vproxy.vfx.ui.stage.VStageInitParams;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
@@ -139,32 +139,22 @@ public class App extends Application {
 
     /** 后台异步校验 token 有效性 + 刷新权限集（成功则覆盖会话并重跑菜单显隐；失败静默，401 走兜底回调） */
     private void startVerifyTask() {
-        Task<LoginResponse> verifyTask = new Task<>() {
-            @Override
-            protected LoginResponse call() throws Exception {
-                String json = ApiClient.get("/api/auth/me");
-                return ApiClient.getResultData(json, LoginResponse.class);
-            }
-        };
-        verifyTask.setOnSucceeded(e -> {
-            LoginResponse fresh = verifyTask.getValue();
-            // 用数据库最新权限集覆盖落盘陈旧值（管理员收回权限后自动同步）
-            SessionContext.set(fresh);
-            TokenStore.save(fresh);
-            // 菜单显隐按最新权限集重跑
-            if (menuScene != null) {
-                menuScene.refreshUser();
-                menuScene.applyMenuPermissions();
-            }
-        });
-        verifyTask.setOnFailed(e -> {
-            // 401：ApiClient.setOnUnauthorized 已清态回登录场景；
-            // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底
-        });
-        // daemon：关窗即退，不因后台校验未完成而僵住进程
-        Thread t = new Thread(verifyTask, "restore-session-verify");
-        t.setDaemon(true);
-        t.start();
+        ApiTasks.run("restore-session-verify",
+                () -> ApiClient.getResultData(ApiClient.get("/api/auth/me"), LoginResponse.class),
+                fresh -> {
+                    // 用数据库最新权限集覆盖落盘陈旧值（管理员收回权限后自动同步）
+                    SessionContext.set(fresh);
+                    TokenStore.save(fresh);
+                    // 菜单显隐按最新权限集重跑
+                    if (menuScene != null) {
+                        menuScene.refreshUser();
+                        menuScene.applyMenuPermissions();
+                    }
+                },
+                ex -> {
+                    // 401：ApiClient.setOnUnauthorized 已清态回登录场景；
+                    // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底
+                });
     }
 
     /** 登录场景 */

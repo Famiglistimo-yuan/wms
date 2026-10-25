@@ -53,12 +53,6 @@ public class PersonService {
                 .stream().map(this::toVO).collect(Collectors.toList());
     }
 
-    public PersonVO get(Long id) {
-        Person p = personMapper.selectById(id);
-        if (p == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "人员不存在");
-        return toVO(p);
-    }
-
     @Transactional(rollbackFor = Exception.class)
     public PersonVO create(PersonCreateDTO dto) {
         Long dup = personMapper.selectCount(Wrappers.<Person>lambdaQuery()

@@ -3,10 +3,10 @@ package com.wms.wmsclient.controller;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TableState;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
@@ -61,47 +61,40 @@ public class MaterialManageController {
                 ? "/api/materials"
                 : "/api/materials?keyword=" + ApiClient.urlEncode(keyword);
 
-        Task<List<MaterialRow>> task = new Task<>() {
-            @Override
-            protected List<MaterialRow> call() throws Exception {
-                String json = ApiClient.get(path);
-                List<MapRowVO> vos = ApiClient.getResultList(json, MapRowVO.class);
-                return vos.stream().map(MaterialRow::new).toList();
-            }
-        };
-        // Task 的 onSucceeded/onFailed 本就在 FX 线程执行（CONTRIBUTING §3.4）
-        task.setOnSucceeded(e -> {
-            loading = false;
-            rows.setAll(task.getValue());
-            lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
-            TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
-        });
-        task.setOnFailed(e -> {
-            loading = false;
-            String msg = task.getException().getMessage();
-            lblStatus.setText("加载失败：" + msg);
-            TableState.failed(tvMaterials, msg);
-        });
-        new Thread(task, "material-refresh").start();
+        ApiTasks.run("material-refresh",
+                () -> {
+                    String json = ApiClient.get(path);
+                    List<MapRowVO> vos = ApiClient.getResultList(json, MapRowVO.class);
+                    return vos.stream().map(MaterialRow::new).toList();
+                },
+                list -> {
+                    loading = false;
+                    rows.setAll(list);
+                    lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+                    TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
+                },
+                ex -> {
+                    loading = false;
+                    String msg = ex.getMessage();
+                    lblStatus.setText("加载失败：" + msg);
+                    TableState.failed(tvMaterials, msg);
+                });
     }
 
     @FXML
     protected void onCreateClicked() {
         MaterialDialog dlg = new MaterialDialog(null);
         dlg.showAndWait().ifPresent(row -> {
-            Task<MaterialRow> task = new Task<>() {
-                @Override
-                protected MaterialRow call() throws Exception {
-                    String json = ApiClient.post("/api/materials", row.toCreateJson());
-                    return new MaterialRow(ApiClient.getResultData(json, MapRowVO.class));
-                }
-            };
-            task.setOnSucceeded(e -> {
-                rows.add(task.getValue());
-                lblStatus.setText("新增成功：" + row.materialCode + " " + row.name);
-            });
-            task.setOnFailed(e -> Alerts.error("新增失败：" + task.getException().getMessage()));
-            new Thread(task, "material-create").start();
+            ApiTasks.run("material-create",
+                    () -> {
+                        String json = ApiClient.post("/api/materials", row.toCreateJson());
+                        return new MaterialRow(ApiClient.getResultData(json, MapRowVO.class));
+                    },
+                    created -> {
+                        rows.add(created);
+                        lblStatus.setText("新增成功：" + row.materialCode + " " + row.name);
+                    },
+                    ex -> Alerts.error("新增失败：" + ex.getMessage()));
         });
     }
 
@@ -111,21 +104,18 @@ public class MaterialManageController {
         if (selected == null) { Alerts.info("请先选择要修改的物料"); return; }
         MaterialDialog dlg = new MaterialDialog(selected);
         dlg.showAndWait().ifPresent(row -> {
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() throws Exception {
-                    String json = ApiClient.put("/api/materials/" + row.id, row.toUpdateJson());
-                    ApiClient.checkSuccess(json);
-                    return null;
-                }
-            };
-            task.setOnSucceeded(e -> {
-                int idx = rows.indexOf(selected);
-                rows.set(idx, row);
-                lblStatus.setText("修改成功：" + row.materialCode);
-            });
-            task.setOnFailed(e -> Alerts.error("修改失败：" + task.getException().getMessage()));
-            new Thread(task, "material-update").start();
+            ApiTasks.run("material-update",
+                    () -> {
+                        String json = ApiClient.put("/api/materials/" + row.id, row.toUpdateJson());
+                        ApiClient.checkSuccess(json);
+                        return null;
+                    },
+                    v -> {
+                        int idx = rows.indexOf(selected);
+                        rows.set(idx, row);
+                        lblStatus.setText("修改成功：" + row.materialCode);
+                    },
+                    ex -> Alerts.error("修改失败：" + ex.getMessage()));
         });
     }
 
@@ -135,20 +125,17 @@ public class MaterialManageController {
         if (selected == null) { Alerts.info("请先选择要删除的物料"); return; }
         if (!Alerts.confirm("确定删除物料「" + selected.name + "」（" + selected.materialCode + "）？\n已被进出仓单引用的物料无法删除。")) return;
 
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                String json = ApiClient.delete("/api/materials/" + selected.id);
-                ApiClient.checkSuccess(json);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> {
-            rows.remove(selected);
-            lblStatus.setText("已删除");
-        });
-        task.setOnFailed(e -> Alerts.error("删除失败：" + task.getException().getMessage()));
-        new Thread(task, "material-delete").start();
+        ApiTasks.run("material-delete",
+                () -> {
+                    String json = ApiClient.delete("/api/materials/" + selected.id);
+                    ApiClient.checkSuccess(json);
+                    return null;
+                },
+                v -> {
+                    rows.remove(selected);
+                    lblStatus.setText("已删除");
+                },
+                ex -> Alerts.error("删除失败：" + ex.getMessage()));
     }
 
     public static class MaterialRow {

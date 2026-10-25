@@ -9,8 +9,8 @@ import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.panel.MorePanel;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TokenStore;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
@@ -53,38 +53,29 @@ public class LoginController {
         req.setUsername(username);
         req.setPassword(password);
 
-        Task<LoginResponse> task = new Task<>() {
-            @Override
-            protected LoginResponse call() throws Exception {
-                String respJson = ApiClient.post("/api/auth/login", ApiClient.toJson(req));
-                return ApiClient.getResultData(respJson, LoginResponse.class);
-            }
-        };
-
-        // Task 回调本就在 FX 线程执行（CONTRIBUTING §3.4）
-        task.setOnSucceeded(e -> {
-            btnLogin.setDisable(false);
-            LoginResponse loginResp = task.getValue();
-            SessionContext.set(loginResp);
-            ApiClient.auth(loginResp.getToken());
-            TokenStore.save(loginResp);
-            try {
-                app.showMain();
-            } catch (Exception ex) {
-                Alerts.error("进入主界面失败：" + describe(ex));
-            }
-        });
-
-        task.setOnFailed(e -> {
-            btnLogin.setDisable(false);
-            Throwable t = task.getException();
-            // ApiException 直显服务端文案（如"用户名或口令错误"），其余视为网络问题
-            Alerts.error(t instanceof ApiException ? t.getMessage() : "网络异常：" + t.getMessage());
-        });
-
         // 防连点：请求期间禁用登录按钮，成功/失败回调里恢复
         btnLogin.setDisable(true);
-        new Thread(task, "login-task").start();
+        ApiTasks.run("login-task",
+                () -> {
+                    String respJson = ApiClient.post("/api/auth/login", ApiClient.toJson(req));
+                    return ApiClient.getResultData(respJson, LoginResponse.class);
+                },
+                loginResp -> {
+                    btnLogin.setDisable(false);
+                    SessionContext.set(loginResp);
+                    ApiClient.auth(loginResp.getToken());
+                    TokenStore.save(loginResp);
+                    try {
+                        app.showMain();
+                    } catch (Exception ex) {
+                        Alerts.error("进入主界面失败：" + describe(ex));
+                    }
+                },
+                t -> {
+                    btnLogin.setDisable(false);
+                    // ApiException 直显服务端文案（如"用户名或口令错误"），其余视为网络问题
+                    Alerts.error(t instanceof ApiException ? t.getMessage() : "网络异常：" + t.getMessage());
+                });
     }
 
     // ====== 「更多」面板入口（FR-6：/api/version 为公开接口，登录前可用）======

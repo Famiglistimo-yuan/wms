@@ -6,10 +6,10 @@ import com.wms.wmsclient.dto.PersonOptionVO;
 import com.wms.wmsclient.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TableState;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -76,27 +76,24 @@ public class UserManageController {
     private void showCreateUserDialog(String username, String password, Long personId) {
         CreateUserDialog dlg = new CreateUserDialog(username, password, personId);
         dlg.showAndWait().ifPresent(row -> {
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() throws Exception {
-                    Map<String, Object> body = new LinkedHashMap<>();
-                    body.put("username", row.username);
-                    body.put("password", row.password);
-                    body.put("personId", row.personId);
-                    String json = ApiClient.post("/api/users", ApiClient.toJson(body));
-                    ApiClient.checkSuccess(json);
-                    return null;
-                }
-            };
-            task.setOnSucceeded(e -> {
-                loadUsers();
-                lblStatus.setText("用户创建成功：" + row.username);
-            });
-            task.setOnFailed(e -> {
-                Alerts.error("创建失败：" + task.getException().getMessage());
-                showCreateUserDialog(row.username, row.password, row.personId);
-            });
-            new Thread(task, "user-create").start();
+            ApiTasks.run("user-create",
+                    () -> {
+                        Map<String, Object> body = new LinkedHashMap<>();
+                        body.put("username", row.username);
+                        body.put("password", row.password);
+                        body.put("personId", row.personId);
+                        String json = ApiClient.post("/api/users", ApiClient.toJson(body));
+                        ApiClient.checkSuccess(json);
+                        return null;
+                    },
+                    v -> {
+                        loadUsers();
+                        lblStatus.setText("用户创建成功：" + row.username);
+                    },
+                    ex -> {
+                        Alerts.error("创建失败：" + ex.getMessage());
+                        showCreateUserDialog(row.username, row.password, row.personId);
+                    });
         });
     }
 
@@ -111,23 +108,20 @@ public class UserManageController {
         String action = newStatus == 1 ? "启用" : "停用";
         if (!Alerts.confirm("确定要" + action + "用户「" + selected.username + "」吗？")) return;
 
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("status", newStatus);
-                String json = ApiClient.put("/api/users/" + selected.id, ApiClient.toJson(body));
-                ApiClient.checkSuccess(json);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> {
-            selected.status = newStatus;
-            tvUsers.refresh();
-            lblStatus.setText(action + "成功：" + selected.username);
-        });
-        task.setOnFailed(e -> Alerts.error(action + "失败：" + task.getException().getMessage()));
-        new Thread(task, "user-toggle").start();
+        ApiTasks.run("user-toggle",
+                () -> {
+                    Map<String, Object> body = new LinkedHashMap<>();
+                    body.put("status", newStatus);
+                    String json = ApiClient.put("/api/users/" + selected.id, ApiClient.toJson(body));
+                    ApiClient.checkSuccess(json);
+                    return null;
+                },
+                v -> {
+                    selected.status = newStatus;
+                    tvUsers.refresh();
+                    lblStatus.setText(action + "成功：" + selected.username);
+                },
+                ex -> Alerts.error(action + "失败：" + ex.getMessage()));
     }
 
     /** 删除用户：二次确认后删除，服务端同事务连带解除其角色关系 */
@@ -140,20 +134,17 @@ public class UserManageController {
         }
         if (!Alerts.confirm("确定删除用户「" + selected.username + "」吗？其已分配的角色将一并解除，且不可恢复。")) return;
 
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                String json = ApiClient.delete("/api/users/" + selected.id);
-                ApiClient.checkSuccess(json);
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> {
-            loadUsers();
-            lblStatus.setText("已删除用户：" + selected.username);
-        });
-        task.setOnFailed(e -> Alerts.error("删除用户失败：" + task.getException().getMessage()));
-        new Thread(task, "user-delete").start();
+        ApiTasks.run("user-delete",
+                () -> {
+                    String json = ApiClient.delete("/api/users/" + selected.id);
+                    ApiClient.checkSuccess(json);
+                    return null;
+                },
+                v -> {
+                    loadUsers();
+                    lblStatus.setText("已删除用户：" + selected.username);
+                },
+                ex -> Alerts.error("删除用户失败：" + ex.getMessage()));
     }
 
     private void loadUsers() {
@@ -161,47 +152,40 @@ public class UserManageController {
         loading = true;
         TableState.loading(tvUsers);
         lblStatus.setText("加载中…");
-        Task<List<UserVO>> task = new Task<>() {
-            @Override
-            protected List<UserVO> call() throws Exception {
-                String json = ApiClient.get("/api/users");
-                return ApiClient.getResultList(json, UserVO.class);
-            }
-        };
-        task.setOnSucceeded(e -> {
-            loading = false;
-            List<UserVO> users = task.getValue();
-            rows.clear();
-            for (UserVO u : users) {
-                rows.add(new UserRow(u.getId(), u.getUsername(), u.getPersonId(), u.getPersonCode(),
-                        u.getRealName(), u.getStatus()));
-            }
-            lblStatus.setText("共 " + users.size() + " 个用户");
-            TableState.empty(tvUsers, null);
-        });
-        task.setOnFailed(e -> {
-            loading = false;
-            String msg = task.getException().getMessage();
-            TableState.failed(tvUsers, msg);
-            Alerts.error("加载用户列表失败：" + msg);
-        });
-        new Thread(task, "user-list").start();
+        ApiTasks.run("user-list",
+                () -> {
+                    String json = ApiClient.get("/api/users");
+                    return ApiClient.getResultList(json, UserVO.class);
+                },
+                users -> {
+                    loading = false;
+                    rows.clear();
+                    for (UserVO u : users) {
+                        rows.add(new UserRow(u.getId(), u.getUsername(), u.getPersonId(), u.getPersonCode(),
+                                u.getRealName(), u.getStatus()));
+                    }
+                    lblStatus.setText("共 " + users.size() + " 个用户");
+                    TableState.empty(tvUsers, null);
+                },
+                ex -> {
+                    loading = false;
+                    String msg = ex.getMessage();
+                    TableState.failed(tvUsers, msg);
+                    Alerts.error("加载用户列表失败：" + msg);
+                });
     }
 
     private void loadPersonOptions(Runnable onDone) {
-        Task<List<PersonOptionVO>> task = new Task<>() {
-            @Override
-            protected List<PersonOptionVO> call() throws Exception {
-                String json = ApiClient.get("/api/users/person-options");
-                return ApiClient.getResultList(json, PersonOptionVO.class);
-            }
-        };
-        task.setOnSucceeded(e -> {
-            personOptions = task.getValue();
-            if (onDone != null) onDone.run();
-        });
-        task.setOnFailed(e -> Alerts.error("加载人员选项失败：" + task.getException().getMessage()));
-        new Thread(task, "person-options").start();
+        ApiTasks.run("person-options",
+                () -> {
+                    String json = ApiClient.get("/api/users/person-options");
+                    return ApiClient.getResultList(json, PersonOptionVO.class);
+                },
+                options -> {
+                    personOptions = options;
+                    if (onDone != null) onDone.run();
+                },
+                ex -> Alerts.error("加载人员选项失败：" + ex.getMessage()));
     }
 
     /** TableView 行模型 */

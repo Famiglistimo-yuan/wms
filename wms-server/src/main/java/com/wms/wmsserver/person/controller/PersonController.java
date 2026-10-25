@@ -30,12 +30,6 @@ public class PersonController {
         return Result.success(service.search(keyword));
     }
 
-    @GetMapping("/{id}")
-    @RequirePermission("menu.person.view")
-    public Result<PersonVO> get(@PathVariable Long id) {
-        return Result.success(service.get(id));
-    }
-
     @PostMapping
     @RequirePermission("menu.person.add")
     public Result<PersonVO> create(@Valid @RequestBody PersonCreateDTO dto) {

@@ -29,12 +29,6 @@ public class MaterialController {
         return Result.success(service.search(keyword));
     }
 
-    @GetMapping("/{id}")
-    @RequirePermission("menu.material.view")
-    public Result<MaterialVO> get(@PathVariable Long id) {
-        return Result.success(service.get(id));
-    }
-
     @PostMapping
     @RequirePermission("menu.material.add")
     public Result<MaterialVO> create(@Valid @RequestBody MaterialCreateDTO dto) {

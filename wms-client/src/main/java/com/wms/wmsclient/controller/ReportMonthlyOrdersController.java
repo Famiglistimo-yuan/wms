@@ -3,8 +3,8 @@ package com.wms.wmsclient.controller;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.ExportHelper;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
@@ -51,28 +51,21 @@ public class ReportMonthlyOrdersController {
         if (loading) return;
         String ym = String.format("%d%02d", cbYear.getValue(), cbMonth.getValue());
         String fmt = ExportHelper.formatKey(cbFormat.getValue());
-        // JavaFX 线程规则：下载走后台 Task（CONTRIBUTING §3.4）
+        // JavaFX 线程规则：下载走后台线程（CONTRIBUTING §3.4）
         setLoading(true);
-        Task<byte[]> task = new Task<>() {
-            @Override
-            protected byte[] call() throws Exception {
-                return ApiClient.downloadFile("/api/reports/monthly-orders/" + ym, Map.of("format", fmt));
-            }
-        };
-        task.setOnSucceeded(e -> {
-            setLoading(false);
-            String status = ExportHelper.saveAndDescribe(btnExport.getScene().getWindow(),
-                    "月度进出仓单_" + ym + ExportHelper.extensionOf(fmt),
-                    ExportHelper.extensionOf(fmt), task.getValue());
-            if (status != null) lblStatus.setText(status);
-        });
-        task.setOnFailed(e -> {
-            setLoading(false);
-            Alerts.error("导出失败：" + ExportHelper.rootMessage(task.getException()));
-        });
-        Thread t = new Thread(task, "report-monthly-export");
-        t.setDaemon(true);
-        t.start();
+        ApiTasks.run("report-monthly-export",
+                () -> ApiClient.downloadFile("/api/reports/monthly-orders/" + ym, Map.of("format", fmt)),
+                bytes -> {
+                    setLoading(false);
+                    String status = ExportHelper.saveAndDescribe(btnExport.getScene().getWindow(),
+                            "月度进出仓单_" + ym + ExportHelper.extensionOf(fmt),
+                            ExportHelper.extensionOf(fmt), bytes);
+                    if (status != null) lblStatus.setText(status);
+                },
+                ex -> {
+                    setLoading(false);
+                    Alerts.error("导出失败：" + ExportHelper.rootMessage(ex));
+                });
     }
 
     /** 导出中：按钮禁用变文案 + 状态栏提示（百万级单据导出耗时长，防重复触发） */

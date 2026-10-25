@@ -4,8 +4,8 @@ import com.wms.common.dto.MaterialOption;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.ExportHelper;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
@@ -15,7 +15,6 @@ import javafx.util.StringConverter;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,23 +61,17 @@ public class ReportLedgerController {
 
     private void loadMaterials() {
         lblStatus.setText("物料列表加载中…");
-        Task<List<MaterialOption>> task = new Task<>() {
-            @Override
-            protected List<MaterialOption> call() throws Exception {
-                String json = ApiClient.get("/api/stats/material-options");
-                return ApiClient.getResultList(json, MaterialOption.class);
-            }
-        };
-        task.setOnSucceeded(e -> {
-            lblStatus.setText(STATUS_HINT);
-            cbMaterial.getItems().setAll(task.getValue());
-            cbMaterial.getSelectionModel().selectFirst();
-        });
-        task.setOnFailed(e ->
-                lblStatus.setText("物料列表加载失败：" + ExportHelper.rootMessage(task.getException())));
-        Thread t = new Thread(task, "ledger-materials");
-        t.setDaemon(true);
-        t.start();
+        ApiTasks.run("ledger-materials",
+                () -> {
+                    String json = ApiClient.get("/api/stats/material-options");
+                    return ApiClient.getResultList(json, MaterialOption.class);
+                },
+                options -> {
+                    lblStatus.setText(STATUS_HINT);
+                    cbMaterial.getItems().setAll(options);
+                    cbMaterial.getSelectionModel().selectFirst();
+                },
+                ex -> lblStatus.setText("物料列表加载失败：" + ExportHelper.rootMessage(ex)));
     }
 
     @FXML
@@ -92,29 +85,24 @@ public class ReportLedgerController {
         int year = cbYear.getValue();
         String fmt = ExportHelper.formatKey(cbFormat.getValue());
         setLoading(true);
-        Task<byte[]> task = new Task<>() {
-            @Override
-            protected byte[] call() throws Exception {
-                // 物料代码 URL 编码：万一含 / ? # 空格等字符不破坏路径（服务端路径变量自动解码）
-                String code = URLEncoder.encode(material.getMaterialCode(), StandardCharsets.UTF_8);
-                return ApiClient.downloadFile("/api/reports/ledger/" + code + "/" + year,
-                        Map.of("format", fmt));
-            }
-        };
-        task.setOnSucceeded(e -> {
-            setLoading(false);
-            String status = ExportHelper.saveAndDescribe(btnExport.getScene().getWindow(),
-                    "仓库账本_" + material.getMaterialCode() + "_" + year + ExportHelper.extensionOf(fmt),
-                    ExportHelper.extensionOf(fmt), task.getValue());
-            if (status != null) lblStatus.setText(status);
-        });
-        task.setOnFailed(e -> {
-            setLoading(false);
-            Alerts.error("导出失败：" + ExportHelper.rootMessage(task.getException()));
-        });
-        Thread t = new Thread(task, "report-ledger-export");
-        t.setDaemon(true);
-        t.start();
+        ApiTasks.run("report-ledger-export",
+                () -> {
+                    // 物料代码 URL 编码：万一含 / ? # 空格等字符不破坏路径（服务端路径变量自动解码）
+                    String code = URLEncoder.encode(material.getMaterialCode(), StandardCharsets.UTF_8);
+                    return ApiClient.downloadFile("/api/reports/ledger/" + code + "/" + year,
+                            Map.of("format", fmt));
+                },
+                bytes -> {
+                    setLoading(false);
+                    String status = ExportHelper.saveAndDescribe(btnExport.getScene().getWindow(),
+                            "仓库账本_" + material.getMaterialCode() + "_" + year + ExportHelper.extensionOf(fmt),
+                            ExportHelper.extensionOf(fmt), bytes);
+                    if (status != null) lblStatus.setText(status);
+                },
+                ex -> {
+                    setLoading(false);
+                    Alerts.error("导出失败：" + ExportHelper.rootMessage(ex));
+                });
     }
 
     /** 导出中：按钮禁用变文案 + 状态栏提示（百万级单据导出耗时长，防重复触发） */
