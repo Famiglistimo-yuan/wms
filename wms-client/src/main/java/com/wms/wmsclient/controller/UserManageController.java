@@ -7,6 +7,7 @@ import com.wms.wmsclient.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.TableState;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -198,6 +199,7 @@ public class UserManageController {
     }
 
     private void loadUsers() {
+        TableState.loading(tvUsers);
         Task<List<UserVO>> task = new Task<>() {
             @Override
             protected List<UserVO> call() throws Exception {
@@ -213,11 +215,15 @@ public class UserManageController {
                         u.getRealName(), u.getStatus()));
             }
             lblStatus.setText("共 " + users.size() + " 个用户");
+            TableState.empty(tvUsers, null);
         }));
         task.setOnFailed(e -> {
             Throwable t = task.getException();
             String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            Platform.runLater(() -> alertError("加载用户列表失败：" + msg));
+            Platform.runLater(() -> {
+                TableState.failed(tvUsers, msg);
+                alertError("加载用户列表失败：" + msg);
+            });
         });
         new Thread(task, "user-list").start();
     }

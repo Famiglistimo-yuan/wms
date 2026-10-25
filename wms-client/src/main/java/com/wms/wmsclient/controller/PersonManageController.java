@@ -5,6 +5,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.TableState;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -61,6 +62,7 @@ public class PersonManageController {
     @FXML
     protected void onRefreshClicked() {
         btnRefresh.setDisable(true);
+        TableState.loading(tvPersons);
         String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
         // 任何非空输入都带 keyword；后端自动单字模糊
         String path = keyword.isEmpty()
@@ -78,12 +80,15 @@ public class PersonManageController {
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             rows.setAll(task.getValue());
             lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+            TableState.empty(tvPersons, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
             btnRefresh.setDisable(false);
         }));
         task.setOnFailed(e -> Platform.runLater(() -> {
             btnRefresh.setDisable(false);
             Throwable t = task.getException();
-            lblStatus.setText("加载失败：" + (t instanceof ApiException ae ? ae.getMessage() : t.getMessage()));
+            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
+            lblStatus.setText("加载失败：" + msg);
+            TableState.failed(tvPersons, msg);
         }));
         new Thread(task, "person-refresh").start();
     }

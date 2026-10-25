@@ -4,6 +4,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
+import com.wms.wmsclient.util.TableState;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -61,6 +62,7 @@ public class MaterialManageController {
     /** FR-1-3-5：keyword 同时匹配代码/名称/规格 */
     @FXML
     protected void onRefreshClicked() {
+        TableState.loading(tvMaterials);
         String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
         String path = keyword.isEmpty()
                 ? "/api/materials"
@@ -77,10 +79,13 @@ public class MaterialManageController {
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             rows.setAll(task.getValue());
             lblStatus.setText("共 " + rows.size() + " 条" + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+            TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的记录");
         }));
         task.setOnFailed(e -> Platform.runLater(() -> {
             Throwable t = task.getException();
-            lblStatus.setText("加载失败：" + (t instanceof ApiException ae ? ae.getMessage() : t.getMessage()));
+            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
+            lblStatus.setText("加载失败：" + msg);
+            TableState.failed(tvMaterials, msg);
         }));
         new Thread(task, "material-refresh").start();
     }
