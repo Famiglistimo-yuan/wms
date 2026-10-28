@@ -2,6 +2,10 @@ package com.wms.wmsserver.reports.controller;
 
 import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
+import com.wms.common.PageResult;
+import com.wms.common.Result;
+import com.wms.common.dto.LedgerPreview;
+import com.wms.common.dto.MonthlyOrderPreviewRow;
 import com.wms.wmsserver.auth.annotation.RequirePermission;
 import com.wms.wmsserver.auth.interceptor.JwtInterceptor;
 import com.wms.wmsserver.reports.service.LedgerReportService;
@@ -46,6 +50,16 @@ public class ReportController {
         return file(body, "月度进出仓单_" + yyyyMM + extOf(fmt));
     }
 
+    /** 月度进出仓单预览（FR-5-2 导出前页面展示）：与导出同查询同排序，分页返回 Result JSON */
+    @GetMapping("/monthly-orders/{yyyyMM}/preview")
+    @RequirePermission("menu.stats.monthly")
+    public Result<PageResult<MonthlyOrderPreviewRow>> monthlyOrdersPreview(@PathVariable String yyyyMM,
+                                                                           @RequestParam(defaultValue = "1") long page,
+                                                                           @RequestParam(defaultValue = "20") int size) {
+        int[] ym = parseYm(yyyyMM);
+        return Result.success(monthlyOrderReportService.preview(ym[0], ym[1], Math.max(1, page), clampSize(size)));
+    }
+
     /** 仓库账本（FR-5-3）：给定年份与物料，按日期列出进仓、出仓与结存 */
     @GetMapping("/ledger/{materialCode}/{yyyy}")
     @RequirePermission("menu.stats.ledger")
@@ -57,6 +71,17 @@ public class ReportController {
         String fmt = normalizeFormat(format);
         byte[] body = ledgerReportService.build(materialCode, year, fmt, usernameOf(request));
         return file(body, "仓库账本_" + materialCode + "_" + year + extOf(fmt));
+    }
+
+    /** 仓库账本预览（FR-5-3 导出前页面展示）：物料摘要 + 期初结存 + 分页行 */
+    @GetMapping("/ledger/{materialCode}/{yyyy}/preview")
+    @RequirePermission("menu.stats.ledger")
+    public Result<LedgerPreview> ledgerPreview(@PathVariable String materialCode,
+                                               @PathVariable String yyyy,
+                                               @RequestParam(defaultValue = "1") long page,
+                                               @RequestParam(defaultValue = "20") int size) {
+        int year = parseYear(yyyy);
+        return Result.success(ledgerReportService.preview(materialCode, year, Math.max(1, page), clampSize(size)));
     }
 
     // ====== 以下为参数与响应辅助 ======
@@ -89,6 +114,11 @@ public class ReportController {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "导出格式仅支持 excel 或 word");
         }
         return f;
+    }
+
+    /** 分页 size 钳制（技术方案 §6.3：默认 20，上限 100） */
+    private static int clampSize(int size) {
+        return Math.min(100, Math.max(1, size));
     }
 
     private static String usernameOf(HttpServletRequest request) {

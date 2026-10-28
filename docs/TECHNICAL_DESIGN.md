@@ -341,7 +341,9 @@
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
 | GET | `/api/stats/material-options` | 物料选项列表（统计/账本面板下拉用，避开档案查询接口） |
 | GET | `/api/reports/monthly-orders/{yyyyMM}?format=excel\|word` | 导出月度进出仓单（Excel/Word，缺省 excel） |
+| GET | `/api/reports/monthly-orders/{yyyyMM}/preview?page=&size=` | 月度进出仓单分页预览（导出前页面展示，同查询同排序） |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}?format=excel\|word` | 导出仓库账本（Excel/Word，缺省 excel） |
+| GET | `/api/reports/ledger/{materialCode}/{yyyy}/preview?page=&size=` | 仓库账本预览（物料摘要+期初结存+分页行） |
 | GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用；停用需保留至少一个启用账号且不能停用当前登录账号），需 `menu.auth.user` |
 | GET | `/api/users/person-options` | 人员下拉选项（新增用户时选关联人员），需 `menu.auth.user` |
 | DELETE | `/api/users/{id}` | 删除用户（同事务连带解除其角色关系；禁止删除当前登录账号），需 `menu.auth.user` |

@@ -2,6 +2,8 @@ package com.wms.wmsserver.reports.service;
 
 import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
+import com.wms.common.dto.LedgerPreview;
+import com.wms.common.dto.LedgerPreviewRow;
 import com.wms.wmsserver.mapper.ReportMapper;
 import com.wms.wmsserver.reports.dto.LedgerRow;
 import com.wms.wmsserver.reports.dto.MaterialBrief;
@@ -40,17 +42,9 @@ public class LedgerReportService {
         LocalDate from = LocalDate.of(year, 1, 1);
         List<LedgerRow> rows = reportMapper.selectLedgerRows(brief.getId(), from, from.plusYears(1));
         BigDecimal opening = brief.getStock().subtract(reportMapper.selectNetFlowSince(brief.getId(), from));
-
-        List<String[]> display = new ArrayList<>(rows.size());
-        BigDecimal balance = opening;
-        for (LedgerRow r : rows) {
-            balance = balance.add(r.getInQty()).subtract(r.getOutQty());
-            display.add(new String[]{
-                    r.getOrderDate().toString(),
-                    ReportRenderers.strip(r.getInQty()),
-                    ReportRenderers.strip(r.getOutQty()),
-                    ReportRenderers.strip(balance)});
-        }
+        List<String[]> display = accumulate(opening, rows).stream()
+                .map(r -> new String[]{r.getOrderDate(), r.getInQty(), r.getOutQty(), r.getBalance()})
+                .toList();
 
         ReportModel model = ReportModel.builder()
                 .title("仓库账本（" + year + "年）")
@@ -71,5 +65,47 @@ public class LedgerReportService {
         log.info("仓库账本导出 {} {} 年：{} 日流水，期初 {}，格式 {}",
                 materialCode, year, rows.size(), opening, format);
         return ReportRenderers.renderOrThrow(model, format);
+    }
+
+    /** 导出前预览：与 build() 相同的期初反推与逐日累计，随后按页切片（全年 ≤366 行，无需 SQL 分页） */
+    public LedgerPreview preview(String materialCode, int year, long page, int size) {
+        MaterialBrief brief = reportMapper.selectMaterialBrief(materialCode);
+        if (brief == null) {
+            throw new BusinessException(ErrorCode.CONFLICT, "物料不存在：" + materialCode);
+        }
+        LocalDate from = LocalDate.of(year, 1, 1);
+        List<LedgerRow> rows = reportMapper.selectLedgerRows(brief.getId(), from, from.plusYears(1));
+        BigDecimal opening = brief.getStock().subtract(reportMapper.selectNetFlowSince(brief.getId(), from));
+
+        List<LedgerPreviewRow> all = accumulate(opening, rows);
+        int fromIdx = (int) Math.min((page - 1) * size, all.size());
+        int toIdx = (int) Math.min(fromIdx + (long) size, all.size());
+        return LedgerPreview.builder()
+                .materialCode(brief.getMaterialCode())
+                .materialName(brief.getName())
+                .spec(brief.getSpec() == null ? "—" : brief.getSpec())
+                .unit(brief.getUnit())
+                .openingBalance(ReportRenderers.strip(opening))
+                .records(all.subList(fromIdx, toIdx))
+                .total(all.size())
+                .page(page)
+                .size(size)
+                .build();
+    }
+
+    /** 期初反推后的逐日累计展示行：build 与 preview 共用（口径单源） */
+    private static List<LedgerPreviewRow> accumulate(BigDecimal opening, List<LedgerRow> rows) {
+        List<LedgerPreviewRow> all = new ArrayList<>(rows.size());
+        BigDecimal balance = opening;
+        for (LedgerRow r : rows) {
+            balance = balance.add(r.getInQty()).subtract(r.getOutQty());
+            all.add(LedgerPreviewRow.builder()
+                    .orderDate(r.getOrderDate().toString())
+                    .inQty(ReportRenderers.strip(r.getInQty()))
+                    .outQty(ReportRenderers.strip(r.getOutQty()))
+                    .balance(ReportRenderers.strip(balance))
+                    .build());
+        }
+        return all;
     }
 }

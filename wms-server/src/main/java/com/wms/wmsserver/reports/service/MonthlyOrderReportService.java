@@ -1,5 +1,7 @@
 package com.wms.wmsserver.reports.service;
 
+import com.wms.common.PageResult;
+import com.wms.common.dto.MonthlyOrderPreviewRow;
 import com.wms.wmsserver.mapper.ReportMapper;
 import com.wms.wmsserver.reports.dto.MonthlyOrderRow;
 import com.wms.wmsserver.reports.dto.ReportModel;
@@ -59,5 +61,30 @@ public class MonthlyOrderReportService {
 
         log.info("月度进出仓单导出 {}-{}：{} 条明细，格式 {}", year, month, display.size(), format);
         return ReportRenderers.renderOrThrow(model, format);
+    }
+
+    /** 导出前预览：与 build() 同查询同排序同展示口径，按页返回（百万级明细不可全量拉取） */
+    public PageResult<MonthlyOrderPreviewRow> preview(int year, int month, long page, int size) {
+        LocalDate from = LocalDate.of(year, month, 1);
+        long total = reportMapper.countMonthlyOrders(from, from.plusMonths(1));
+        List<MonthlyOrderPreviewRow> records = List.of();
+        if ((page - 1) * size < total) { // 页越界（如数据刚被删）返回空页而非报错
+            records = reportMapper.selectMonthlyOrdersPage(from, from.plusMonths(1), (page - 1) * size, size)
+                    .stream()
+                    .map(r -> MonthlyOrderPreviewRow.builder()
+                            .orderNo(r.getOrderNo())
+                            .typeLabel("IN".equals(r.getOrderType()) ? "进仓" : "出仓")
+                            .orderDate(r.getOrderDate().toString())
+                            .operatorName(r.getOperatorName())
+                            .handlerName(r.getHandlerName())
+                            .materialCode(r.getMaterialCode())
+                            .materialName(r.getMaterialName())
+                            .unit(r.getUnit())
+                            .quantity(ReportRenderers.strip(r.getQuantity()))
+                            .remark(r.getRemark() == null ? "" : r.getRemark())
+                            .build())
+                    .toList();
+        }
+        return new PageResult<>(records, total, page, size);
     }
 }

@@ -40,6 +40,42 @@ public interface ReportMapper {
             """)
     List<MonthlyOrderRow> selectMonthlyOrders(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    /** 某月进出仓单明细总数（预览分页用；与 selectMonthlyOrders 同 JOIN 同条件） */
+    @Select("""
+            SELECT COUNT(*)
+              FROM rg2402_11_12_13_stock_order o
+              JOIN rg2402_11_12_13_stock_order_item i ON i.order_id = o.id
+              JOIN rg2402_11_12_13_person p1 ON p1.id = o.operator_id
+              JOIN rg2402_11_12_13_person p2 ON p2.id = o.handler_id
+              JOIN rg2402_11_12_13_material m ON m.id = i.material_id
+             WHERE o.order_date >= #{from} AND o.order_date < #{to}
+            """)
+    long countMonthlyOrders(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** 某月进出仓单明细分页（页面预览用；ORDER BY 与导出一致，翻到的页即导出文件里对应的段） */
+    @Select("""
+            SELECT o.order_no     AS orderNo,
+                   o.order_type   AS orderType,
+                   o.order_date   AS orderDate,
+                   p1.name        AS operatorName,
+                   p2.name        AS handlerName,
+                   m.material_code AS materialCode,
+                   m.name         AS materialName,
+                   m.unit         AS unit,
+                   i.quantity     AS quantity,
+                   o.remark       AS remark
+              FROM rg2402_11_12_13_stock_order o
+              JOIN rg2402_11_12_13_stock_order_item i ON i.order_id = o.id
+              JOIN rg2402_11_12_13_person p1 ON p1.id = o.operator_id
+              JOIN rg2402_11_12_13_person p2 ON p2.id = o.handler_id
+              JOIN rg2402_11_12_13_material m ON m.id = i.material_id
+             WHERE o.order_date >= #{from} AND o.order_date < #{to}
+             ORDER BY o.order_no, i.id
+             LIMIT #{size} OFFSET #{offset}
+            """)
+    List<MonthlyOrderRow> selectMonthlyOrdersPage(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                                  @Param("offset") long offset, @Param("size") int size);
+
     /** 物料摘要（账本报表头 + 期初反推需要当前库存） */
     @Select("""
             SELECT id, material_code AS materialCode, name, spec, unit, stock
