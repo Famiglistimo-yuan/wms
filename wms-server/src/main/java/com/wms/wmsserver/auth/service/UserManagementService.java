@@ -64,9 +64,16 @@ public class UserManagementService {
                 .build()).collect(Collectors.toList());
     }
 
-    /** 用户列表（联表人员档案；keyword 模糊匹配用户名/人员编号/真实姓名，空白视为全量） */
+    /** 用户列表（联表人员档案；keyword≤50 字符且已转义 LIKE 通配符，模糊匹配用户名/人员编号/真实姓名，空白视为全量） */
     public List<UserVO> listUsers(String keyword) {
         String kw = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        if (kw != null) {
+            if (kw.length() > 50) {
+                kw = kw.substring(0, 50);
+            }
+            // LIKE 通配符转义：% _ \ 前加反斜杠（MySQL LIKE 默认以反斜杠为转义符）
+            kw = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        }
         return userMapper.selectUserVOs(kw);
     }
 
@@ -116,21 +123,20 @@ public class UserManagementService {
                 .build();
     }
 
-    /** 修改用户（密码 / 状态）；停用时禁止停用当前登录账号、禁止停到无启用账号、禁止停掉唯一授权持有者 */
+    /** 修改用户（密码 / 状态）；admin 仅口令可改、状态恒启用；停用时禁止停用当前登录账号、禁止停到无启用账号、禁止停掉唯一授权持有者 */
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, UserUpdateDTO dto, Long currentUserId) {
         User u = userMapper.selectById(id);
         if (u == null) throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
 
-        // 系统管理员账号完全只读：口令、状态均不可修改
-        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(u.getUsername())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "系统管理员账号不可修改");
-        }
-
         if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
             u.setPassword(encoder.encode(dto.getPassword()));
         }
         if (dto.getStatus() != null) {
+            // 系统管理员状态锁定：恒启用，不接受任何状态修改
+            if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(u.getUsername())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统管理员账号状态不可修改");
+            }
             if (dto.getStatus() == 0) {
                 if (id.equals(currentUserId)) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST, "不能停用当前登录的账号");
