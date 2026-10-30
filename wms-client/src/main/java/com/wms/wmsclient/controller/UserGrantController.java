@@ -16,6 +16,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -35,6 +36,7 @@ public class UserGrantController {
     private static final String OPT_DENY = "禁止";
 
     @FXML private Label lblStatus;
+    @FXML private TextField tfSearch;
     @FXML private ListView<UserVO> lvUsers;
     @FXML private ListView<PermAssignItem> lvPermissions;
     @FXML private Button btnSave;
@@ -59,6 +61,12 @@ public class UserGrantController {
     @FXML
     protected void onRefreshClicked() {
         loadAll();
+    }
+
+    /** 关键字搜索左侧用户列表：模糊匹配用户名/人员编号/真实姓名（回车或按钮触发） */
+    @FXML
+    protected void onSearchClicked() {
+        loadUsers();
     }
 
     @FXML
@@ -123,16 +131,7 @@ public class UserGrantController {
     }
 
     private void loadAll() {
-        ApiTasks.run("user-grant-users",
-                () -> {
-                    String json = ApiClient.get("/api/users");
-                    return ApiClient.getResultList(json, UserVO.class);
-                },
-                users -> {
-                    lvUsers.setItems(FXCollections.observableArrayList(users));
-                    lblStatus.setText("已加载 " + users.size() + " 个用户");
-                },
-                ex -> Alerts.error("加载用户失败：" + ex.getMessage()));
+        loadUsers();
 
         ApiTasks.run("user-grant-perms",
                 () -> {
@@ -144,6 +143,28 @@ public class UserGrantController {
                     lblStatus.setText(lblStatus.getText() + "，" + allPermissions.size() + " 项权限");
                 },
                 ex -> Alerts.error("加载权限失败：" + ex.getMessage()));
+    }
+
+    /** 按关键字刷新左侧用户列表；过滤后清空右侧面板，避免旧选中用户的权限残留被误保存 */
+    private void loadUsers() {
+        String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
+        String path = keyword.isEmpty()
+                ? "/api/users"
+                : "/api/users?keyword=" + ApiClient.urlEncode(keyword);
+        ApiTasks.run("user-grant-users",
+                () -> {
+                    String json = ApiClient.get(path);
+                    return ApiClient.getResultList(json, UserVO.class);
+                },
+                users -> {
+                    lvUsers.setItems(FXCollections.observableArrayList(users));
+                    lvUsers.getSelectionModel().clearSelection();
+                    lvPermissions.getItems().clear();
+                    setEditingEnabled(true);
+                    lblStatus.setText("已加载 " + users.size() + " 个用户"
+                            + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」，点击用户加载其权限）"));
+                },
+                ex -> Alerts.error("加载用户失败：" + ex.getMessage()));
     }
 
     @FXML

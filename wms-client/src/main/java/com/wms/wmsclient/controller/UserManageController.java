@@ -33,6 +33,7 @@ import java.util.Map;
 public class UserManageController {
 
     @FXML private TableView<UserRow> tvUsers;
+    @FXML private TextField tfSearch;
     @FXML private Label lblStatus;
 
     private final ObservableList<UserRow> rows = FXCollections.observableArrayList();
@@ -60,6 +61,12 @@ public class UserManageController {
 
     @FXML
     protected void onRefreshClicked() {
+        loadUsers();
+    }
+
+    /** 关键字搜索：模糊匹配用户名/人员编号/真实姓名（回车或按钮触发） */
+    @FXML
+    protected void onSearchClicked() {
         loadUsers();
     }
 
@@ -163,9 +170,13 @@ public class UserManageController {
         loading = true;
         TableState.loading(tvUsers);
         lblStatus.setText("加载中…");
+        String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
+        String path = keyword.isEmpty()
+                ? "/api/users"
+                : "/api/users?keyword=" + ApiClient.urlEncode(keyword);
         ApiTasks.run("user-list",
                 () -> {
-                    String json = ApiClient.get("/api/users");
+                    String json = ApiClient.get(path);
                     return ApiClient.getResultList(json, UserVO.class);
                 },
                 users -> {
@@ -175,8 +186,9 @@ public class UserManageController {
                         rows.add(new UserRow(u.getId(), u.getUsername(), u.getPersonId(), u.getPersonCode(),
                                 u.getRealName(), u.getStatus()));
                     }
-                    lblStatus.setText("共 " + users.size() + " 个用户");
-                    TableState.empty(tvUsers, null);
+                    lblStatus.setText("共 " + users.size() + " 个用户"
+                            + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+                    TableState.empty(tvUsers, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的用户");
                 },
                 ex -> {
                     loading = false;

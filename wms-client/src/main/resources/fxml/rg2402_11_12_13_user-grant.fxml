@@ -3,6 +3,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -11,6 +12,8 @@
       spacing="8">
   <ToolBar>
     <Button text="刷新" onAction="#onRefreshClicked"/>
+    <TextField fx:id="tfSearch" promptText="用户名 / 人员编号 / 姓名" onAction="#onSearchClicked" prefWidth="200"/>
+    <Button text="搜索" onAction="#onSearchClicked"/>
     <Button text="保存授权" onAction="#onSaveClicked" fx:id="btnSave"/>
     <Button text="全部允许" onAction="#onAllowAllClicked" fx:id="btnAllowAll"/>
     <Button text="全部禁止" onAction="#onDenyAllClicked" fx:id="btnDenyAll"/>

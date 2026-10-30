@@ -64,9 +64,10 @@ public class UserManagementService {
                 .build()).collect(Collectors.toList());
     }
 
-    /** 用户列表（联表人员档案） */
-    public List<UserVO> listUsers() {
-        return userMapper.selectUserVOs();
+    /** 用户列表（联表人员档案；keyword 模糊匹配用户名/人员编号/真实姓名，空白视为全量） */
+    public List<UserVO> listUsers(String keyword) {
+        String kw = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        return userMapper.selectUserVOs(kw);
     }
 
     /** 权限资源列表（菜单项，按 sort_order 排序）；新增权限 → 权限表插行 → 授权界面自动出现（FR-4-7） */
