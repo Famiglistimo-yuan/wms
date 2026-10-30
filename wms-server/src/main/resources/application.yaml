@@ -31,13 +31,13 @@ mybatis-plus:
       # 表名前缀口径：实体 @TableName 直书完整表名（MP table-prefix 对显式 @TableName 不生效，故不配置，
       # 见技术方案 §5.1 / 开发规范 §7.2）
 
-# 自动升级发布信息（FR-6）：发版时改 version/md5 并将新主 jar 放入升级包目录（见 download-url），
+# 自动升级发布信息（FR-6）：发版时改 version/md5/download-url，主 jar 托管在 GitHub Releases（见 download-url），
 # 客户端启动时经 /api/version 比对（发布流程见 static/download/README.md）
 wms:
   update:
     version: 1.0.1
-    download-url: /download/wms-client.jar
-    md5: 1001f1c761e030c60ec7e6f34cf6ccf1
+    download-url: https://github.com/Famiglistimo-yuan/wms/releases/download/v1.0.1/wms-client-1.0.1.jar
+    md5: ab8b3f3877986ef8c7c610fb594fc7cb
 
 # 日志
 logging:
