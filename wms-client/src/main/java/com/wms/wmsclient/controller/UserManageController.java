@@ -137,6 +137,19 @@ public class UserManageController {
                 ex -> Alerts.error(action + "失败：" + ex.getMessage()));
     }
 
+    /** 修改密码：重设选中用户口令（admin 亦可，服务端仅锁状态/权限） */
+    @FXML
+    protected void onChangePasswordClicked() {
+        UserRow selected = tvUsers.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            Alerts.warn("请先选择要修改密码的用户");
+            return;
+        }
+        new ChangePasswordDialog(selected).showAndWait().ifPresent(ok -> {
+            if (ok) lblStatus.setText("密码修改成功：" + selected.username);
+        });
+    }
+
     /** 删除用户：二次确认后删除，服务端同事务连带解除其角色关系 */
     @FXML
     protected void onDeleteUserClicked() {
@@ -296,6 +309,66 @@ public class UserManageController {
             row.password = password;
             setResult(row);
             close();
+        }
+    }
+
+    /** 修改密码 Dialog：提交在弹窗内异步执行，失败不关窗、保留已填内容 */
+    private class ChangePasswordDialog extends Dialog<Boolean> {
+        private final UserRow user;
+        private final PasswordField pfNew = new PasswordField();
+        private final PasswordField pfConfirm = new PasswordField();
+
+        ChangePasswordDialog(UserRow user) {
+            this.user = user;
+            Alerts.theme(this);
+            setTitle("修改密码");
+            getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            pfNew.setPromptText("6-20 位字母/数字");
+            pfConfirm.setPromptText("再次输入新口令");
+
+            GridPane grid = new GridPane();
+            grid.setHgap(10); grid.setVgap(10);
+            grid.addRow(0, new Label("用户名："), new Label(user.username + "（" + user.realName + "）"));
+            grid.addRow(1, new Label("新口令："), pfNew);
+            grid.addRow(2, new Label("确认口令："), pfConfirm);
+            getDialogPane().setContent(grid);
+
+            // 拦截「确定」的默认关窗动作：校验/提交失败弹窗保持打开，已填内容不丢
+            Button okButton = (Button) getDialogPane().lookupButton(ButtonType.OK);
+            okButton.addEventFilter(ActionEvent.ACTION, event -> {
+                event.consume();
+                onSubmit(okButton);
+            });
+        }
+
+        private void onSubmit(Button okButton) {
+            String pwd = pfNew.getText();
+            if (!pwd.matches(RegexPatterns.PASSWORD)) {
+                Alerts.warn("口令须为 6-20 位字母/数字");
+                return;
+            }
+            if (!pwd.equals(pfConfirm.getText())) {
+                Alerts.warn("两次输入的口令不一致");
+                return;
+            }
+            okButton.setDisable(true); // 提交期间防重复点击
+            ApiTasks.run("user-reset-password",
+                    () -> {
+                        Map<String, Object> body = new LinkedHashMap<>();
+                        body.put("password", pwd);
+                        String json = ApiClient.put("/api/users/" + user.id, ApiClient.toJson(body));
+                        ApiClient.checkSuccess(json);
+                        return null;
+                    },
+                    v -> {
+                        setResult(true);
+                        close();
+                    },
+                    ex -> {
+                        okButton.setDisable(false);
+                        Alerts.error("修改密码失败：" + ex.getMessage());
+                    });
         }
     }
 }
