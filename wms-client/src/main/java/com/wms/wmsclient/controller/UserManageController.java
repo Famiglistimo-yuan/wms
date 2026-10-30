@@ -1,6 +1,7 @@
 package com.wms.wmsclient.controller;
 
 import com.wms.common.RegexPatterns;
+import com.wms.common.WmsConstants;
 import com.wms.common.dto.PersonOptionVO;
 import com.wms.common.dto.UserVO;
 import com.wms.wmsclient.App;
@@ -106,6 +107,11 @@ public class UserManageController {
         }
         int newStatus = selected.status == 1 ? 0 : 1;
         String action = newStatus == 1 ? "启用" : "停用";
+        // 系统管理员账号永远保持启用，状态不可修改
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(selected.username)) {
+            Alerts.warn("系统管理员账号不可停用或修改");
+            return;
+        }
         if (!Alerts.confirm("确定要" + action + "用户「" + selected.username + "」吗？")) return;
 
         ApiTasks.run("user-toggle",
@@ -130,6 +136,11 @@ public class UserManageController {
         UserRow selected = tvUsers.getSelectionModel().getSelectedItem();
         if (selected == null) {
             Alerts.warn("请先选择要删除的用户");
+            return;
+        }
+        // 系统管理员账号不可删除
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(selected.username)) {
+            Alerts.warn("系统管理员账号不可删除");
             return;
         }
         if (!Alerts.confirm("确定删除用户「" + selected.username + "」吗？其已分配的角色将一并解除，且不可恢复。")) return;

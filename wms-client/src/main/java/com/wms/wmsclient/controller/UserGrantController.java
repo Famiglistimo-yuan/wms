@@ -2,6 +2,7 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
+import com.wms.common.WmsConstants;
 import com.wms.common.dto.PermissionVO;
 import com.wms.common.dto.UserPermissionVO;
 import com.wms.common.dto.UserVO;
@@ -84,6 +85,11 @@ public class UserGrantController {
             Alerts.warn("请先选择用户");
             return;
         }
+        // 系统管理员权限恒为全部允许，不可修改（服务端同样拒绝）
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(selected.getUsername())) {
+            Alerts.warn("系统管理员账号的权限不可修改");
+            return;
+        }
 
         List<Long> allowIds = lvPermissions.getItems().stream()
                 .filter(item -> OPT_ALLOW.equals(item.choice.getValue()))
@@ -164,13 +170,15 @@ public class UserGrantController {
                     if (current == null || current.getId() != targetUserId) return;
 
                     List<Long> allowIds = vo.getAllowPermIds() != null ? vo.getAllowPermIds() : List.of();
+                    boolean isAdmin = WmsConstants.SYSTEM_ADMIN_USERNAME.equals(current.getUsername());
                     boolean isSelf = current.getUsername() != null
                             && current.getUsername().equals(SessionContext.getUsername());
                     for (PermissionVO p : allPermissions) {
                         String choice = allowIds.contains(p.getId()) ? OPT_ALLOW : OPT_DENY;
-                        // 自救防护：对当前登录用户，关键权限不可选「禁止」——避免 UI 锁死
-                        boolean locked = isSelf && ("menu.auth.grant".equals(p.getPermCode())
-                                || "menu.auth.user".equals(p.getPermCode()));
+                        // 系统管理员权限恒为全部允许；当前登录用户关键权限不可禁止——均锁定为仅「允许」
+                        boolean locked = isAdmin
+                                || (isSelf && ("menu.auth.grant".equals(p.getPermCode())
+                                || "menu.auth.user".equals(p.getPermCode())));
                         PermAssignItem item = new PermAssignItem(p, choice, locked);
                         if (locked) {
                             item.choice.setItems(FXCollections.observableArrayList(OPT_ALLOW));
@@ -180,6 +188,10 @@ public class UserGrantController {
                             }
                         }
                         lvPermissions.getItems().add(item);
+                    }
+                    if (isAdmin) {
+                        btnSave.setDisable(true);
+                        lblStatus.setText("系统管理员账号权限恒为全部允许，不可修改");
                     }
                 },
                 ex -> {
