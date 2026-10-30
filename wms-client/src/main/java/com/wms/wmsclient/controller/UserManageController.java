@@ -1,6 +1,7 @@
 package com.wms.wmsclient.controller;
 
 import com.wms.common.RegexPatterns;
+import com.wms.common.WmsConstants;
 import com.wms.common.dto.PersonOptionVO;
 import com.wms.common.dto.UserVO;
 import com.wms.wmsclient.App;
@@ -32,6 +33,7 @@ import java.util.Map;
 public class UserManageController {
 
     @FXML private TableView<UserRow> tvUsers;
+    @FXML private TextField tfSearch;
     @FXML private Label lblStatus;
 
     private final ObservableList<UserRow> rows = FXCollections.observableArrayList();
@@ -59,6 +61,12 @@ public class UserManageController {
 
     @FXML
     protected void onRefreshClicked() {
+        loadUsers();
+    }
+
+    /** 关键字搜索：模糊匹配用户名/人员编号/真实姓名（回车或按钮触发） */
+    @FXML
+    protected void onSearchClicked() {
         loadUsers();
     }
 
@@ -106,6 +114,11 @@ public class UserManageController {
         }
         int newStatus = selected.status == 1 ? 0 : 1;
         String action = newStatus == 1 ? "启用" : "停用";
+        // 系统管理员账号永远保持启用，状态不可修改（口令可经「修改密码」按钮修改）
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(selected.username)) {
+            Alerts.warn("系统管理员账号不可停用");
+            return;
+        }
         if (!Alerts.confirm("确定要" + action + "用户「" + selected.username + "」吗？")) return;
 
         ApiTasks.run("user-toggle",
@@ -124,12 +137,30 @@ public class UserManageController {
                 ex -> Alerts.error(action + "失败：" + ex.getMessage()));
     }
 
+    /** 修改密码：重设选中用户口令（admin 亦可，服务端仅锁状态/权限） */
+    @FXML
+    protected void onChangePasswordClicked() {
+        UserRow selected = tvUsers.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            Alerts.warn("请先选择要修改密码的用户");
+            return;
+        }
+        new ChangePasswordDialog(selected).showAndWait().ifPresent(ok -> {
+            if (ok) lblStatus.setText("密码修改成功：" + selected.username);
+        });
+    }
+
     /** 删除用户：二次确认后删除，服务端同事务连带解除其角色关系 */
     @FXML
     protected void onDeleteUserClicked() {
         UserRow selected = tvUsers.getSelectionModel().getSelectedItem();
         if (selected == null) {
             Alerts.warn("请先选择要删除的用户");
+            return;
+        }
+        // 系统管理员账号不可删除
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(selected.username)) {
+            Alerts.warn("系统管理员账号不可删除");
             return;
         }
         if (!Alerts.confirm("确定删除用户「" + selected.username + "」吗？其已分配的角色将一并解除，且不可恢复。")) return;
@@ -152,9 +183,13 @@ public class UserManageController {
         loading = true;
         TableState.loading(tvUsers);
         lblStatus.setText("加载中…");
+        String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
+        String path = keyword.isEmpty()
+                ? "/api/users"
+                : "/api/users?keyword=" + ApiClient.urlEncode(keyword);
         ApiTasks.run("user-list",
                 () -> {
-                    String json = ApiClient.get("/api/users");
+                    String json = ApiClient.get(path);
                     return ApiClient.getResultList(json, UserVO.class);
                 },
                 users -> {
@@ -164,8 +199,9 @@ public class UserManageController {
                         rows.add(new UserRow(u.getId(), u.getUsername(), u.getPersonId(), u.getPersonCode(),
                                 u.getRealName(), u.getStatus()));
                     }
-                    lblStatus.setText("共 " + users.size() + " 个用户");
-                    TableState.empty(tvUsers, null);
+                    lblStatus.setText("共 " + users.size() + " 个用户"
+                            + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）"));
+                    TableState.empty(tvUsers, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的用户");
                 },
                 ex -> {
                     loading = false;
@@ -261,6 +297,11 @@ public class UserManageController {
                 Alerts.warn("用户名须字母开头，4-30 位字母/数字/下划线");
                 return;
             }
+            // admin 为系统管理员保留用户名（服务端同样拒绝，此处提前提示）
+            if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(username)) {
+                Alerts.warn("admin 为系统管理员保留用户名，请换一个用户名");
+                return;
+            }
             if (!password.matches(RegexPatterns.PASSWORD)) {
                 Alerts.warn("口令须为 6-20 位字母/数字");
                 return;
@@ -273,6 +314,70 @@ public class UserManageController {
             row.password = password;
             setResult(row);
             close();
+        }
+    }
+
+    /** 修改密码 Dialog：提交在弹窗内异步执行，失败不关窗、保留已填内容 */
+    private class ChangePasswordDialog extends Dialog<Boolean> {
+        private final UserRow user;
+        private final PasswordField pfNew = new PasswordField();
+        private final PasswordField pfConfirm = new PasswordField();
+
+        ChangePasswordDialog(UserRow user) {
+            this.user = user;
+            Alerts.theme(this);
+            setTitle("修改密码");
+            getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            pfNew.setPromptText("6-20 位字母/数字");
+            pfConfirm.setPromptText("再次输入新口令");
+
+            GridPane grid = new GridPane();
+            grid.setHgap(10); grid.setVgap(10);
+            grid.addRow(0, new Label("用户名："), new Label(user.username + "（" + user.realName + "）"));
+            grid.addRow(1, new Label("新口令："), pfNew);
+            grid.addRow(2, new Label("确认口令："), pfConfirm);
+            getDialogPane().setContent(grid);
+
+            // 拦截「确定」的默认关窗动作：校验/提交失败弹窗保持打开，已填内容不丢
+            Button okButton = (Button) getDialogPane().lookupButton(ButtonType.OK);
+            okButton.addEventFilter(ActionEvent.ACTION, event -> {
+                event.consume();
+                onSubmit(okButton);
+            });
+        }
+
+        private void onSubmit(Button okButton) {
+            String pwd = pfNew.getText();
+            if (!pwd.matches(RegexPatterns.PASSWORD)) {
+                Alerts.warn("口令须为 6-20 位字母/数字");
+                return;
+            }
+            if (!pwd.equals(pfConfirm.getText())) {
+                Alerts.warn("两次输入的口令不一致");
+                return;
+            }
+            // 提交期间禁用两个按钮：OK 防重复点击；CANCEL 防在途关闭弹窗导致密码已改但界面无提示
+            okButton.setDisable(true);
+            Button cancelButton = (Button) getDialogPane().lookupButton(ButtonType.CANCEL);
+            cancelButton.setDisable(true);
+            ApiTasks.run("user-reset-password",
+                    () -> {
+                        Map<String, Object> body = new LinkedHashMap<>();
+                        body.put("password", pwd);
+                        String json = ApiClient.put("/api/users/" + user.id, ApiClient.toJson(body));
+                        ApiClient.checkSuccess(json);
+                        return null;
+                    },
+                    v -> {
+                        setResult(true);
+                        close();
+                    },
+                    ex -> {
+                        okButton.setDisable(false);
+                        cancelButton.setDisable(false);
+                        Alerts.error("修改密码失败：" + ex.getMessage());
+                    });
         }
     }
 }

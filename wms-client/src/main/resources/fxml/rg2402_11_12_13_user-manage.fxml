@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.VBox?>
 <VBox xmlns:fx="http://javafx.com/fxml"
@@ -11,8 +12,11 @@
       spacing="8">
   <ToolBar>
     <Button text="刷新" onAction="#onRefreshClicked"/>
+    <TextField fx:id="tfSearch" promptText="用户名 / 人员编号 / 姓名" onAction="#onSearchClicked" prefWidth="200"/>
+    <Button text="搜索" onAction="#onSearchClicked"/>
     <Button text="新增用户" onAction="#onCreateUserClicked"/>
     <Button text="启/停用" onAction="#onToggleStatusClicked"/>
+    <Button text="修改密码" onAction="#onChangePasswordClicked"/>
     <Button text="删除用户" onAction="#onDeleteUserClicked"/>
   </ToolBar>
   <TableView fx:id="tvUsers" VBox.vgrow="ALWAYS" editable="false"/>

@@ -3,6 +3,7 @@ package com.wms.wmsserver.auth.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.wms.common.BusinessException;
 import com.wms.common.ErrorCode;
+import com.wms.common.WmsConstants;
 import com.wms.common.dto.PersonOptionVO;
 import com.wms.common.dto.PermissionVO;
 import com.wms.wmsserver.auth.dto.UserCreateDTO;
@@ -63,9 +64,17 @@ public class UserManagementService {
                 .build()).collect(Collectors.toList());
     }
 
-    /** 用户列表（联表人员档案） */
-    public List<UserVO> listUsers() {
-        return userMapper.selectUserVOs();
+    /** 用户列表（联表人员档案；keyword≤50 字符且已转义 LIKE 通配符，模糊匹配用户名/人员编号/真实姓名，空白视为全量） */
+    public List<UserVO> listUsers(String keyword) {
+        String kw = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        if (kw != null) {
+            if (kw.length() > 50) {
+                kw = kw.substring(0, 50);
+            }
+            // LIKE 通配符转义：% _ \ 前加反斜杠（MySQL LIKE 默认以反斜杠为转义符）
+            kw = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        }
+        return userMapper.selectUserVOs(kw);
     }
 
     /** 权限资源列表（菜单项，按 sort_order 排序）；新增权限 → 权限表插行 → 授权界面自动出现（FR-4-7） */
@@ -83,6 +92,13 @@ public class UserManagementService {
     /** 新增用户 */
     @Transactional(rollbackFor = Exception.class)
     public UserVO create(UserCreateDTO dto) {
+        // admin 为系统管理员保留用户名：禁止创建同名账号，
+        // 防止 admin 账号在数据层意外丢失后，新账号静默继承超管身份（提权防护）
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(dto.getUsername())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "admin 为系统管理员保留用户名，不可用于创建新账号");
+        }
+
         // 用户名唯一
         Long dup = userMapper.selectCount(Wrappers.<User>lambdaQuery()
                 .eq(User::getUsername, dto.getUsername()));
@@ -114,7 +130,7 @@ public class UserManagementService {
                 .build();
     }
 
-    /** 修改用户（密码 / 状态）；停用时禁止停用当前登录账号、禁止停到无启用账号、禁止停掉唯一授权持有者 */
+    /** 修改用户（密码 / 状态）；admin 仅口令可改、状态恒启用；停用时禁止停用当前登录账号、禁止停到无启用账号、禁止停掉唯一授权持有者 */
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, UserUpdateDTO dto, Long currentUserId) {
         User u = userMapper.selectById(id);
@@ -124,6 +140,10 @@ public class UserManagementService {
             u.setPassword(encoder.encode(dto.getPassword()));
         }
         if (dto.getStatus() != null) {
+            // 系统管理员状态锁定：恒启用，不接受任何状态修改
+            if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(u.getUsername())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "系统管理员账号状态不可修改");
+            }
             if (dto.getStatus() == 0) {
                 if (id.equals(currentUserId)) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST, "不能停用当前登录的账号");
@@ -142,14 +162,19 @@ public class UserManagementService {
         userMapper.updateById(u);
     }
 
-    /** 删除用户：同事务解除其角色关系与直接权限再删账号；禁止删除当前登录账号、禁止删唯一授权持有者 */
+    /** 删除用户：同事务解除其角色关系与直接权限再删账号；禁止删除当前登录账号、系统管理员、唯一授权持有者 */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id, Long currentUserId) {
         if (id.equals(currentUserId)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "不能删除当前登录的账号");
         }
-        if (userMapper.selectById(id) == null) {
+        User u = userMapper.selectById(id);
+        if (u == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        // 系统管理员账号不可删除
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(u.getUsername())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "系统管理员账号不可删除");
         }
         assertNotLastAuthHolder(id);
         userRoleMapper.deleteByUserId(id);
@@ -178,10 +203,21 @@ public class UserManagementService {
         }
     }
 
-    /** 用户授权回显：直授 allow 集 + 禁止 deny 集 */
+    /** 用户授权回显：直授 allow 集 + 禁止 deny 集（系统管理员恒为全部允许） */
     public UserPermissionVO getUserPermissions(Long userId) {
-        if (userMapper.selectById(userId) == null) {
+        User u = userMapper.selectById(userId);
+        if (u == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        // 系统管理员：回显恒为全部权限 allow、deny 空（与其 user_permission 行无关）
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(u.getUsername())) {
+            List<Long> allIds = permissionMapper.selectList(
+                            Wrappers.<Permission>lambdaQuery().orderByAsc(Permission::getSortOrder))
+                    .stream().map(Permission::getId).collect(Collectors.toList());
+            return UserPermissionVO.builder()
+                    .allowPermIds(allIds)
+                    .denyPermIds(List.of())
+                    .build();
         }
         return UserPermissionVO.builder()
                 .allowPermIds(userPermissionMapper.selectPermIdsByUserIdAndEffect(userId, "allow"))
@@ -189,11 +225,16 @@ public class UserManagementService {
                 .build();
     }
 
-    /** 用户直接授权（全量覆盖 allow/deny；只动该用户的行，不影响其他用户） */
+    /** 用户直接授权（全量覆盖 allow/deny；只动该用户的行，不影响其他用户；系统管理员不可修改） */
     @Transactional(rollbackFor = Exception.class)
     public void grantPermissions(Long userId, UserPermissionGrantDTO dto) {
-        if (userMapper.selectById(userId) == null) {
+        User target = userMapper.selectById(userId);
+        if (target == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户不存在");
+        }
+        // 系统管理员权限恒为全部允许，不接受任何授权修改
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(target.getUsername())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "系统管理员账号的权限不可修改");
         }
 
         // P4 入参校验：allow/deny 无交集

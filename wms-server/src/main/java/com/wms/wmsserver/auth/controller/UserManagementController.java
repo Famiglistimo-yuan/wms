@@ -29,8 +29,8 @@ public class UserManagementController {
 
     @GetMapping
     @RequirePermission("menu.auth.user")
-    public Result<List<UserVO>> list() {
-        return Result.success(service.listUsers());
+    public Result<List<UserVO>> list(@RequestParam(required = false) String keyword) {
+        return Result.success(service.listUsers(keyword));
     }
 
     @PostMapping

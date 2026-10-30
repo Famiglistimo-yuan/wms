@@ -2,6 +2,7 @@ package com.wms.wmsclient.controller;
 
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
+import com.wms.common.WmsConstants;
 import com.wms.common.dto.PermissionVO;
 import com.wms.common.dto.UserPermissionVO;
 import com.wms.common.dto.UserVO;
@@ -15,6 +16,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -34,6 +36,7 @@ public class UserGrantController {
     private static final String OPT_DENY = "禁止";
 
     @FXML private Label lblStatus;
+    @FXML private TextField tfSearch;
     @FXML private ListView<UserVO> lvUsers;
     @FXML private ListView<PermAssignItem> lvPermissions;
     @FXML private Button btnSave;
@@ -60,6 +63,12 @@ public class UserGrantController {
         loadAll();
     }
 
+    /** 关键字搜索左侧用户列表：模糊匹配用户名/人员编号/真实姓名（回车或按钮触发） */
+    @FXML
+    protected void onSearchClicked() {
+        loadUsers();
+    }
+
     @FXML
     protected void onAllowAllClicked() {
         for (PermAssignItem item : lvPermissions.getItems()) {
@@ -82,6 +91,11 @@ public class UserGrantController {
         UserVO selected = lvUsers.getSelectionModel().getSelectedItem();
         if (selected == null) {
             Alerts.warn("请先选择用户");
+            return;
+        }
+        // 系统管理员权限恒为全部允许，不可修改（服务端同样拒绝）
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(selected.getUsername())) {
+            Alerts.warn("系统管理员账号的权限不可修改");
             return;
         }
 
@@ -117,16 +131,7 @@ public class UserGrantController {
     }
 
     private void loadAll() {
-        ApiTasks.run("user-grant-users",
-                () -> {
-                    String json = ApiClient.get("/api/users");
-                    return ApiClient.getResultList(json, UserVO.class);
-                },
-                users -> {
-                    lvUsers.setItems(FXCollections.observableArrayList(users));
-                    lblStatus.setText("已加载 " + users.size() + " 个用户");
-                },
-                ex -> Alerts.error("加载用户失败：" + ex.getMessage()));
+        loadUsers();
 
         ApiTasks.run("user-grant-perms",
                 () -> {
@@ -138,6 +143,28 @@ public class UserGrantController {
                     lblStatus.setText(lblStatus.getText() + "，" + allPermissions.size() + " 项权限");
                 },
                 ex -> Alerts.error("加载权限失败：" + ex.getMessage()));
+    }
+
+    /** 按关键字刷新左侧用户列表；过滤后清空右侧面板，避免旧选中用户的权限残留被误保存 */
+    private void loadUsers() {
+        String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
+        String path = keyword.isEmpty()
+                ? "/api/users"
+                : "/api/users?keyword=" + ApiClient.urlEncode(keyword);
+        ApiTasks.run("user-grant-users",
+                () -> {
+                    String json = ApiClient.get(path);
+                    return ApiClient.getResultList(json, UserVO.class);
+                },
+                users -> {
+                    lvUsers.setItems(FXCollections.observableArrayList(users));
+                    lvUsers.getSelectionModel().clearSelection();
+                    lvPermissions.getItems().clear();
+                    setEditingEnabled(true);
+                    lblStatus.setText("已加载 " + users.size() + " 个用户"
+                            + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」，点击用户加载其权限）"));
+                },
+                ex -> Alerts.error("加载用户失败：" + ex.getMessage()));
     }
 
     @FXML
@@ -164,13 +191,15 @@ public class UserGrantController {
                     if (current == null || current.getId() != targetUserId) return;
 
                     List<Long> allowIds = vo.getAllowPermIds() != null ? vo.getAllowPermIds() : List.of();
+                    boolean isAdmin = WmsConstants.SYSTEM_ADMIN_USERNAME.equals(current.getUsername());
                     boolean isSelf = current.getUsername() != null
                             && current.getUsername().equals(SessionContext.getUsername());
                     for (PermissionVO p : allPermissions) {
                         String choice = allowIds.contains(p.getId()) ? OPT_ALLOW : OPT_DENY;
-                        // 自救防护：对当前登录用户，关键权限不可选「禁止」——避免 UI 锁死
-                        boolean locked = isSelf && ("menu.auth.grant".equals(p.getPermCode())
-                                || "menu.auth.user".equals(p.getPermCode()));
+                        // 系统管理员权限恒为全部允许；当前登录用户关键权限不可禁止——均锁定为仅「允许」
+                        boolean locked = isAdmin
+                                || (isSelf && ("menu.auth.grant".equals(p.getPermCode())
+                                || "menu.auth.user".equals(p.getPermCode())));
                         PermAssignItem item = new PermAssignItem(p, choice, locked);
                         if (locked) {
                             item.choice.setItems(FXCollections.observableArrayList(OPT_ALLOW));
@@ -180,6 +209,10 @@ public class UserGrantController {
                             }
                         }
                         lvPermissions.getItems().add(item);
+                    }
+                    if (isAdmin) {
+                        btnSave.setDisable(true);
+                        lblStatus.setText("系统管理员账号权限恒为全部允许，不可修改");
                     }
                 },
                 ex -> {

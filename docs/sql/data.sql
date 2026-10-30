@@ -77,7 +77,7 @@ INSERT INTO rg2402_11_12_13_role_permission (role_id, perm_id) VALUES
   (3, 5), (3, 14), (3, 15), (3, 16);
 
 -- ---------- 用户直接权限（有效权限 = allow − deny） ----------
--- admin：全部 16 项 allow
+-- admin：全部 16 项 allow（仅作种子演示；运行期 admin 权限由身份判定恒为全部允许，不读本表）
 INSERT INTO rg2402_11_12_13_user_permission (user_id, perm_id, effect) VALUES
   (1,1,'allow'),(1,2,'allow'),(1,3,'allow'),(1,4,'allow'),(1,5,'allow'),(1,6,'allow'),(1,7,'allow'),
   (1,8,'allow'),(1,9,'allow'),(1,10,'allow'),(1,11,'allow'),(1,12,'allow'),(1,13,'allow'),

@@ -344,7 +344,7 @@
 | GET | `/api/reports/monthly-orders/{yyyyMM}/preview?page=&size=` | 月度进出仓单分页预览（导出前页面展示，同查询同排序） |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}?format=excel\|word` | 导出仓库账本（Excel/Word，缺省 excel） |
 | GET | `/api/reports/ledger/{materialCode}/{yyyy}/preview?page=&size=` | 仓库账本预览（物料摘要+期初结存+分页行） |
-| GET | `/api/users`；PUT `/api/users/{id}` | 用户查询/新增/修改（口令重置、启停用；停用需保留至少一个启用账号且不能停用当前登录账号），需 `menu.auth.user` |
+| GET | `/api/users?keyword=`；PUT `/api/users/{id}` | 用户模糊查询（keyword≤50 字符、LIKE 通配符已转义；匹配用户名/人员编号/真实姓名，缺省全量）/新增/修改（口令重置——admin 亦可改密但状态锁定恒启用；停用需保留至少一个启用账号且不能停用当前登录账号），需 `menu.auth.user` |
 | GET | `/api/users/person-options` | 人员下拉选项（新增用户时选关联人员），需 `menu.auth.user` |
 | DELETE | `/api/users/{id}` | 删除用户（同事务连带解除其角色关系；禁止删除当前登录账号），需 `menu.auth.user` |
 | GET/POST | `/api/users/{id}/permissions` | 用户直接授权：GET 回显 allow/deny 集合；POST 全量覆盖 allow/deny（有效权限=allow−deny，不含角色继承，角色仅作标签），需 `menu.auth.grant` |

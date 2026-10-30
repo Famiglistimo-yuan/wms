@@ -12,15 +12,25 @@ import java.util.List;
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
 
-    /** 用户列表（联表人员档案取人员代码/姓名；驼峰映射已开，列别名自动对接 VO 属性） */
+    /** 用户列表（联表人员档案取人员代码/姓名；驼峰映射已开，列别名自动对接 VO 属性）
+     *  keyword 模糊匹配用户名/人员编号/真实姓名（LIKE '%kw%'），空则全量 */
     @Select("""
+            <script>
             SELECT u.id, u.username, u.status, u.person_id,
                    p.person_code, p.name AS real_name
             FROM rg2402_11_12_13_user u
             LEFT JOIN rg2402_11_12_13_person p ON p.id = u.person_id
+            <where>
+                <if test="keyword != null and keyword != ''">
+                    AND (u.username LIKE CONCAT('%', #{keyword}, '%')
+                      OR p.person_code LIKE CONCAT('%', #{keyword}, '%')
+                      OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+                </if>
+            </where>
             ORDER BY u.id
+            </script>
             """)
-    List<UserVO> selectUserVOs();
+    List<UserVO> selectUserVOs(@Param("keyword") String keyword);
 
     /** 用户有效权限码 = 直授 allow − 禁止 deny（不含角色继承，角色仅作标签） */
     @Select("""
