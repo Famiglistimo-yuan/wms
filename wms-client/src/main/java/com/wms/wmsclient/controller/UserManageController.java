@@ -114,9 +114,9 @@ public class UserManageController {
         }
         int newStatus = selected.status == 1 ? 0 : 1;
         String action = newStatus == 1 ? "启用" : "停用";
-        // 系统管理员账号永远保持启用，状态不可修改
+        // 系统管理员账号永远保持启用，状态不可修改（口令可经「修改密码」按钮修改）
         if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(selected.username)) {
-            Alerts.warn("系统管理员账号不可停用或修改");
+            Alerts.warn("系统管理员账号不可停用");
             return;
         }
         if (!Alerts.confirm("确定要" + action + "用户「" + selected.username + "」吗？")) return;
@@ -297,6 +297,11 @@ public class UserManageController {
                 Alerts.warn("用户名须字母开头，4-30 位字母/数字/下划线");
                 return;
             }
+            // admin 为系统管理员保留用户名（服务端同样拒绝，此处提前提示）
+            if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(username)) {
+                Alerts.warn("admin 为系统管理员保留用户名，请换一个用户名");
+                return;
+            }
             if (!password.matches(RegexPatterns.PASSWORD)) {
                 Alerts.warn("口令须为 6-20 位字母/数字");
                 return;
@@ -352,7 +357,10 @@ public class UserManageController {
                 Alerts.warn("两次输入的口令不一致");
                 return;
             }
-            okButton.setDisable(true); // 提交期间防重复点击
+            // 提交期间禁用两个按钮：OK 防重复点击；CANCEL 防在途关闭弹窗导致密码已改但界面无提示
+            okButton.setDisable(true);
+            Button cancelButton = (Button) getDialogPane().lookupButton(ButtonType.CANCEL);
+            cancelButton.setDisable(true);
             ApiTasks.run("user-reset-password",
                     () -> {
                         Map<String, Object> body = new LinkedHashMap<>();
@@ -367,6 +375,7 @@ public class UserManageController {
                     },
                     ex -> {
                         okButton.setDisable(false);
+                        cancelButton.setDisable(false);
                         Alerts.error("修改密码失败：" + ex.getMessage());
                     });
         }

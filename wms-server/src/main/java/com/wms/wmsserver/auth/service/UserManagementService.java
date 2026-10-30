@@ -92,6 +92,13 @@ public class UserManagementService {
     /** 新增用户 */
     @Transactional(rollbackFor = Exception.class)
     public UserVO create(UserCreateDTO dto) {
+        // admin 为系统管理员保留用户名：禁止创建同名账号，
+        // 防止 admin 账号在数据层意外丢失后，新账号静默继承超管身份（提权防护）
+        if (WmsConstants.SYSTEM_ADMIN_USERNAME.equals(dto.getUsername())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "admin 为系统管理员保留用户名，不可用于创建新账号");
+        }
+
         // 用户名唯一
         Long dup = userMapper.selectCount(Wrappers.<User>lambdaQuery()
                 .eq(User::getUsername, dto.getUsername()));
