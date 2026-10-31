@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import com.wms.wmsclient.ui.FxmlFusionButton?>
+<?import io.vproxy.vfx.ui.wrapper.ThemeLabel?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
@@ -20,19 +21,19 @@
   <!-- HBox 包裹 + hgrow=NEVER：GridPane 不随窗口拉伸，任意窗口尺寸下表单整体水平居中 -->
   <HBox alignment="CENTER">
     <GridPane hgap="10.0" vgap="12.0" HBox.hgrow="NEVER">
-      <Label text="用户名：" GridPane.rowIndex="0"/>
+      <ThemeLabel text="用户名：" GridPane.rowIndex="0"/>
       <TextField fx:id="tfUsername" GridPane.columnIndex="1" GridPane.rowIndex="0"
-                 promptText="字母开头，4-30 位"/>
-      <Label text="口令：" GridPane.rowIndex="1"/>
+                 promptText="字母开头，4-30 位" onAction="#onLoginClicked"/>
+      <ThemeLabel text="口令：" GridPane.rowIndex="1"/>
       <PasswordField fx:id="pfPassword" GridPane.columnIndex="1" GridPane.rowIndex="1"
-                     promptText="6-20 位字母/数字"/>
+                     promptText="6-20 位字母/数字" onAction="#onLoginClicked"/>
     </GridPane>
   </HBox>
 
   <HBox alignment="CENTER" spacing="12.0">
-    <Button fx:id="btnLogin" text="登录" onAction="#onLoginClicked" styleClass="primary-btn"
-            defaultButton="true"/>
+    <FxmlFusionButton fx:id="btnLogin" text="登录" onAction="#onLoginClicked"
+                  prefWidth="88" prefHeight="32"/>
     <!-- 「更多」面板：版本 + 检查更新 / 关于 + GitHub（独立小窗口实现，MenuButton 弹出菜单在 macOS 不稳） -->
-    <Button text="更多" onAction="#onMoreClicked" styleClass="primary-btn"/>
+    <FxmlFusionButton text="更多" onAction="#onMoreClicked" prefWidth="88" prefHeight="32"/>
   </HBox>
 </VBox>

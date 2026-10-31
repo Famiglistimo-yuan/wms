@@ -10,8 +10,8 @@ import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.ExportHelper;
 import com.wms.wmsclient.util.PreviewPager;
 import com.wms.wmsclient.util.TableState;
+import io.vproxy.vfx.ui.button.FusionButton;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -38,12 +38,12 @@ public class ReportLedgerController {
     @FXML private ComboBox<MaterialOption> cbMaterial;
     @FXML private ChoiceBox<Integer> cbYear;
     @FXML private ChoiceBox<String> cbFormat;
-    @FXML private Button btnExport;
+    @FXML private FusionButton btnExport;
     @FXML private Label lblStatus;
-    @FXML private Button btnPreview;
+    @FXML private FusionButton btnPreview;
     @FXML private TableView<LedgerPreviewRow> tvPreview;
-    @FXML private Button btnPrev;
-    @FXML private Button btnNext;
+    @FXML private FusionButton btnPrev;
+    @FXML private FusionButton btnNext;
     @FXML private Label lblPage;
     @FXML private Label lblMeta;
 

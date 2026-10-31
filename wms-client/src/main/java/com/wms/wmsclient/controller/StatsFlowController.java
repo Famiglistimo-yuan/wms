@@ -6,10 +6,10 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
+import io.vproxy.vfx.ui.button.FusionButton;
 import javafx.fxml.FXML;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
@@ -26,7 +26,7 @@ public class StatsFlowController {
 
     @FXML private DatePicker dpFrom;
     @FXML private DatePicker dpTo;
-    @FXML private Button btnQuery;
+    @FXML private FusionButton btnQuery;
     @FXML private BarChart<String, Number> chartFlow;
     @FXML private StackPane maskLoading;
     @FXML private Label lblMinFlow;

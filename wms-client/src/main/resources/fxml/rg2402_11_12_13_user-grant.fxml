@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Button?>
+<?import com.wms.wmsclient.ui.FxmlFusionButton?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.TextField?>
@@ -11,12 +11,12 @@
       fx:controller="com.wms.wmsclient.controller.UserGrantController"
       spacing="8">
   <ToolBar>
-    <Button text="刷新" onAction="#onRefreshClicked"/>
+    <FxmlFusionButton text="刷新" onAction="#onRefreshClicked" prefWidth="88" prefHeight="32"/>
     <TextField fx:id="tfSearch" promptText="用户名 / 人员编号 / 姓名" onAction="#onSearchClicked" prefWidth="200"/>
-    <Button text="搜索" onAction="#onSearchClicked"/>
-    <Button text="保存授权" onAction="#onSaveClicked" fx:id="btnSave"/>
-    <Button text="全部允许" onAction="#onAllowAllClicked" fx:id="btnAllowAll"/>
-    <Button text="全部禁止" onAction="#onDenyAllClicked" fx:id="btnDenyAll"/>
+    <FxmlFusionButton text="搜索" onAction="#onSearchClicked" prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton text="保存授权" onAction="#onSaveClicked" fx:id="btnSave" prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton text="全部允许" onAction="#onAllowAllClicked" fx:id="btnAllowAll" prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton text="全部禁止" onAction="#onDenyAllClicked" fx:id="btnDenyAll" prefWidth="88" prefHeight="32"/>
   </ToolBar>
   <Label text="用户列表（左） / 权限分配（右：允许=授予，禁止=不授予）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">

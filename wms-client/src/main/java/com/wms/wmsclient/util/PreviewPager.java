@@ -1,8 +1,8 @@
 package com.wms.wmsclient.util;
 
+import io.vproxy.vfx.ui.button.FusionButton;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 
@@ -20,9 +20,9 @@ import java.util.function.ToLongFunction;
 public final class PreviewPager<T> {
 
     private final TableView<T> table;
-    private final Button btnQuery;
-    private final Button btnPrev;
-    private final Button btnNext;
+    private final FusionButton btnQuery;
+    private final FusionButton btnPrev;
+    private final FusionButton btnNext;
     private final Label lblPage;
     private final int pageSize;
     private final String totalLabel; // 「条明细」/「日流水」等总数单位文案
@@ -34,7 +34,7 @@ public final class PreviewPager<T> {
     private int seq;
     private boolean loading;
 
-    public <R> PreviewPager(TableView<T> table, Button btnQuery, Button btnPrev, Button btnNext,
+    public <R> PreviewPager(TableView<T> table, FusionButton btnQuery, FusionButton btnPrev, FusionButton btnNext,
                             Label lblPage, int pageSize, String totalLabel, String threadName,
                             Callable<R> fetch, Function<R, List<T>> rowsOf,
                             ToLongFunction<R> totalOf, Consumer<R> extras) {

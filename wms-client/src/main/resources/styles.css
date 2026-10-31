@@ -13,10 +13,6 @@
     -fx-text-fill: #666666;
 }
 
-.primary-btn {
-    -fx-min-width: 88px;
-}
-
 /* 「更多」面板（MorePanel，TRANSPARENT 舞台上的圆角卡片） */
 .more-panel {
     -fx-background-color: white;

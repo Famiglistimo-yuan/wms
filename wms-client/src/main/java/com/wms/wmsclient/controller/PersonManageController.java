@@ -6,6 +6,7 @@ import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TableState;
+import io.vproxy.vfx.ui.button.FusionButton;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -26,7 +27,7 @@ public class PersonManageController {
     private boolean loading;
 
     @FXML private TextField tfSearch;
-    @FXML private Button btnRefresh;
+    @FXML private FusionButton btnRefresh;
     @FXML private TableView<PersonRow> tvPersons;
     @FXML private Label lblStatus;
 

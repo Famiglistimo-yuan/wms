@@ -1,6 +1,5 @@
 package com.wms.wmsclient.util;
 
-import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.stage.FileChooser;

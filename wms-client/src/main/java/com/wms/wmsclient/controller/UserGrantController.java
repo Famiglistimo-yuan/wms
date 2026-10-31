@@ -9,9 +9,9 @@ import com.wms.common.dto.UserVO;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
+import io.vproxy.vfx.ui.button.FusionButton;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -39,9 +39,9 @@ public class UserGrantController {
     @FXML private TextField tfSearch;
     @FXML private ListView<UserVO> lvUsers;
     @FXML private ListView<PermAssignItem> lvPermissions;
-    @FXML private Button btnSave;
-    @FXML private Button btnAllowAll;
-    @FXML private Button btnDenyAll;
+    @FXML private FusionButton btnSave;
+    @FXML private FusionButton btnAllowAll;
+    @FXML private FusionButton btnDenyAll;
 
     private List<PermissionVO> allPermissions;
 

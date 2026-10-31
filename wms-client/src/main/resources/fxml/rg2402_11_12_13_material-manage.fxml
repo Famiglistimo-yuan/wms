@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Button?>
+<?import com.wms.wmsclient.ui.FxmlFusionButton?>
+<?import io.vproxy.vfx.ui.wrapper.ThemeLabel?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
@@ -12,12 +13,12 @@
 
     <top>
         <HBox spacing="8" style="-fx-padding: 8px;">
-            <Label text="关键字："/>
+            <ThemeLabel text="关键字："/>
             <TextField fx:id="tfSearch" promptText="代码 / 名称 / 规格" onAction="#onRefreshClicked" prefWidth="200"/>
-            <Button text="查询/刷新" onAction="#onRefreshClicked"/>
-            <Button text="新增" onAction="#onCreateClicked"/>
-            <Button text="修改" onAction="#onEditClicked"/>
-            <Button text="删除" onAction="#onDeleteClicked"/>
+            <FxmlFusionButton text="查询/刷新" onAction="#onRefreshClicked" prefWidth="88" prefHeight="32"/>
+            <FxmlFusionButton text="新增" onAction="#onCreateClicked" prefWidth="88" prefHeight="32"/>
+            <FxmlFusionButton text="修改" onAction="#onEditClicked" prefWidth="88" prefHeight="32"/>
+            <FxmlFusionButton text="删除" onAction="#onDeleteClicked" prefWidth="88" prefHeight="32"/>
         </HBox>
     </top>
 
@@ -27,7 +28,7 @@
 
     <bottom>
         <HBox style="-fx-padding: 4px 8px;">
-            <Label fx:id="lblStatus" text="点击查询加载物料列表" HBox.hgrow="ALWAYS"/>
+            <ThemeLabel fx:id="lblStatus" text="点击查询加载物料列表" HBox.hgrow="ALWAYS"/>
         </HBox>
     </bottom>
 </BorderPane>

@@ -11,8 +11,8 @@ import com.wms.wmsclient.panel.MorePanel;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TokenStore;
+import io.vproxy.vfx.ui.button.FusionButton;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 
@@ -28,7 +28,7 @@ public class LoginController {
     @FXML
     private PasswordField pfPassword;
     @FXML
-    private Button btnLogin;
+    private FusionButton btnLogin;
 
     public LoginController(App app) {
         this.app = app;
@@ -36,6 +36,10 @@ public class LoginController {
 
     @FXML
     protected void onLoginClicked() {
+        // 防连点守卫：文本框 onAction 不受按钮禁用约束（FusionButton 替代原生 defaultButton 后的 Enter 补偿），
+        // 请求期间在输入框按 Enter 会绕过禁用态直达此处，须先挡下
+        if (btnLogin.isDisable()) return;
+
         String username = tfUsername.getText().trim();
         String password = pfPassword.getText();
 

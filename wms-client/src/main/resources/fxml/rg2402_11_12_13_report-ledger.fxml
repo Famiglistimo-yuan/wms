@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Button?>
+<?import com.wms.wmsclient.ui.FxmlFusionButton?>
+<?import io.vproxy.vfx.ui.wrapper.ThemeLabel?>
 <?import javafx.scene.control.ChoiceBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
@@ -13,21 +14,25 @@
       fx:controller="com.wms.wmsclient.controller.ReportLedgerController"
       spacing="8">
   <ToolBar>
-    <Label text="物料"/>
+    <ThemeLabel text="物料"/>
     <ComboBox fx:id="cbMaterial" prefWidth="220"/>
-    <Label text="年份"/>
+    <ThemeLabel text="年份"/>
     <ChoiceBox fx:id="cbYear"/>
-    <Label text="格式"/>
+    <ThemeLabel text="格式"/>
     <ChoiceBox fx:id="cbFormat" prefWidth="130"/>
-    <Button fx:id="btnPreview" text="预览" onAction="#onPreviewClicked"/>
-    <Button fx:id="btnExport" text="导出" onAction="#onExportClicked"/>
+    <FxmlFusionButton fx:id="btnPreview" text="预览" onAction="#onPreviewClicked"
+                  prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton fx:id="btnExport" text="导出" onAction="#onExportClicked"
+                  prefWidth="88" prefHeight="32"/>
   </ToolBar>
   <Separator/>
   <Label fx:id="lblMeta" styleClass="subtle" wrapText="true"/>
   <TableView fx:id="tvPreview" VBox.vgrow="ALWAYS"/>
   <HBox spacing="8">
-    <Button fx:id="btnPrev" text="上一页" onAction="#onPrevClicked" disable="true"/>
-    <Button fx:id="btnNext" text="下一页" onAction="#onNextClicked" disable="true"/>
+    <FxmlFusionButton fx:id="btnPrev" text="上一页" onAction="#onPrevClicked" disable="true"
+                  prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton fx:id="btnNext" text="下一页" onAction="#onNextClicked" disable="true"
+                  prefWidth="88" prefHeight="32"/>
     <Label fx:id="lblPage" styleClass="subtle"/>
   </HBox>
   <Label fx:id="lblStatus" styleClass="subtle"/>
