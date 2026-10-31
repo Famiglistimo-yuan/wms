@@ -7,6 +7,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.http.RsaClient;
 import com.wms.wmsclient.panel.MorePanel;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
@@ -49,9 +50,18 @@ public class LoginController {
             return;
         }
 
+        // 用服务端公钥加密口令（RSA-2048/OAEP）；首次会拉取并缓存公钥
+        String encryptedPassword;
+        try {
+            encryptedPassword = RsaClient.encryptPassword(password);
+        } catch (Exception e) {
+            Alerts.error("加密口令失败：" + e.getMessage());
+            return;
+        }
+
         LoginRequest req = new LoginRequest();
         req.setUsername(username);
-        req.setPassword(password);
+        req.setEncryptedPassword(encryptedPassword);
 
         // 防连点：请求期间禁用登录按钮，成功/失败回调里恢复
         btnLogin.setDisable(true);
