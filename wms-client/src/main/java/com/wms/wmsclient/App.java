@@ -6,7 +6,6 @@ import com.wms.wmsclient.scene.HomeScene;
 import com.wms.wmsclient.scene.MenuScene;
 import com.wms.wmsclient.scene.PanelScene;
 import com.wms.wmsclient.update.UpdateService;
-import com.wms.wmsclient.util.ApiTasks;
 import com.wms.wmsclient.util.TokenStore;
 import com.wms.wmsclient.theme.ThemeManager;
 import io.vproxy.vfx.control.globalscreen.GlobalScreenUtils;
@@ -20,14 +19,12 @@ import io.vproxy.vfx.ui.stage.VStage;
 import io.vproxy.vfx.ui.stage.VStageInitParams;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,8 +42,9 @@ public class App extends Application {
     private FusionButton menuBtn;
     /** 面板场景登记表（每次 showPanel 重建场景，保证数据新鲜，与原 setCenter 重载 FXML 行为一致） */
     private final Map<String, VScene> panelScenes = new HashMap<>();
-    /** 同面板重进时退役的旧场景（vfx 禁止移除正在显示的 MAIN 场景，推迟到下次切换时清理） */
-    private final List<VScene> retiredScenes = new ArrayList<>();
+
+    /** 进出仓面板模式标志：showPanel 调用时按 fxmlName 设置，供 StockIoController 构造器读取 */
+    public static boolean STOCK_MODE_INBOUND = true;
 
     @Override
     public void start(Stage primaryStage) throws IOException {
@@ -139,27 +137,36 @@ public class App extends Application {
 
     /** 后台异步校验 token 有效性 + 刷新权限集（成功则覆盖会话并重跑菜单显隐；失败静默，401 走兜底回调） */
     private void startVerifyTask() {
-        ApiTasks.run("restore-session-verify",
-                () -> ApiClient.getResultData(ApiClient.get("/api/auth/me"), LoginResponse.class),
-                fresh -> {
-                    // 用数据库最新权限集覆盖落盘陈旧值（管理员收回权限后自动同步）
-                    SessionContext.set(fresh);
-                    TokenStore.save(fresh);
-                    // 菜单显隐按最新权限集重跑
-                    if (menuScene != null) {
-                        menuScene.refreshUser();
-                        menuScene.applyMenuPermissions();
-                    }
-                },
-                ex -> {
-                    // 401：ApiClient.setOnUnauthorized 已清态回登录场景；
-                    // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底
-                });
+        Task<LoginResponse> verifyTask = new Task<>() {
+            @Override
+            protected LoginResponse call() throws Exception {
+                String json = ApiClient.get("/api/auth/me");
+                return ApiClient.getResultData(json, LoginResponse.class);
+            }
+        };
+        verifyTask.setOnSucceeded(e -> Platform.runLater(() -> {
+            LoginResponse fresh = verifyTask.getValue();
+            // 用数据库最新权限集覆盖落盘陈旧值（管理员收回权限后自动同步）
+            SessionContext.set(fresh);
+            TokenStore.save(fresh);
+            // 菜单显隐按最新权限集重跑
+            if (menuScene != null) {
+                menuScene.refreshUser();
+                menuScene.applyMenuPermissions();
+            }
+        }));
+        verifyTask.setOnFailed(e -> {
+            // 401：ApiClient.setOnUnauthorized 已清态回登录场景；
+            // 其他异常（网络抖动等）：静默，下次业务请求自然 401 兜底
+        });
+        // daemon：关窗即退，不因后台校验未完成而僵住进程
+        Thread t = new Thread(verifyTask, "restore-session-verify");
+        t.setDaemon(true);
+        t.start();
     }
 
     /** 登录场景 */
     public void showLogin() throws IOException {
-        purgeRetiredScenes();
         if (loginScene == null) {
             loginScene = new PanelScene(this, "rg2402_11_12_13_login");
             sceneGroup.addScene(loginScene);
@@ -185,30 +192,21 @@ public class App extends Application {
      *                 如 "rg2402_11_12_13_person-manage"
      */
     public void showPanel(String fxmlName) throws IOException {
-        purgeRetiredScenes();
+        // 按 fxmlName 判断进仓/出仓模式，供 StockIoController 构造器读取
+        if (fxmlName != null && fxmlName.contains("stock-out")) {
+            STOCK_MODE_INBOUND = false;
+        } else if (fxmlName != null && fxmlName.contains("stock-in")) {
+            STOCK_MODE_INBOUND = true;
+        }
+
         VScene old = panelScenes.remove(fxmlName);
         if (old != null) {
-            if (old == sceneGroup.getCurrentMainScene()) {
-                retiredScenes.add(old);
-            } else {
-                sceneGroup.removeScene(old);
-            }
+            sceneGroup.removeScene(old);
         }
         VScene scene = new PanelScene(this, fxmlName);
         panelScenes.put(fxmlName, scene);
         sceneGroup.addScene(scene);
         sceneGroup.show(scene, VSceneShowMethod.FROM_RIGHT);
-    }
-
-    /** 清理退役面板场景；仍是 currentMainScene 的（切换动画未完成）留到下次再清 */
-    private void purgeRetiredScenes() {
-        for (Iterator<VScene> it = retiredScenes.iterator(); it.hasNext(); ) {
-            VScene retired = it.next();
-            if (retired != sceneGroup.getCurrentMainScene()) {
-                sceneGroup.removeScene(retired);
-                it.remove();
-            }
-        }
     }
 
     /** 收起抽屉菜单 */

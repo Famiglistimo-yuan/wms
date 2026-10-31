@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.wms.wmsclient.controller.StockIoController">
+
+    <top>
+        <HBox spacing="8" style="-fx-padding: 8px;">
+            <Label fx:id="lblTitle" text="进仓录入（多物料）" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+            <Label text="  ｜" style="-fx-text-fill: #999;"/>
+            <Button text="刷新物料" onAction="#onRefreshClicked"/>
+            <Button text="新增物料" onAction="#onAddMaterialClicked"/>
+            <Button text="编辑选中" onAction="#onEditMaterialClicked"/>
+        </HBox>
+    </top>
+
+    <center>
+        <TableView fx:id="tvMaterials" editable="true">
+            <columns>
+                <TableColumn fx:id="colSelected" text="☑"/>
+                <TableColumn fx:id="colCode" text="物料编码"/>
+                <TableColumn fx:id="colName" text="名称"/>
+                <TableColumn fx:id="colSpec" text="规格"/>
+                <TableColumn fx:id="colUnit" text="单位"/>
+                <TableColumn fx:id="colStock" text="当前库存"/>
+                <TableColumn fx:id="colInput" text="入库数量"/>
+            </columns>
+        </TableView>
+    </center>
+
+    <bottom>
+        <BorderPane style="-fx-padding: 8px;">
+            <left>
+                <HBox spacing="6">
+                    <Label text="入库来源："/>
+                    <TextField fx:id="tfSource" promptText="采购 / 调拨 / 其他" prefWidth="160"/>
+                    <Label text="整单备注："/>
+                    <TextField fx:id="tfRemark" promptText="（可选）本批进仓备注" prefWidth="260"/>
+                </HBox>
+            </left>
+            <right>
+                <HBox spacing="8">
+                    <Button fx:id="btnSubmit" text="确认进仓" onAction="#onSubmitClicked"
+                            style="-fx-background-color: #1976d2; -fx-text-fill: white; -fx-padding: 6px 20px;"/>
+                </HBox>
+            </right>
+            <top>
+                <HBox>
+                    <Label fx:id="lblStatus" text="正在加载物料列表…" HBox.hgrow="ALWAYS"/>
+                </HBox>
+            </top>
+        </BorderPane>
+    </bottom>
+</BorderPane>
