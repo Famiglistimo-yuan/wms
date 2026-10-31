@@ -260,6 +260,24 @@
 - **理由**：课题答辩重视界面演示效果，vfx 以单一依赖一站式获得标题栏/主题/动画/抽屉；面板不动保证各子系统界面零回归；ADR-007 的单窗口与统一导航入口（`App.showPanel`）约定完整保留。
 - **后果**：§3 技术栈表同步更新；窗口关闭需 `TaskManager.terminate()` ＋ `GlobalScreenUtils.unregister()` 清理；vfx 1.4.x 无运行时主题切换机制（`Theme.setTheme` 仅进程启动注入一次），主题为浅色（自研 `LightTheme` ＋ `styles.css`）/深色（vfx `DarkTheme` ＋ `styles-dark.css`）双份，经「更多」面板确认后落盘并重启客户端生效（打包模式重启 jpackage 启动器；dev 模式重拉 java 进程，classpath 不含 JavaFX 的环境兜底提示手动重启）；深色下 JavaFX 原生控件经面板级样式表＋CSS 变量继承派生深色（Modena 保持为 UA stylesheet——`setUserAgentStylesheet` 为替换语义会丢控件皮肤，`StyleManager.addUserAgentStylesheet` 叠加优先级不足，均已探针实测排除），弹窗分两类、机制不同（探针实证）：Dialog 类（Alert/自建 Dialog）是独立 Stage/scene，拿不到面板级样式表，须经 `Alerts.of()`/`Alerts.theme()` 挂载 dialogPane 样式表跟随；popup 类浮层（ComboBox/DatePicker 下拉、右键菜单等）经 `PopupControl.getStyleableParent()` 链自动吃到 owner 场景的 author 样式表，无需单独处理；fat jar 体积增大（jnativehook 原生库随包）；vfx 发布 POM 已剥离 openjfx 依赖，consumer 自行声明所需 JavaFX 模块（已补 javafx-swing；javafx-media 仅音视频功能需要，当前未用——后续引入 vfx 音频组件时需补声明）；原 `MainController`/`rg2402_11_12_13_main.fxml` 删除，菜单权限显隐逻辑平移至 `MenuScene`；升级 vfx 前需评估 API 兼容性（作者声明可能不兼容升级）。
 
+### ADR-011：登录口令传输采用 RSA-2048/OAEP 字段级加密
+
+- **状态**：已采纳（实现落地于 `feature/auth-rsa` 分支；因排期暂缓合入 main，恢复时间另行安排）
+- **上下文**：登录口令此前以明文经 HTTP 传输（内网/课程环境）。数据库侧已 BCrypt 落库（§5.1），登录后业务数据有 Bearer JWT 保护，但口令属最高敏感字段，传输侧明文是安全短板；课题允许选做 RSA 加密通信（§7.6）。备选：全链路 HTTPS、RSA+AES 信封加密全 API、仅字段级 RSA。
+- **候选方案对比**：
+
+| 维度 | A 字段级 RSA-2048/OAEP（已选） | B 全链路 HTTPS | C RSA+AES 信封全 API 加密 |
+|------|------|------|------|
+| 新增依赖 | 零（纯 JDK `java.security`） | 证书 + SSL 配置（零代码依赖） | 零（仍纯 JDK） |
+| 改动面 | 8 文件（登录链路局部） | 部署配置为主，代码零改动 | 全 Controller 入口拦截，切面 + 契约改造 |
+| 性能 | 登录时一次 RSA（毫秒级） | TLS 握手一次，后续对称加密 | 每请求一次 RSA + AES，开销与复杂度双高 |
+| 覆盖范围 | 仅登录口令 | 全流量（含业务数据） | 全 API body |
+| 运维成本 | 生产需配私钥 | 证书签发/续期 | 会话密钥生命周期管理 |
+
+- **决策**：方案 A——服务端持有 RSA-2048 密钥对（`RsaKeyHolder`），公钥经 `GET /api/auth/public-key` 动态下发（JWT 白名单放行），客户端缓存（`RsaClient` volatile 单例）后以 `RSA/ECB/OAEPWithSHA-256AndMGF1Padding` 加密口令，置于 `LoginRequest.encryptedPassword` 传输；服务端私钥解密后走原 BCrypt 校验链路。明文 `password` 字段保留作开发联调回退（服务端 log.warn）。
+- **理由**：口令是唯一必须字段级加密的数据（业务数据有 JWT + 分页脱敏即可）；2048 位 OAEP 单次明文上限 190 字节装口令绰绰有余，无需 AES 信封；公钥动态下发使服务端换钥无需重发客户端（优于 §7.6 原「公钥内置客户端」设想）；零依赖零部署变化，课程环境即刻可演示。
+- **后果**：`LoginRequest` 增 `encryptedPassword` 字段、`password` 去 `@NotBlank`（两者至少一个非空的校验收敛至 `AuthService.resolvePassword`）；开发模式未配 `wms.rsa.private-key-base64` 时每次重启临时生成密钥（客户端下次登录自动重拉）；生产从 PKCS#8 Base64 私钥加载、公钥由私钥 modulus + e=65537 推导；HTTP 下公钥下发存在中间人替换风险（可选加固：客户端固化公钥指纹比对）；应用层加密是 defense-in-depth，不替代 HTTPS——生产部署仍建议启用 SSL（§7.6）；§6.2 接口清单与 §7.6 已同步更新。
+
 ## 5. 数据库设计
 
 ### 5.1 表清单
@@ -330,6 +348,7 @@
 | 方法 | 路径 | 功能 |
 |------|------|------|
 | POST | `/api/auth/login` | 登录（公开），返回 JWT + 权限码集合 |
+| GET | `/api/auth/public-key` | 下发 RSA-2048 公钥（Base64），客户端登录前拉取并缓存用于加密口令（公开；ADR-011） |
 | GET | `/api/auth/me` | 当前用户信息+最新权限集（启动恢复校验+权限刷新；受保护） |
 | POST | `/api/auth/logout` | 注销（语义入口，公开） |
 | GET | `/api/persons?name={字}&page=&size=` | 人员分页查询（支持单字模糊） |
@@ -414,10 +433,11 @@
 
 **升级包的替换粒度与文件名（实现约束，详见 ADR-008）**：主 jar 为 shade fat jar（含 wms-common 与 Jackson 等纯 Java 依赖）且**固定名 `wms-client.jar` 不带版本号**——jpackage 启动配置 `WMS.cfg` 写死 classpath 文件名，带版本号会导致升级后启动器找不到文件；版本信息由 jar 内 `version.txt` 承载。JavaFX 及其 native lib 不随升级变更（由打包的 `app/` 目录提供，升级需整包重装）。
 
-### 7.6 RSA 加密通信（选做）
+### 7.6 RSA 加密通信（选做，已实现）
 
-- 模式：服务端生成密钥对，公钥内置于客户端；敏感字段（登录口令）以 RSA 公钥加密传输，服务端私钥解密；令牌与普通业务数据仍走 JSON 明文。
-- 生产替代：部署时启用 HTTPS（Spring Boot 配置 SSL 证书即可），报告中说明「传输层加密 vs 字段级加密」的适用场景对比。
+- 模式：服务端生成/加载密钥对（`RsaKeyHolder`），公钥经 `GET /api/auth/public-key` 动态下发（客户端 `RsaClient` 缓存，服务端换钥自动重拉）；登录口令以 RSA-2048/OAEP 公钥加密传输（`LoginRequest.encryptedPassword`），服务端私钥解密后走原 BCrypt 校验；令牌与普通业务数据仍走 JSON 明文。选型与候选对比见 ADR-011。
+- 密钥管理：开发模式启动时临时生成 2048 位密钥对；生产配置 `wms.rsa.private-key-base64`（PKCS#8 Base64）固化，公钥由私钥 modulus 推导。
+- 生产替代：部署时启用 HTTPS（Spring Boot 配置 SSL 证书即可），报告中说明「传输层加密 vs 字段级加密」的适用场景对比；应用层 RSA 为 defense-in-depth，两者可叠加。
 
 ## 8. 非功能性需求应对（考核点映射）
 
