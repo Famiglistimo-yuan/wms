@@ -11,13 +11,13 @@
       fx:controller="com.wms.wmsclient.controller.UserManageController"
       spacing="8">
   <ToolBar>
-    <FxmlFusionButton text="刷新" onAction="#onRefreshClicked" prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton text="刷新" onAction="#onRefreshClicked" prefWidth="80" prefHeight="26"/>
     <TextField fx:id="tfSearch" promptText="用户名 / 人员编号 / 姓名" onAction="#onSearchClicked" prefWidth="200"/>
-    <FxmlFusionButton text="搜索" onAction="#onSearchClicked" prefWidth="88" prefHeight="32"/>
-    <FxmlFusionButton text="新增用户" onAction="#onCreateUserClicked" prefWidth="88" prefHeight="32"/>
-    <FxmlFusionButton text="启/停用" onAction="#onToggleStatusClicked" prefWidth="88" prefHeight="32"/>
-    <FxmlFusionButton text="修改密码" onAction="#onChangePasswordClicked" prefWidth="88" prefHeight="32"/>
-    <FxmlFusionButton text="删除用户" onAction="#onDeleteUserClicked" prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton text="搜索" onAction="#onSearchClicked" prefWidth="80" prefHeight="26"/>
+    <FxmlFusionButton text="新增用户" onAction="#onCreateUserClicked" prefWidth="80" prefHeight="26"/>
+    <FxmlFusionButton text="启/停用" onAction="#onToggleStatusClicked" prefWidth="80" prefHeight="26"/>
+    <FxmlFusionButton text="修改密码" onAction="#onChangePasswordClicked" prefWidth="80" prefHeight="26"/>
+    <FxmlFusionButton text="删除用户" onAction="#onDeleteUserClicked" prefWidth="80" prefHeight="26"/>
   </ToolBar>
   <TableView fx:id="tvUsers" VBox.vgrow="ALWAYS" editable="false"/>
   <Separator/>

@@ -13,6 +13,9 @@
        在深色上仅差 1/255 不可见，显式定值提对比（实测 #2b3138 ⇄ #22272e） */
     -fx-control-inner-background-alt: #22272e;
     -fx-text-fill: #ececec;
+    /* 输入类控件正文色（Modena 的 .text-input 走此变量而非 -fx-text-fill）：
+       不设则 TextField/ComboBox 选中值在深底上仍是默认黑字 */
+    -fx-text-inner-color: #ececec;
     /* 聚焦控件外圈 halo（Modena 默认半透明蓝大框）：关闭，紧凑焦点环保留（浅色侧同配） */
     -fx-faint-focus-color: transparent;
 }
@@ -23,6 +26,20 @@
 .subtle {
     -fx-text-fill: #9aa0a8;
 }
+
+/* vfx 按钮内文字回归全局 13px System（浅色侧同配） */
+.fusion-btn .label {
+    -fx-font-family: "System";
+    -fx-font-size: 13px;
+}
+
+/* 输入框提示文字（prompt）：Modena 在 .text-input 上以 derive(-fx-control-inner-background,-46%)
+   重设该变量（节点自身赋值压过 .root 继承，挂根选择器无效），须同选择器直接覆盖；
+   #b0b6bd 比正文 #ececec 弱一档但仍清晰可读 */
+.text-input {
+    -fx-prompt-text-fill: #b0b6bd;
+}
+
 /* 「更多」面板（MorePanel，TRANSPARENT 舞台上的圆角卡片）——深色版 */
 .more-panel {
     -fx-background-color: #2b3138;
@@ -57,4 +74,19 @@
 .tree-table-view:focused {
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
+}
+
+/* 表头贴近 vfx VTableView 观感——深色版（DarkTheme 表头双色 #1a1f21→#1b2023） */
+.table-view .column-header-background {
+    -fx-background-color: linear-gradient(to bottom, #1a1f21, #1b2023);
+    -fx-background-insets: 0;
+}
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.table-view .column-header .label {
+    -fx-font-weight: bold;
 }

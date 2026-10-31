@@ -15,10 +15,10 @@
         <HBox spacing="8" style="-fx-padding: 8px;">
             <ThemeLabel text="关键字："/>
             <TextField fx:id="tfSearch" promptText="代码 / 名称 / 规格" onAction="#onRefreshClicked" prefWidth="200"/>
-            <FxmlFusionButton text="查询/刷新" onAction="#onRefreshClicked" prefWidth="88" prefHeight="32"/>
-            <FxmlFusionButton text="新增" onAction="#onCreateClicked" prefWidth="88" prefHeight="32"/>
-            <FxmlFusionButton text="修改" onAction="#onEditClicked" prefWidth="88" prefHeight="32"/>
-            <FxmlFusionButton text="删除" onAction="#onDeleteClicked" prefWidth="88" prefHeight="32"/>
+            <FxmlFusionButton text="查询/刷新" onAction="#onRefreshClicked" prefWidth="80" prefHeight="26"/>
+            <FxmlFusionButton text="新增" onAction="#onCreateClicked" prefWidth="80" prefHeight="26"/>
+            <FxmlFusionButton text="修改" onAction="#onEditClicked" prefWidth="80" prefHeight="26"/>
+            <FxmlFusionButton text="删除" onAction="#onDeleteClicked" prefWidth="80" prefHeight="26"/>
         </HBox>
     </top>
 

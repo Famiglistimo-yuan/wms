@@ -3,10 +3,10 @@ package com.wms.wmsclient.panel;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.theme.ThemeManager;
+import com.wms.wmsclient.ui.FxmlFusionButton;
 import com.wms.wmsclient.update.UpdateService;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.Restarter;
-import io.vproxy.vfx.ui.button.FusionButton;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -55,8 +55,8 @@ public final class MorePanel {
         String version = UpdateService.localVersion();
         Label versionValue = new Label(version != null ? "v" + version : "开发模式（未打包）");
         versionValue.getStyleClass().add("subtle");
-        FusionButton btnCheck = new FusionButton("检查更新");
-        btnCheck.setPrefSize(88, 32);
+        FxmlFusionButton btnCheck = new FxmlFusionButton("检查更新");
+        btnCheck.setPrefSize(80, 26);
         // 先收起面板再检查：升级确认弹窗与面板同屏会互相遮挡
         btnCheck.setOnAction(e -> {
             panel.hide();
@@ -64,15 +64,15 @@ public final class MorePanel {
         });
 
         // ====== 第二行：关于 + 前往 GitHub ======
-        FusionButton btnGitHub = new FusionButton("前往 GitHub ↗");
-        btnGitHub.setPrefSize(110, 32);
+        FxmlFusionButton btnGitHub = new FxmlFusionButton("前往 GitHub ↗");
+        btnGitHub.setPrefSize(104, 26);
         btnGitHub.setOnAction(e -> app.getHostServices().showDocument(GITHUB_URL));
 
         // ====== 第三行：服务器地址（只读）+ 测试连接 ======
         Label serverUrl = new Label(ApiClient.BASE_URL);
         serverUrl.getStyleClass().add("subtle");
-        FusionButton btnPing = new FusionButton("测试连接");
-        btnPing.setPrefSize(88, 32);
+        FxmlFusionButton btnPing = new FxmlFusionButton("测试连接");
+        btnPing.setPrefSize(80, 26);
         Label pingStatus = new Label("未测试");
         pingStatus.getStyleClass().add("subtle");
         // 后台线程发请求（CONTRIBUTING §3.4 第 1 条），结果切回 FX 线程更新 UI
@@ -105,8 +105,8 @@ public final class MorePanel {
         row3.setAlignment(Pos.CENTER_LEFT);
 
         // ====== 第四行：主题切换（浅色 ⇄ 深色，重启后生效，ADR-010）======
-        FusionButton btnTheme = new FusionButton(ThemeManager.isDark() ? "切换浅色主题" : "切换深色主题");
-        btnTheme.setPrefSize(110, 32);
+        FxmlFusionButton btnTheme = new FxmlFusionButton(ThemeManager.isDark() ? "切换浅色主题" : "切换深色主题");
+        btnTheme.setPrefSize(104, 26);
         btnTheme.setOnAction(e -> {
             panel.hide();
             ThemeManager.Mode target = ThemeManager.isDark() ? ThemeManager.Mode.LIGHT : ThemeManager.Mode.DARK;

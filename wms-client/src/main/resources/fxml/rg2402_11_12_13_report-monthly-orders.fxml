@@ -20,17 +20,17 @@
     <ThemeLabel text="格式"/>
     <ChoiceBox fx:id="cbFormat" prefWidth="130"/>
     <FxmlFusionButton fx:id="btnPreview" text="预览" onAction="#onPreviewClicked"
-                  prefWidth="88" prefHeight="32"/>
+                  prefWidth="80" prefHeight="26"/>
     <FxmlFusionButton fx:id="btnExport" text="导出" onAction="#onExportClicked"
-                  prefWidth="88" prefHeight="32"/>
+                  prefWidth="80" prefHeight="26"/>
   </ToolBar>
   <Separator/>
   <TableView fx:id="tvPreview" VBox.vgrow="ALWAYS"/>
   <HBox spacing="8">
     <FxmlFusionButton fx:id="btnPrev" text="上一页" onAction="#onPrevClicked" disable="true"
-                  prefWidth="88" prefHeight="32"/>
+                  prefWidth="80" prefHeight="26"/>
     <FxmlFusionButton fx:id="btnNext" text="下一页" onAction="#onNextClicked" disable="true"
-                  prefWidth="88" prefHeight="32"/>
+                  prefWidth="80" prefHeight="26"/>
     <Label fx:id="lblPage" styleClass="subtle"/>
   </HBox>
   <Label fx:id="lblStatus" styleClass="subtle"/>

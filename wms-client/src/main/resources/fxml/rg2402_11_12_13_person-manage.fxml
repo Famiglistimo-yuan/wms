@@ -20,10 +20,10 @@
             <TextField fx:id="tfSearch" promptText="输入任意一个字，如「王」" onAction="#onRefreshClicked"
                        prefWidth="180"/>
             <FxmlFusionButton fx:id="btnRefresh" text="查询/刷新" onAction="#onRefreshClicked"
-                          prefWidth="88" prefHeight="32"/>
-            <FxmlFusionButton text="新增" onAction="#onCreateClicked" prefWidth="88" prefHeight="32"/>
-            <FxmlFusionButton text="修改" onAction="#onEditClicked" prefWidth="88" prefHeight="32"/>
-            <FxmlFusionButton text="删除" onAction="#onDeleteClicked" prefWidth="88" prefHeight="32"/>
+                          prefWidth="80" prefHeight="26"/>
+            <FxmlFusionButton text="新增" onAction="#onCreateClicked" prefWidth="80" prefHeight="26"/>
+            <FxmlFusionButton text="修改" onAction="#onEditClicked" prefWidth="80" prefHeight="26"/>
+            <FxmlFusionButton text="删除" onAction="#onDeleteClicked" prefWidth="80" prefHeight="26"/>
         </HBox>
     </top>
 

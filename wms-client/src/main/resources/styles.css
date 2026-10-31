@@ -13,6 +13,12 @@
     -fx-text-fill: #666666;
 }
 
+/* vfx 按钮内文字回归全局 13px System（vfx 默认 Noto Sans SC 16px 偏大）；深色版见 styles-dark.css */
+.fusion-btn .label {
+    -fx-font-family: "System";
+    -fx-font-size: 13px;
+}
+
 /* 「更多」面板（MorePanel，TRANSPARENT 舞台上的圆角卡片） */
 .more-panel {
     -fx-background-color: white;
@@ -59,4 +65,20 @@
 .tree-table-view:focused {
     -fx-background-color: -fx-box-border, -fx-control-inner-background;
     -fx-background-insets: 0, 1;
+}
+
+/* 表头贴近 vfx VTableView 观感：垂直双色渐变（LightTheme 表头双色）+ 加粗文字
+   + 去掉 Modena 的立体描边与列间分隔；深色版见 styles-dark.css */
+.table-view .column-header-background {
+    -fx-background-color: linear-gradient(to bottom, #eaeaed, #e0e0e5);
+    -fx-background-insets: 0;
+}
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.table-view .column-header .label {
+    -fx-font-weight: bold;
 }

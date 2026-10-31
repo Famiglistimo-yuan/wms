@@ -22,7 +22,7 @@
       <ThemeLabel text="截止日期"/>
       <DatePicker fx:id="dpTo" prefWidth="140"/>
       <FxmlFusionButton fx:id="btnQuery" text="统计" onAction="#onQueryClicked"
-                    prefWidth="88" prefHeight="32"/>
+                    prefWidth="80" prefHeight="26"/>
     </ToolBar>
   </top>
   <center>

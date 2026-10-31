@@ -11,12 +11,12 @@
       fx:controller="com.wms.wmsclient.controller.UserGrantController"
       spacing="8">
   <ToolBar>
-    <FxmlFusionButton text="刷新" onAction="#onRefreshClicked" prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton text="刷新" onAction="#onRefreshClicked" prefWidth="80" prefHeight="26"/>
     <TextField fx:id="tfSearch" promptText="用户名 / 人员编号 / 姓名" onAction="#onSearchClicked" prefWidth="200"/>
-    <FxmlFusionButton text="搜索" onAction="#onSearchClicked" prefWidth="88" prefHeight="32"/>
-    <FxmlFusionButton text="保存授权" onAction="#onSaveClicked" fx:id="btnSave" prefWidth="88" prefHeight="32"/>
-    <FxmlFusionButton text="全部允许" onAction="#onAllowAllClicked" fx:id="btnAllowAll" prefWidth="88" prefHeight="32"/>
-    <FxmlFusionButton text="全部禁止" onAction="#onDenyAllClicked" fx:id="btnDenyAll" prefWidth="88" prefHeight="32"/>
+    <FxmlFusionButton text="搜索" onAction="#onSearchClicked" prefWidth="80" prefHeight="26"/>
+    <FxmlFusionButton text="保存授权" onAction="#onSaveClicked" fx:id="btnSave" prefWidth="80" prefHeight="26"/>
+    <FxmlFusionButton text="全部允许" onAction="#onAllowAllClicked" fx:id="btnAllowAll" prefWidth="80" prefHeight="26"/>
+    <FxmlFusionButton text="全部禁止" onAction="#onDenyAllClicked" fx:id="btnDenyAll" prefWidth="80" prefHeight="26"/>
   </ToolBar>
   <Label text="用户列表（左） / 权限分配（右：允许=授予，禁止=不授予）" styleClass="subtle"/>
   <HBox spacing="8" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
