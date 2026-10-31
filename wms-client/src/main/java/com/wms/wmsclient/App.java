@@ -11,6 +11,7 @@ import com.wms.wmsclient.util.TokenStore;
 import com.wms.wmsclient.theme.ThemeManager;
 import io.vproxy.vfx.control.globalscreen.GlobalScreenUtils;
 import io.vproxy.vfx.manager.task.TaskManager;
+import io.vproxy.vfx.theme.Theme;
 import io.vproxy.vfx.ui.button.FusionButton;
 import io.vproxy.vfx.ui.scene.VScene;
 import io.vproxy.vfx.ui.scene.VSceneGroup;
@@ -20,7 +21,11 @@ import io.vproxy.vfx.ui.stage.VStage;
 import io.vproxy.vfx.ui.stage.VStageInitParams;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.image.Image;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -66,10 +71,12 @@ public class App extends Application {
 
         // 抽屉菜单挂 ROOT 场景组（左侧滑出）；「菜单」按钮放窗口左上角标题栏旁，登录场景下隐藏
         vStage.getRootSceneGroup().addScene(menuScene, VSceneHideMethod.TO_LEFT);
-        menuBtn = new FusionButton("菜单");
-        menuBtn.setPrefSize(64, VStage.TITLE_BAR_HEIGHT + 1);
+        // 标题栏汉堡菜单按钮（vfx 无内置图标，三条横线代码自绘，见 hamburgerIcon）
+        menuBtn = new FusionButton();
+        menuBtn.setPrefSize(40, VStage.TITLE_BAR_HEIGHT + 1);
         menuBtn.setLayoutX(-2);
         menuBtn.setLayoutY(-1);
+        menuBtn.getChildren().add(hamburgerIcon(menuBtn));
         menuBtn.setOnAction(e -> vStage.getRootSceneGroup().show(menuScene, VSceneShowMethod.FROM_LEFT));
         vStage.getRoot().getContentPane().getChildren().add(menuBtn);
 
@@ -214,5 +221,24 @@ public class App extends Application {
     /** 收起抽屉菜单 */
     public void hideMenu() {
         vStage.getRootSceneGroup().hide(menuScene, VSceneHideMethod.TO_LEFT);
+    }
+
+    /** 标题栏汉堡菜单图标：三条横线自绘，颜色跟随主题文字色；
+     *  mouseTransparent 让鼠标事件透传给按钮（hover/按压变色依赖按钮自身监听） */
+    private static VBox hamburgerIcon(FusionButton btn) {
+        VBox icon = new VBox(3);
+        icon.setAlignment(Pos.CENTER);
+        icon.setPrefSize(14, 12);
+        icon.setMouseTransparent(true);
+        Color lineColor = Theme.current().normalTextColor();
+        for (int i = 0; i < 3; i++) {
+            Rectangle line = new Rectangle(14, 2);
+            line.setFill(lineColor);
+            icon.getChildren().add(line);
+        }
+        // 按钮尺寸固定但图标需随实际宽高居中，用绑定代替写死坐标
+        icon.layoutXProperty().bind(btn.widthProperty().subtract(14).divide(2));
+        icon.layoutYProperty().bind(btn.heightProperty().subtract(12).divide(2));
+        return icon;
     }
 }
