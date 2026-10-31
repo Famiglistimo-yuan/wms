@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.wms.wmsclient.controller.StockIoRecordController">
+
+    <top>
+        <VBox spacing="6" style="-fx-padding: 8px;">
+            <!-- 第一行：标题 + 筛选条件 -->
+            <HBox spacing="8">
+                <Label fx:id="lblTitle" text="单据查询（进出库流水）" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                <Label text="  ｜" style="-fx-text-fill: #999;"/>
+                <Label text="类型："/>
+                <ComboBox fx:id="cbFilter" prefWidth="80"/>
+                <Label text="单据号："/>
+                <TextField fx:id="tfOrderNo" prefWidth="140" promptText="如 RK20261031"/>
+                <Label text="操作人："/>
+                <TextField fx:id="tfOperator" prefWidth="100" promptText="admin"/>
+                <Button text="查询" onAction="#onRefreshClicked" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+                <Button text="重置" onAction="#onResetFilter"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <TableView fx:id="tvRecords">
+            <columns>
+                <TableColumn fx:id="colTime" text="操作时间" prefWidth="150"/>
+                <TableColumn fx:id="colType" text="类型" prefWidth="55"/>
+                <TableColumn fx:id="colOrderNo" text="单据号" prefWidth="130"/>
+                <TableColumn fx:id="colMaterial" text="物料" prefWidth="180"/>
+                <TableColumn fx:id="colNum" text="数量" prefWidth="80"/>
+                <TableColumn fx:id="colBefore" text="操作前" prefWidth="80"/>
+                <TableColumn fx:id="colAfter" text="操作后" prefWidth="80"/>
+                <TableColumn fx:id="colOperator" text="操作人" prefWidth="70"/>
+                <TableColumn fx:id="colRemark" text="备注" prefWidth="180"/>
+            </columns>
+        </TableView>
+    </center>
+
+    <bottom>
+        <HBox spacing="8" style="-fx-padding: 6px 8px;">
+            <Label fx:id="lblStatus" text="正在加载…" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnPrev" text="◀ 上一页" onAction="#onPrevPage"/>
+            <Label fx:id="lblPage" text="1 / 1"/>
+            <Button fx:id="btnNext" text="下一页 ▶" onAction="#onNextPage"/>
+            <Label text="每页"/>
+            <ComboBox fx:id="cbPageSize" prefWidth="60"/>
+        </HBox>
+    </bottom>
+</BorderPane>

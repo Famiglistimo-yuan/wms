@@ -65,9 +65,9 @@ public final class MenuScene extends VScene {
                 "menu.material.edit", "menu.material.delete"), "rg2402_11_12_13_material-manage");
 
         section(box, "进出仓");
-        item(box, "进仓录入", Set.of("menu.stock.in"), null);
-        item(box, "出仓录入", Set.of("menu.stock.out"), null);
-        item(box, "单据查询", Set.of("menu.stock.query"), null);
+        item(box, "进仓录入", Set.of("menu.stock.in"), "rg2402_11_12_13_stock-in");
+        item(box, "出仓录入", Set.of("menu.stock.out"), "rg2402_11_12_13_stock-out");
+        item(box, "单据查询", Set.of("menu.stock.query"), "rg2402_11_12_13_stock-io-records");
 
         section(box, "统计报表");
         item(box, "物料流量统计", Set.of("menu.stats.flow"), "rg2402_11_12_13_stats-flow");
