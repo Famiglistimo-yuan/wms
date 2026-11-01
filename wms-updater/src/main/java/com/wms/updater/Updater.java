@@ -82,12 +82,17 @@ public class Updater {
      * 下载升级包到系统临时目录（不落在目标位置——验货前不碰现有文件）。
      * 显式设置连接与请求超时：默认无超时时，服务端半连接会让 Updater 静默挂死，
      * 用户看到的是「主程序已退出、新的没起来、也没弹窗」。
+     * 跟随重定向（Redirect.NORMAL，只跟 GET 且不降级 https→http）：GitHub Releases 直链
+     * 恒先 302 到 release-assets.githubusercontent.com 的 CDN 临时地址，默认 NEVER 会在
+     * 重定向页就被「非 200」拦截（用户实测踩坑）。连接超时 30s：跨境链路（VPN/加速）握手
+     * 偶发超过默认 10s，局域网服务端毫秒级完成不受影响。
      * 非 200（如升级包未发布时的 404）直接抛错——否则错误页会被写进文件，浪费到 MD5 校验才失败。
      */
     private static Path download(String url) throws Exception {
         Path temp = Files.createTempFile("wms-update-", ".jar");
         java.net.http.HttpClient http = java.net.http.HttpClient.newBuilder()
-                .connectTimeout(java.time.Duration.ofSeconds(10))
+                .connectTimeout(java.time.Duration.ofSeconds(30))
+                .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
                 .build();
         java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url))
                 .timeout(java.time.Duration.ofMinutes(5))
