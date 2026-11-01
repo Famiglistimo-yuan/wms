@@ -1,168 +1,96 @@
 package com.wms.wmsclient.controller;
 
+import com.wms.common.dto.PersonOptionVO;
 import com.wms.wmsclient.App;
 import com.wms.wmsclient.http.ApiClient;
-import com.wms.wmsclient.http.ApiException;
 import com.wms.wmsclient.util.Alerts;
-import javafx.application.Platform;
+import com.wms.wmsclient.util.ApiTasks;
+import com.wms.wmsclient.util.TableState;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.control.cell.TextFieldTableCell;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import javafx.util.StringConverter;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * 多物料进仓 / 出仓共用面板控制器。
+ * 进仓 / 出仓录入（FR-2，多物料一单：勾选 + 数量 → POST /api/stock/orders）。
  * <p>
- * UI：TableView 列出所有物料（☑ 选择 + 编码 + 名称 + 规格 + 单位 + 当前库存 + 出入数量），
- * 用户勾选需要的物料，各自填数量，点确认一次性批量提交。
- * <p>
- * 两种模式（进仓 / 出仓）由 App.STOCK_MODE_INBOUND 决定，
- * FXML 文件名对应设置（App.showPanel 里已处理）。
- * <p>
- * 后端接口：GET /api/material/list、POST /api/material/in/batch、POST /api/material/out/batch
+ * 两个面板（rg2402_11_12_13_stock-in / stock-out）共用本 Controller，进/出模式由
+ * PanelScene 注入的面板名决定。物料列表复用子系统1 GET /api/materials?keyword=；
+ * 经手人从人员档案下拉选择（GET /api/stock/person-options）；
+ * 事务/乐观锁在服务端存储过程内，出库前端仅做库存预校验改善体验。
  */
 public class StockIoController {
 
     private final App app;
+    /** true=进仓（IN）false=出仓（OUT），由 FXML 面板名注入 */
     private final boolean isInbound;
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     private final ObservableList<MaterialRow> rows = FXCollections.observableArrayList();
-    /** 全量数据（用于本地分页切片 + 提交时遍历所有勾选行） */
-    private List<MaterialRow> allRows = new ArrayList<>();
-    /** 分页状态 */
-    private int page = 1;
-    private int pageSize = 20;
-    private int total = 0;
+    /** 在途互斥：刷新/提交串行化，避免响应乱序覆盖 */
+    private boolean loading;
+    private boolean submitting;
 
     @FXML private Label lblTitle;
-    @FXML private Button btnSubmit;
+    @FXML private TextField tfSearch;
     @FXML private TableView<MaterialRow> tvMaterials;
-    @FXML private TableColumn<MaterialRow, Boolean> colSelected;
-    @FXML private TableColumn<MaterialRow, String> colCode;
-    @FXML private TableColumn<MaterialRow, String> colName;
-    @FXML private TableColumn<MaterialRow, String> colSpec;
-    @FXML private TableColumn<MaterialRow, String> colUnit;
-    @FXML private TableColumn<MaterialRow, String> colStock;
-    @FXML private TableColumn<MaterialRow, String> colInput;
-    @FXML private TextField tfSource;
-    @FXML private TextField tfHandler;
-    @FXML private TextField tfRemark;
-    @FXML private TextField tfFilterCode;
-    @FXML private TextField tfFilterName;
     @FXML private Label lblStatus;
-    @FXML private Button btnPrev;
-    @FXML private Button btnNext;
-    @FXML private Label lblPage;
-    @FXML private TextField tfPageSize;
-    @FXML private TextField tfJumpPage;
+    @FXML private ComboBox<PersonOptionVO> cbHandler;
+    @FXML private TextField tfRemark;
+    @FXML private Button btnSubmit;
 
-    public StockIoController(App app) {
-        this.app = app;
-        this.isInbound = App.STOCK_MODE_INBOUND;
+    /** 双参构造器：PanelScene 按面板名注入进/出模式 */
+    public StockIoController(App app, String fxmlName) {
+        this.app = app; // 仅为工厂注入约定保留，面板内未使用
+        this.isInbound = !fxmlName.contains("stock-out");
     }
 
     @FXML
     protected void initialize() {
-        // 标题 + 提交按钮文字（FXML 里已经硬编码了一次，这里兜底，确保一致）
-        lblTitle.setText(isInbound ? "进仓录入（多物料）" : "出仓录入（多物料）");
+        lblTitle.setText(isInbound ? "进仓录入" : "出仓录入");
         btnSubmit.setText(isInbound ? "确认进仓" : "确认出仓");
-        btnSubmit.setStyle(isInbound
-                ? "-fx-background-color: #1976d2; -fx-text-fill: white; -fx-padding: 6px 20px;"
-                : "-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-padding: 6px 20px;");
 
-        // 分页控件默认值
-        tfPageSize.setText(String.valueOf(pageSize));
-
-        // ===== TableView 配置 =====
-        tvMaterials.setEditable(true);
         tvMaterials.setItems(rows);
+        tvMaterials.setEditable(true);
 
-        // ☑ 选择列
+        // ☑ 选择列（可编辑勾选）
+        TableColumn<MaterialRow, Boolean> colSelected = new TableColumn<>("选择");
         colSelected.setCellValueFactory(c -> c.getValue().selectedProperty());
         colSelected.setCellFactory(CheckBoxTableCell.forTableColumn(colSelected));
         colSelected.setEditable(true);
         colSelected.setPrefWidth(50);
+        tvMaterials.getColumns().add(colSelected);
 
-        // 物料编码
-        colCode.setCellValueFactory(new PropertyValueFactory<>("materialCode"));
-        colCode.setPrefWidth(110);
+        TableState.addCol(tvMaterials, "物料代码", "materialCode", 130);
+        TableState.addCol(tvMaterials, "名称", "name", 150);
+        TableState.addCol(tvMaterials, "规格型号", "spec", 120);
+        TableState.addCol(tvMaterials, "单位", "unit", 70);
+        TableState.addCol(tvMaterials, "当前库存", "stockStr", 100);
 
-        // 名称
-        colName.setCellValueFactory(new PropertyValueFactory<>("materialName"));
-        colName.setPrefWidth(120);
-
-        // 规格
-        colSpec.setCellValueFactory(new PropertyValueFactory<>("spec"));
-        colSpec.setPrefWidth(100);
-
-        // 单位
-        colUnit.setCellValueFactory(new PropertyValueFactory<>("unit"));
-        colUnit.setPrefWidth(60);
-
-        // 当前库存
-        colStock.setCellValueFactory(c -> c.getValue().stockDisplayProperty());
-        colStock.setPrefWidth(110);
-
-        // 出入数量（始终显示 TextField，实时校验 + 失焦写回 + 触发整单汇总）
-        colInput.setCellValueFactory(c -> c.getValue().inputQuantityProperty());
-        colInput.setCellFactory(column -> new TableCell<MaterialRow, String>() {
+        // 数量列：内嵌 TextField，失焦写回行数据
+        TableColumn<MaterialRow, String> colQty = new TableColumn<>(isInbound ? "进仓数量" : "出仓数量");
+        colQty.setCellValueFactory(c -> c.getValue().inputQuantityProperty());
+        colQty.setCellFactory(col -> new TableCell<>() {
             private final TextField tf = new TextField();
             {
-                tf.setStyle("-fx-max-width: 150px;");
-                tf.textProperty().addListener((obs, oldV, newV) -> {
-                    if (getTableRow() == null || getTableRow().getItem() == null) return;
-                    MaterialRow row = (MaterialRow) getTableRow().getItem();
-                    // 实时校验：空 / 非正数 / 数字格式 / 出库库存不足
-                    String trimmed = newV == null ? "" : newV.trim();
-                    String errStyle = "-fx-control-inner-background: #ffe0e0;";
-                    String okStyle  = "-fx-control-inner-background: white;";
-                    if (trimmed.isEmpty()) {
-                        tf.setStyle("-fx-max-width: 150px;");
-                    } else {
-                        try {
-                            BigDecimal n = new BigDecimal(trimmed);
-                            if (n.compareTo(BigDecimal.ZERO) <= 0) {
-                                tf.setStyle("-fx-max-width: 150px;" + errStyle);
-                                tf.setTooltip(new Tooltip("数量必须大于 0"));
-                            } else if (!isInbound && row.stockNum != null
-                                    && row.stockNum.compareTo(n) < 0) {
-                                tf.setStyle("-fx-max-width: 150px;" + errStyle);
-                                tf.setTooltip(new Tooltip("库存不足（当前 "
-                                        + row.stockNum.stripTrailingZeros().toPlainString() + ")"));
-                            } else {
-                                tf.setStyle("-fx-max-width: 150px;" + okStyle);
-                                tf.setTooltip(null);
-                            }
-                        } catch (NumberFormatException ex) {
-                            tf.setStyle("-fx-max-width: 150px;" + errStyle);
-                            tf.setTooltip(new Tooltip("请输入数字"));
-                        }
-                    }
-                });
+                tf.setPrefWidth(120);
+                tf.setOnAction(e -> tf.getParent().requestFocus());
                 tf.focusedProperty().addListener((obs, oldF, newF) -> {
-                    if (!newF) {
-                        // 失焦：写回 row + 刷新整单汇总
-                        if (getTableRow() != null && getTableRow().getItem() != null) {
-                            MaterialRow row = (MaterialRow) getTableRow().getItem();
-                            String val = tf.getText() == null ? "" : tf.getText().trim();
-                            row.setInputQuantity(val);
-                            refreshOrderPreview();
-                        }
+                    if (!newF && getTableRow() != null && getTableRow().getItem() != null) {
+                        ((MaterialRow) getTableRow().getItem()).setInputQuantity(tf.getText());
+                        refreshPreview();
                     }
                 });
             }
@@ -173,479 +101,216 @@ public class StockIoController {
                 else { tf.setText(item == null ? "" : item); setGraphic(tf); }
             }
         });
-        colInput.setEditable(false);
-        colInput.setPrefWidth(150);
+        colQty.setPrefWidth(130);
+        tvMaterials.getColumns().add(colQty);
 
-        // 勾选变化也触发整单汇总
-        rows.addListener((javafx.collections.ListChangeListener<MaterialRow>) c -> refreshOrderPreview());
-        colSelected.setCellFactory(col -> new CheckBoxTableCell<>());
-        colSelected.setCellValueFactory(c -> c.getValue().selectedProperty());
+        // 经手人下拉：显示「编号 姓名」，值携带 personId
+        cbHandler.setConverter(new StringConverter<>() {
+            @Override public String toString(PersonOptionVO p) {
+                return p == null ? "" : p.getPersonCode() + " " + p.getRealName();
+            }
+            @Override public PersonOptionVO fromString(String s) { return null; }
+        });
 
-        // 加载数据
+        loadHandlerOptions();
         onRefreshClicked();
     }
 
-    /** 底部状态栏实时整单预览：已勾 N 条 / 合计 X / 出库库存不足⚠ */
-    private void refreshOrderPreview() {
+    /** 经手人下拉选项（人员档案） */
+    private void loadHandlerOptions() {
+        ApiTasks.run("stock-handler-options",
+                () -> ApiClient.getResultList(ApiClient.get("/api/stock/person-options"), PersonOptionVO.class),
+                list -> cbHandler.getItems().setAll(list),
+                ex -> lblStatus.setText("经手人列表加载失败：" + ex.getMessage()));
+    }
+
+    /** 关键字过滤物料（复用子系统1 /api/materials），加载后保留未提交的勾选与数量 */
+    @FXML
+    protected void onRefreshClicked() {
+        if (loading) return;
+        loading = true;
+        TableState.loading(tvMaterials);
+        String keyword = tfSearch.getText() != null ? tfSearch.getText().trim() : "";
+        String path = keyword.isEmpty()
+                ? "/api/materials"
+                : "/api/materials?keyword=" + ApiClient.urlEncode(keyword);
+
+        ApiTasks.run("stock-io-refresh",
+                () -> {
+                    List<MaterialRowVO> vos = ApiClient.getResultList(ApiClient.get(path), MaterialRowVO.class);
+                    return vos.stream().map(MaterialRow::new).toList();
+                },
+                list -> {
+                    loading = false;
+                    // 保留旧行的勾选/数量（按物料 id 回填），换页/筛选不丢已填内容
+                    Map<Long, MaterialRow> oldById = new LinkedHashMap<>();
+                    for (MaterialRow r : rows) oldById.put(r.id, r);
+                    for (MaterialRow fresh : list) {
+                        MaterialRow old = oldById.get(fresh.id);
+                        if (old != null) {
+                            fresh.setSelected(old.isSelected());
+                            fresh.setInputQuantity(old.getInputQuantity());
+                        }
+                    }
+                    rows.setAll(list);
+                    lblStatus.setText("共 " + rows.size() + " 条物料"
+                            + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）")
+                            + "，勾选并填写数量后提交");
+                    TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的物料");
+                    refreshPreview();
+                },
+                ex -> {
+                    loading = false;
+                    String msg = ex.getMessage();
+                    lblStatus.setText("加载失败：" + msg);
+                    TableState.failed(tvMaterials, msg);
+                });
+    }
+
+    /** 底部整单预览：已勾 N 条 · 合计 X（出仓附加库存不足预警） */
+    private void refreshPreview() {
         int checked = 0;
         BigDecimal total = BigDecimal.ZERO;
         StringBuilder warn = new StringBuilder();
-        List<MaterialRow> scan = allRows.isEmpty() ? rows : allRows;
-        for (MaterialRow r : scan) {
+        for (MaterialRow r : rows) {
             if (!r.isSelected()) continue;
             checked++;
-            String qs = r.getInputQuantity() == null ? "" : r.getInputQuantity().trim();
-            if (qs.isEmpty()) continue;
-            try {
-                BigDecimal q = new BigDecimal(qs);
-                if (q.compareTo(BigDecimal.ZERO) > 0) total = total.add(q);
-                if (!isInbound && r.stockNum != null && r.stockNum.compareTo(q) < 0) {
-                    warn.append("⚠").append(r.materialCode).append(' ');
-                }
-            } catch (NumberFormatException ignored) {}
+            BigDecimal qty = r.parsedQuantity();
+            if (qty == null || qty.compareTo(BigDecimal.ZERO) <= 0) continue;
+            total = total.add(qty);
+            if (!isInbound && r.stock.compareTo(qty) < 0) {
+                warn.append(r.materialCode).append(' ');
+            }
         }
         if (checked == 0) {
             lblStatus.setText("勾选需要操作的物料并填写数量…");
         } else {
             String s = "已勾 " + checked + " 条 · 合计 " + total.stripTrailingZeros().toPlainString();
-            if (!warn.isEmpty()) s += "  [" + warn + "] 库存不足";
+            if (!warn.isEmpty()) s += "  [库存不足：" + warn + "]";
             lblStatus.setText(s);
         }
     }
 
-    /** 按当前筛选条件（编码+名称）刷新物料列表 */
-    @FXML
-    protected void onFilterClicked() {
-        onRefreshClicked();
-    }
-
-    /** 清空筛选条件 + 刷新 */
-    @FXML
-    protected void onResetFilter() {
-        if (tfFilterCode != null) tfFilterCode.clear();
-        if (tfFilterName != null) tfFilterName.clear();
-        onRefreshClicked();
-    }
-
-    /** 刷新物料列表填充 TableView（带可选编码/名称筛选） */
-    @FXML
-    protected void onRefreshClicked() {
-        String code = tfFilterCode == null || tfFilterCode.getText() == null ? "" : tfFilterCode.getText().trim();
-        String name = tfFilterName == null || tfFilterName.getText() == null ? "" : tfFilterName.getText().trim();
-        lblStatus.setText(code.isEmpty() && name.isEmpty()
-                ? "正在加载全部物料列表…"
-                : "正在按筛选条件加载物料…");
-        Task<List<MaterialRow>> task = new Task<>() {
-            @Override
-            protected List<MaterialRow> call() throws Exception {
-                String url = "/api/material/list";
-                Map<String, String> params = new LinkedHashMap<>();
-                if (!code.isEmpty()) params.put("materialCode", code);
-                if (!name.isEmpty()) params.put("materialName", name);
-                String json = params.isEmpty() ? ApiClient.get(url)
-                        : ApiClient.get(url, params);
-                JsonNode root = MAPPER.readTree(json);
-                JsonNode dataNode;
-                if (root.isArray()) {
-                    dataNode = root; // 兼容裸数组
-                } else if (root.isObject() && root.has("data") && root.get("data").isArray()) {
-                    dataNode = root.get("data");
-                } else {
-                    throw new RuntimeException("无法解析物料列表响应格式");
-                }
-                List<MaterialRow> result = new ArrayList<>();
-                for (JsonNode node : dataNode) {
-                    result.add(MAPPER.treeToValue(node, MaterialRow.class));
-                }
-                return result;
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            List<MaterialRow> list = task.getValue();
-            allRows = list;
-            total = list.size();
-            slicePage();
-            updatePageUI();
-            lblStatus.setText("共 " + total + " 条物料"
-                    + (code.isEmpty() && name.isEmpty() ? "" : "（已筛选）")
-                    + "，勾选需要操作的行，填写数量后点击「"
-                    + (isInbound ? "进仓" : "出仓") + "」");
-        }));
-        task.setOnFailed(e -> Platform.runLater(() -> {
-            Throwable t = task.getException();
-            lblStatus.setText("加载物料失败：" + (t instanceof ApiException ae ? ae.getMessage() : t.getMessage()));
-        }));
-        new Thread(task, "stock-io-refresh").start();
-    }
-
-    /** 提交批量进仓 / 出仓 */
+    /** 提交进出仓单：POST /api/stock/orders（事务在服务端 SP 内） */
     @FXML
     protected void onSubmitClicked() {
-        // 收集勾选行 + 数量校验
-        List<BatchItem> items = new ArrayList<>();
+        if (submitting) return;
+        List<Map<String, Object>> items = new ArrayList<>();
         List<String> errors = new ArrayList<>();
 
-        for (MaterialRow row : allRows) {
-            if (!row.isSelected()) continue;
-            String qtyStr = row.getInputQuantity() == null ? "" : row.getInputQuantity().trim();
-            if (qtyStr.isEmpty()) {
-                errors.add("物料「" + row.materialCode + " " + row.materialName + "」未填写数量");
+        for (MaterialRow r : rows) {
+            if (!r.isSelected()) continue;
+            BigDecimal qty = r.parsedQuantity();
+            if (qty == null) {
+                errors.add("物料「" + r.materialCode + " " + r.name + "」未填写数量");
                 continue;
             }
-            BigDecimal qty;
-            try {
-                qty = new BigDecimal(qtyStr);
-                if (qty.compareTo(BigDecimal.ZERO) <= 0) {
-                    errors.add("物料「" + row.materialCode + "」数量须大于 0");
-                    continue;
-                }
-            } catch (NumberFormatException ex) {
-                errors.add("物料「" + row.materialCode + "」数量格式错误：" + qtyStr);
+            if (qty.compareTo(BigDecimal.ZERO) <= 0) {
+                errors.add("物料「" + r.materialCode + "」数量须大于 0");
                 continue;
             }
-
-            // 前端库存预校验（出仓）
-            if (!isInbound && row.stockNum != null && row.stockNum.compareTo(qty) < 0) {
-                errors.add("物料「" + row.materialCode + " " + row.materialName
-                        + "」库存不足（当前 " + row.stockNum.stripTrailingZeros().toPlainString()
+            if (!isInbound && r.stock.compareTo(qty) < 0) {
+                errors.add("物料「" + r.materialCode + " " + r.name + "」库存不足（当前 "
+                        + r.stock.stripTrailingZeros().toPlainString()
                         + "，申请 " + qty.stripTrailingZeros().toPlainString() + "）");
                 continue;
             }
-
-            items.add(new BatchItem(row.id, qty));
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("materialId", r.id);
+            m.put("quantity", qty.stripTrailingZeros().toPlainString());
+            items.add(m);
         }
-
         if (!errors.isEmpty()) {
-            alert(String.join("\n", errors));
+            Alerts.error(String.join("\n", errors));
             return;
         }
         if (items.isEmpty()) {
-            alert("请至少勾选一条物料并填写数量");
+            Alerts.info("请至少勾选一条物料并填写数量");
+            return;
+        }
+        PersonOptionVO handler = cbHandler.getValue();
+        if (handler == null) {
+            Alerts.info("请选择经手人");
             return;
         }
 
-        String remark = tfRemark == null || tfRemark.getText() == null ? "" : tfRemark.getText().trim();
-        String source  = tfSource   == null || tfSource.getText()   == null ? "" : tfSource.getText().trim();
-        String handler = tfHandler  == null || tfHandler.getText()  == null ? "" : tfHandler.getText().trim();
-        boolean inbound = isInbound;
-
-        // 前端必填拦截
-        if (handler.isEmpty()) {
-            alert("经手人不能为空");
-            return;
-        }
-        if (source.isEmpty()) {
-            alert((inbound ? "入库来源" : "出库去向") + "不能为空");
-            return;
-        }
-
-        // 构造单据请求体（新接口 order/create）
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("orderType", inbound ? 1 : 2);
-        body.put("sourceTarget", source);
-        body.put("handler", handler);
-        body.put("remark", remark.isEmpty() ? null : remark);
+        body.put("orderType", isInbound ? "IN" : "OUT");
+        body.put("orderDate", LocalDate.now().toString());
+        body.put("handlerId", handler.getId());
+        String remark = tfRemark.getText() == null ? "" : tfRemark.getText().trim();
+        if (!remark.isEmpty()) body.put("remark", remark);
         body.put("items", items);
 
-        String jsonBody;
-        try {
-            jsonBody = ApiClient.toJson(body);
-        } catch (Exception ex) {
-            alert("序列化请求失败：" + ex.getMessage());
-            return;
-        }
-
-        String url = "/api/material/order/create";
-        int selectedCount = items.size();
-
-        Task<JsonNode> task = new Task<>() {
-            @Override
-            protected JsonNode call() throws Exception {
-                String json = ApiClient.post(url, jsonBody);
-                JsonNode root = MAPPER.readTree(json);
-                if (root.isObject() && root.has("code")) {
-                    int code = root.get("code").asInt();
-                    if (code != 0) {
-                        String msg = root.path("message").asText("未知错误");
-                        if (root.has("data") && !root.path("data").asText("").isEmpty()) {
-                            msg = msg + "：" + root.path("data").asText();
-                        }
-                        throw new ApiException(code, msg);
+        submitting = true;
+        btnSubmit.setDisable(true);
+        String modeLabel = isInbound ? "进仓" : "出仓";
+        ApiTasks.run("stock-order-create",
+                () -> {
+                    String json = ApiClient.post("/api/stock/orders", ApiClient.toJson(body));
+                    return ApiClient.getResultData(json, String.class); // data = 单号
+                },
+                orderNo -> {
+                    submitting = false;
+                    btnSubmit.setDisable(false);
+                    lblStatus.setText("✅ " + modeLabel + "单 " + orderNo + " 创建成功");
+                    Alerts.info(modeLabel + "单 " + orderNo + " 创建成功，共 " + items.size() + " 条明细。\n可到「进出仓单查询」查看详情。");
+                    // 清空勾选与数量、刷新库存显示
+                    for (MaterialRow r : rows) {
+                        r.setSelected(false);
+                        r.setInputQuantity("");
                     }
-                    return root.path("data"); // 完整的 StockOrder JSON 对象
-                }
-                return null;
-            }
-        };
-        task.setOnSucceeded(e -> Platform.runLater(() -> {
-            String modeLabel = inbound ? "进仓" : "出仓";
-            JsonNode orderData = task.getValue();
-            String orderNo = orderData != null ? orderData.path("orderNo").asText("") : "";
-            BigDecimal totalNum = orderData != null
-                    ? new BigDecimal(orderData.path("totalNum").asText("0")) : BigDecimal.ZERO;
-
-            String successMsg = "✅ " + modeLabel + "单 " + orderNo
-                    + " 创建成功，共 " + selectedCount + " 条 · 合计 "
-                    + totalNum.stripTrailingZeros().toPlainString();
-            lblStatus.setText(successMsg);
-            // 弹窗让用户看到单号（关闭后清空）
-            Alerts.of(Alert.AlertType.INFORMATION, successMsg
-                    + "\n可以到「单据查询」查看明细").showAndWait();
-
-            // 清空数量输入 + 取消勾选 + 刷新
-            for (MaterialRow row : allRows) {
-                row.setSelected(false);
-                row.setInputQuantity("");
-            }
-            tfRemark.clear();
-            if (tfSource != null) tfSource.clear();
-            if (tfHandler != null) tfHandler.clear();
-            refreshOrderPreview();
-            onRefreshClicked();
-        }));
-        task.setOnFailed(e -> Platform.runLater(() -> {
-            Throwable t = task.getException();
-            String msg = t instanceof ApiException ae ? ae.getMessage() : t.getMessage();
-            String modeLabel = inbound ? "进仓" : "出仓";
-            lblStatus.setText("❌ " + modeLabel + "失败：" + msg);
-            Alerts.of(Alert.AlertType.ERROR, modeLabel + "失败：\n" + msg).showAndWait();
-        }));
-        new Thread(task, "stock-io-batch").start();
-    }
-
-    private void alert(String msg) {
-        Alerts.of(Alert.AlertType.WARNING, msg).showAndWait();
-    }
-
-    // ==================== 本地分页 ====================
-
-    /** 按 page/pageSize 从 allRows 切出当前页 → rows */
-    private void slicePage() {
-        if (allRows.isEmpty()) { rows.clear(); return; }
-        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
-        if (page > totalPages) page = totalPages;
-        int from = (page - 1) * pageSize;
-        int to = Math.min(from + pageSize, allRows.size());
-        rows.setAll(allRows.subList(from, to));
-    }
-
-    /** 更新分页 UI（页码显示 + 按钮禁用） */
-    private void updatePageUI() {
-        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
-        lblPage.setText(page + " / " + totalPages);
-        btnPrev.setDisable(page <= 1);
-        btnNext.setDisable(page >= totalPages);
-    }
-
-    @FXML
-    protected void onPrevPage() {
-        if (page > 1) { page--; slicePage(); updatePageUI(); }
-    }
-
-    @FXML
-    protected void onNextPage() {
-        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
-        if (page < totalPages) { page++; slicePage(); updatePageUI(); }
-    }
-
-    /** 每页条数钳位 1~50，默认 20 */
-    private int clampPs(int v) {
-        if (v < 1) return 20;
-        if (v > 50) return 50;
-        return v;
-    }
-
-    @FXML
-    protected void onApplyPageSize() {
-        try {
-            int v = Integer.parseInt(tfPageSize.getText().trim());
-            pageSize = clampPs(v);
-            tfPageSize.setText(String.valueOf(pageSize));
-            page = 1;
-            slicePage(); updatePageUI();
-        } catch (NumberFormatException ex) {
-            tfPageSize.setText("20"); pageSize = 20; page = 1;
-            slicePage(); updatePageUI();
-        }
-    }
-
-    @FXML
-    protected void onJumpPage() {
-        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
-        try {
-            int target = Integer.parseInt(tfJumpPage.getText().trim());
-            if (target < 1) target = 1;
-            if (target > totalPages) target = totalPages;
-            page = target;
-            tfJumpPage.setText(String.valueOf(target));
-            slicePage(); updatePageUI();
-        } catch (NumberFormatException ex) {
-            tfJumpPage.setText("1"); page = 1;
-            slicePage(); updatePageUI();
-        }
-    }
-
-    // ==================== 新增 / 编辑物料 ====================
-
-    @FXML
-    protected void onAddMaterialClicked() {
-        MaterialDialog dlg = new MaterialDialog("新增物料档案", null);
-        Optional<MaterialDialog.Result> opt = dlg.showAndWait();
-        if (opt.isEmpty()) return;
-        MaterialDialog.Result r = opt.get();
-
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("materialCode", r.code);
-        body.put("materialName", r.name);
-        body.put("spec", r.spec);
-        body.put("unit", r.unit);
-
-        new Thread(() -> {
-            try {
-                String json = ApiClient.post("/api/material/add", ApiClient.toJson(body));
-                ApiClient.checkSuccess(json);
-                Platform.runLater(() -> {
-                    lblStatus.setText("✅ 物料「" + r.code + " " + r.name + "」已新增，已自动选中");
+                    tfRemark.clear();
                     onRefreshClicked();
-                    // 刷新后自动选中新物料（新增行默认被勾选）
-                    new Thread(() -> {
-                        try { Thread.sleep(400); } catch (InterruptedException ignored) {}
-                        Platform.runLater(() -> {
-                            for (MaterialRow row : rows) {
-                                if (r.code.equals(row.materialCode)) {
-                                    row.setSelected(true);
-                                    tvMaterials.getSelectionModel().select(row);
-                                    break;
-                                }
-                            }
-                        });
-                    }, "auto-select").start();
+                },
+                ex -> {
+                    submitting = false;
+                    btnSubmit.setDisable(false);
+                    // SP 驳回（409：库存不足/物料不存在/重复等）message 原样透传
+                    Alerts.error(modeLabel + "失败：\n" + ex.getMessage());
                 });
-            } catch (Exception ex) {
-                Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR,
-                        "新增物料失败：" + ex.getMessage()).showAndWait());
-            }
-        }, "material-add").start();
     }
 
-    @FXML
-    protected void onEditMaterialClicked() {
-        MaterialRow selected = tvMaterials.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            alert("请先在表格里选中一条要编辑的物料");
-            return;
-        }
-        MaterialDialog dlg = new MaterialDialog("编辑物料档案", selected);
-        Optional<MaterialDialog.Result> opt = dlg.showAndWait();
-        if (opt.isEmpty()) return;
-        MaterialDialog.Result r = opt.get();
+    // ==================== 行数据 ====================
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("id", selected.id);
-        body.put("materialCode", r.code);
-        body.put("materialName", r.name);
-        body.put("spec", r.spec);
-        body.put("unit", r.unit);
-        // 保持当前库存，不让用户通过编辑接口改
-        body.put("stockNum", selected.stockNum);
-
-        new Thread(() -> {
-            try {
-                String json = ApiClient.post("/api/material/update", ApiClient.toJson(body));
-                ApiClient.checkSuccess(json);
-                Platform.runLater(() -> {
-                    lblStatus.setText("✅ 物料「" + r.code + " " + r.name + "」已更新");
-                    onRefreshClicked();
-                });
-            } catch (Exception ex) {
-                Platform.runLater(() -> Alerts.of(Alert.AlertType.ERROR,
-                        "修改物料失败：" + ex.getMessage()).showAndWait());
-            }
-        }, "material-update").start();
-    }
-
-    /**
-     * 物料档案编辑 Dialog（新增 / 编辑共用）。
-     * 返回编码、名称、规格、单位；取消返回 Optional.empty()。
-     */
-    private static class MaterialDialog {
-        private final Dialog<Result> dialog;
-        private final TextField tfCode = new TextField();
-        private final TextField tfName = new TextField();
-        private final TextField tfSpec = new TextField();
-        private final TextField tfUnit = new TextField();
-
-        /**
-         * @param title Dialog 标题
-         * @param row   编辑时传选中行（回填旧值）；新增时传 null
-         */
-        MaterialDialog(String title, MaterialRow row) {
-            dialog = new Dialog<>();
-            dialog.setTitle(title);
-            dialog.setHeaderText(null);
-            dialog.getDialogPane().setContent(buildPane());
-
-            if (row != null) {
-                tfCode.setText(row.materialCode);
-                tfName.setText(row.materialName);
-                tfSpec.setText(row.spec == null ? "" : row.spec);
-                tfUnit.setText(row.unit == null ? "" : row.unit);
-            }
-
-            ButtonType okBtn = new ButtonType("确定", ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(okBtn, ButtonType.CANCEL);
-
-            dialog.setResultConverter(btn -> {
-                if (btn != okBtn) return null;
-                String code = tfCode.getText().trim();
-                String name = tfName.getText().trim();
-                if (code.isEmpty()) { Alerts.of(Alert.AlertType.WARNING, "物料编码不能为空").showAndWait(); return null; }
-                if (name.isEmpty()) { Alerts.of(Alert.AlertType.WARNING, "物料名称不能为空").showAndWait(); return null; }
-                return new Result(code, name, tfSpec.getText().trim(), tfUnit.getText().trim());
-            });
-        }
-
-        Optional<Result> showAndWait() { return dialog.showAndWait(); }
-
-        private javafx.scene.layout.GridPane buildPane() {
-            javafx.scene.layout.GridPane gp = new javafx.scene.layout.GridPane();
-            gp.setHgap(8); gp.setVgap(8);
-            gp.setStyle("-fx-padding: 10px;");
-            gp.add(new Label("物料编码*："), 0, 0); gp.add(tfCode, 1, 0);
-            gp.add(new Label("物料名称*："), 0, 1); gp.add(tfName, 1, 1);
-            gp.add(new Label("规格："),       0, 2); gp.add(tfSpec,  1, 2);
-            gp.add(new Label("单位："),       0, 3); gp.add(tfUnit,  1, 3);
-            tfCode.setPrefWidth(250);
-            return gp;
-        }
-
-        record Result(String code, String name, String spec, String unit) {}
-    }
-
-    /** TableView 行数据：后端 Material 字段 + 本地 UI 字段（selected + inputQuantity） */
-    public static class MaterialRow {
-
-        // ===== 后端字段（反序列化用） =====
+    /** 服务端 MaterialVO 字段（/api/materials 响应） */
+    public static class MaterialRowVO {
         public Long id;
         public String materialCode;
-        public String materialName;
+        public String name;
         public String spec;
         public String unit;
-        public BigDecimal stockNum;
+        public String stock;
+    }
 
-        // ===== UI 字段（JavaFX 属性） =====
+    /** 表格行 = 物料字段 + 勾选/数量 UI 属性 */
+    public static class MaterialRow {
+        public Long id;
+        public String materialCode;
+        public String name;
+        public String spec;
+        public String unit;
+        public BigDecimal stock;
+
         private final BooleanProperty selected = new SimpleBooleanProperty(false);
         private final StringProperty inputQuantity = new SimpleStringProperty("");
 
         public MaterialRow() {}
 
-        // ===== 后端字段的 getter（PropertyValueFactory 需要） =====
-        public Long getId() { return id; }
-        public String getMaterialCode() { return materialCode; }
-        public String getMaterialName() { return materialName; }
-        public String getSpec() { return spec; }
-        public String getUnit() { return unit; }
-        public BigDecimal getStockNum() { return stockNum; }
+        public MaterialRow(MaterialRowVO vo) {
+            this.id = vo.id;
+            this.materialCode = vo.materialCode;
+            this.name = vo.name;
+            this.spec = vo.spec;
+            this.unit = vo.unit;
+            this.stock = vo.stock != null ? new BigDecimal(vo.stock) : BigDecimal.ZERO;
+        }
+
+        public String getMaterialCode() { return materialCode == null ? "" : materialCode; }
+        public String getName() { return name == null ? "" : name; }
+        public String getSpec() { return spec == null ? "" : spec; }
+        public String getUnit() { return unit == null ? "" : unit; }
+        public String getStockStr() { return stock == null ? "0" : stock.stripTrailingZeros().toPlainString(); }
 
         public boolean isSelected() { return selected.get(); }
         public void setSelected(boolean v) { selected.set(v); }
@@ -655,22 +320,15 @@ public class StockIoController {
         public void setInputQuantity(String v) { inputQuantity.set(v); }
         public StringProperty inputQuantityProperty() { return inputQuantity; }
 
-        /** 右侧 stock 列显示文本 */
-        public StringProperty stockDisplayProperty() {
-            String stock = stockNum != null ? stockNum.stripTrailingZeros().toPlainString() : "0";
-            String u = (unit != null && !unit.isBlank()) ? unit : "";
-            return new SimpleStringProperty(stock + u);
-        }
-    }
-
-    /** 批量提交请求体中的单个条目 */
-    public static class BatchItem {
-        public Long materialId;
-        public BigDecimal ioNum;
-        public BatchItem() {}
-        public BatchItem(Long materialId, BigDecimal ioNum) {
-            this.materialId = materialId;
-            this.ioNum = ioNum;
+        /** 解析数量输入；空白或非法返回 null */
+        public BigDecimal parsedQuantity() {
+            String s = inputQuantity.get() == null ? "" : inputQuantity.get().trim();
+            if (s.isEmpty()) return null;
+            try {
+                return new BigDecimal(s);
+            } catch (NumberFormatException e) {
+                return null;
+            }
         }
     }
 }

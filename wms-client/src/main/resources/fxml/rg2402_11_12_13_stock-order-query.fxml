@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.wms.wmsclient.controller.StockOrderQueryController">
+
+    <top>
+        <HBox spacing="8" style="-fx-padding: 8px;">
+            <Label fx:id="lblTitle" text="进出仓单查询" styleClass="title"/>
+            <Label text="  ｜" styleClass="subtle"/>
+            <Label text="类型："/>
+            <ComboBox fx:id="cbType" prefWidth="80"/>
+            <Label text="物料："/>
+            <TextField fx:id="tfMaterial" promptText="代码 / 名称" onAction="#onRefreshClicked" prefWidth="120"/>
+            <Label text="操作人："/>
+            <TextField fx:id="tfOperator" promptText="姓名" onAction="#onRefreshClicked" prefWidth="100"/>
+            <Label text="备注："/>
+            <TextField fx:id="tfRemark" onAction="#onRefreshClicked" prefWidth="120"/>
+        </HBox>
+    </top>
+
+    <center>
+        <TableView fx:id="tvOrders" editable="false"/>
+    </center>
+
+    <bottom>
+        <HBox spacing="8" style="-fx-padding: 4px 8px;">
+            <Label text="日期："/>
+            <DatePicker fx:id="dpFrom" prefWidth="140"/>
+            <Label text="至"/>
+            <DatePicker fx:id="dpTo" prefWidth="140"/>
+            <Button text="查询" onAction="#onRefreshClicked"/>
+            <Button text="重置" onAction="#onResetClicked"/>
+            <Button fx:id="btnPrev" text="◀ 上一页" onAction="#onPrevPage"/>
+            <Label fx:id="lblPage" text="1 / 1"/>
+            <Button fx:id="btnNext" text="下一页 ▶" onAction="#onNextPage"/>
+            <Label fx:id="lblStatus" text="正在加载…" HBox.hgrow="ALWAYS"/>
+        </HBox>
+    </bottom>
+</BorderPane>

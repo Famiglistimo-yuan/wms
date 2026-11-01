@@ -32,6 +32,8 @@ public class JwtInterceptor implements HandlerInterceptor {
     /** request attribute key，供 Controller 层取当前用户信息 */
     public static final String ATTR_USER_ID = "wms.userId";
     public static final String ATTR_USERNAME = "wms.username";
+    /** 权限码集合，供动态鉴权场景（如进出仓单按 orderType 区分 menu.stock.in/out） */
+    public static final String ATTR_PERMISSIONS = "wms.permissions";
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
@@ -70,6 +72,7 @@ public class JwtInterceptor implements HandlerInterceptor {
         List<String> permissions = claims.get("permissions", List.class);
         request.setAttribute(ATTR_USER_ID, userId);
         request.setAttribute(ATTR_USERNAME, username);
+        request.setAttribute(ATTR_PERMISSIONS, permissions);
 
         // 4) 权限校验
         RequirePermission rp = hm.getMethodAnnotation(RequirePermission.class);
