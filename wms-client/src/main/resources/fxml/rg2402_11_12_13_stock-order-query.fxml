@@ -14,7 +14,7 @@
 
     <top>
         <HBox spacing="8" style="-fx-padding: 8px;">
-            <Label fx:id="lblTitle" text="进出仓单查询" styleClass="title"/>
+            <Label text="进出仓单查询" styleClass="title"/>
             <Label text="  ｜" styleClass="subtle"/>
             <Label text="类型："/>
             <ComboBox fx:id="cbType" prefWidth="80"/>

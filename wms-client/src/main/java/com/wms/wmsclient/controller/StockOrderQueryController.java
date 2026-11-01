@@ -1,6 +1,5 @@
 package com.wms.wmsclient.controller;
 
-import com.wms.common.PageResult;
 import com.wms.common.dto.OrderDetailVO;
 import com.wms.common.dto.OrderItemVO;
 import com.wms.common.dto.OrderVO;
@@ -37,7 +36,6 @@ public class StockOrderQueryController {
     private long page = 1;
     private long total = 0;
 
-    @FXML private Label lblTitle;
     @FXML private ComboBox<String> cbType;
     @FXML private TextField tfMaterial;
     @FXML private TextField tfOperator;
@@ -50,7 +48,7 @@ public class StockOrderQueryController {
     @FXML private Button btnNext;
     @FXML private Label lblPage;
 
-    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007） */
+    /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007）；标题文案在 FXML 内维护 */
     public StockOrderQueryController(App app) {
         this.app = app;
     }
