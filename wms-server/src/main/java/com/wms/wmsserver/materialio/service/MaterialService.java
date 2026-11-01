@@ -20,6 +20,13 @@ public interface MaterialService {
     List<Material> listAll();
 
     /**
+     * 按编码/名称模糊筛选（AND 叠加，两个条件都可选）。
+     * @param materialCode 编码关键字，null 或空串不限制
+     * @param materialName 名称关键字，null 或空串不限制
+     */
+    List<Material> listFiltered(String materialCode, String materialName);
+
+    /**
      * 单条入库。事务内完成：校验 → 加库存 → 写流水。
      */
     void stockIn(Long materialId, BigDecimal ioNum, String remark);

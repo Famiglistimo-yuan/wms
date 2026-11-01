@@ -61,6 +61,9 @@ public class MaterialIoRecord {
     /** 单据类型 1入库 2出库 */
     private Integer orderType;
 
+    /** 来源/去向（冗余字段，便于流水直接展示，不用 JOIN stock_order） */
+    private String sourceTarget;
+
     /**
      * 创建时间
      */

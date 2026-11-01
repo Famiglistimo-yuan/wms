@@ -87,7 +87,8 @@ public class StockOrderServiceImpl implements StockOrderService {
         StockOrder order = new StockOrder();
         order.setOrderNo(orderNo);
         order.setOrderType(dto.getOrderType());
-        order.setSource(dto.getSource());
+        order.setSourceTarget(dto.getSourceTarget());
+        order.setHandler(dto.getHandler());
         order.setOperator(operator);
         order.setRemark(dto.getRemark());
         order.setTotalCount(dto.getItems().size());
@@ -115,6 +116,7 @@ public class StockOrderServiceImpl implements StockOrderService {
             rec.setOperator(operator);
             rec.setOrderNo(orderNo);
             rec.setOrderType(dto.getOrderType());
+            rec.setSourceTarget(dto.getSourceTarget());
             materialIoRecordMapper.insert(rec);
 
             StockOrderItem oi = new StockOrderItem();

@@ -24,8 +24,11 @@ public class StockOrder {
     /** 1入库 2出库 */
     private Integer orderType;
 
-    /** 入库来源(采购/调拨等) 仅入库单使用 */
-    private String source;
+    /** 入库来源(采购/调拨等) / 出库去向  共用一个字段，orderType 区分语义 */
+    private String sourceTarget;
+
+    /** 经手人（业务字段，区别于 operator 操作员） */
+    private String handler;
 
     /** 操作人 后端从登录态取 */
     private String operator;

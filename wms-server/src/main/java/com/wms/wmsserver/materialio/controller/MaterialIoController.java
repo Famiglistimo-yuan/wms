@@ -1,5 +1,7 @@
 package com.wms.wmsserver.materialio.controller;
 
+import com.wms.common.BusinessException;
+import com.wms.common.ErrorCode;
 import com.wms.common.Result;
 import com.wms.wmsserver.materialio.dto.CreateOrderDTO;
 import com.wms.wmsserver.materialio.dto.IoRecordQuery;
@@ -20,7 +22,7 @@ import java.util.Map;
  * 接口分类：
  * <pre>
  * 【物料档案】
- *   GET    /api/material/list          全量物料列表（含库位/安全库存）
+ *   GET    /api/material/list          物料列表（可选 materialCode/materialName 筛选）
  *   POST   /api/material/add           新增物料
  *   POST   /api/material/update        修改物料档案
  *
@@ -34,7 +36,7 @@ import java.util.Map;
  *
  * 【流水台账】
  *   GET    /api/material/io-records          全部流水（旧，兼容）
- *   POST   /api/material/io-records/page     分页 + 条件筛选（物料/时间/单据类型）
+ *   POST   /api/material/io-records/page     分页 + 条件筛选（物料/时间/单据类型/经手人/关键字）
  * </pre>
  */
 @RestController
@@ -48,10 +50,19 @@ public class MaterialIoController {
 
     // ==================== 物料档案 ====================
 
-    /** 全量物料列表（含新增的 location / safeStockNum 字段） */
+    /** 物料列表（支持可选编码/名称模糊筛选） */
     @GetMapping("/list")
-    public Result<List<Material>> listAll() {
-        return Result.success(materialService.listAll());
+    public Result<List<Material>> listAll(
+            @RequestParam(required = false) String materialCode,
+            @RequestParam(required = false) String materialName) {
+        List<Material> list;
+        if ((materialCode != null && !materialCode.isBlank())
+                || (materialName != null && !materialName.isBlank())) {
+            list = materialService.listFiltered(materialCode, materialName);
+        } else {
+            list = materialService.listAll();
+        }
+        return Result.success(list);
     }
 
     @PostMapping("/add")
@@ -73,10 +84,10 @@ public class MaterialIoController {
      * <pre>
      * body:
      * {
-     *   "orderType": 1,        // 1入库 2出库
-     *   "source": "采购入库",    // 仅入库单
+     *   "orderType": 1,            // 1入库 2出库
+     *   "sourceTarget": "采购入库", // 入库填来源 / 出库填去向
+     *   "handler": "张三",          // 经手人（必填）
      *   "remark": "2026-10-30 补货",
-     *   "operator": "admin",
      *   "items": [{"materialId":1,"ioNum":100}]
      * }
      * </pre>
@@ -85,6 +96,10 @@ public class MaterialIoController {
     @PostMapping("/order/create")
     public Result<StockOrder> createOrder(@RequestBody CreateOrderDTO dto,
                                           jakarta.servlet.http.HttpServletRequest request) {
+        // 业务必填校验：经手人不能为空
+        if (dto.getHandler() == null || dto.getHandler().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "经手人不能为空");
+        }
         // operator 从 JWT 拦截器写的 request attribute 里取（"wms.username"），兜底 "system"
         String operator = (String) request.getAttribute(
                 com.wms.wmsserver.auth.interceptor.JwtInterceptor.ATTR_USERNAME);
@@ -133,6 +148,10 @@ public class MaterialIoController {
      *   "page": 1, "pageSize": 20,
      *   "materialId": null,
      *   "orderType": 1,
+     *   "orderNo": "RK20261031",
+     *   "materialKeyword": "螺丝",   // 物料编码/名称关键字
+     *   "handler": "张三",            // 经手人
+     *   "sourceTarget": "采购",      // 来源/去向模糊
      *   "startTime": "2026-10-01T00:00:00",
      *   "endTime":   "2026-10-30T23:59:59"
      * }

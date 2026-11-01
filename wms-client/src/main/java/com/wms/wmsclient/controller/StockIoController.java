@@ -42,6 +42,12 @@ public class StockIoController {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ObservableList<MaterialRow> rows = FXCollections.observableArrayList();
+    /** 全量数据（用于本地分页切片 + 提交时遍历所有勾选行） */
+    private List<MaterialRow> allRows = new ArrayList<>();
+    /** 分页状态 */
+    private int page = 1;
+    private int pageSize = 20;
+    private int total = 0;
 
     @FXML private Label lblTitle;
     @FXML private Button btnSubmit;
@@ -54,8 +60,16 @@ public class StockIoController {
     @FXML private TableColumn<MaterialRow, String> colStock;
     @FXML private TableColumn<MaterialRow, String> colInput;
     @FXML private TextField tfSource;
+    @FXML private TextField tfHandler;
     @FXML private TextField tfRemark;
+    @FXML private TextField tfFilterCode;
+    @FXML private TextField tfFilterName;
     @FXML private Label lblStatus;
+    @FXML private Button btnPrev;
+    @FXML private Button btnNext;
+    @FXML private Label lblPage;
+    @FXML private TextField tfPageSize;
+    @FXML private TextField tfJumpPage;
 
     public StockIoController(App app) {
         this.app = app;
@@ -70,6 +84,9 @@ public class StockIoController {
         btnSubmit.setStyle(isInbound
                 ? "-fx-background-color: #1976d2; -fx-text-fill: white; -fx-padding: 6px 20px;"
                 : "-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-padding: 6px 20px;");
+
+        // 分页控件默认值
+        tfPageSize.setText(String.valueOf(pageSize));
 
         // ===== TableView 配置 =====
         tvMaterials.setEditable(true);
@@ -173,7 +190,8 @@ public class StockIoController {
         int checked = 0;
         BigDecimal total = BigDecimal.ZERO;
         StringBuilder warn = new StringBuilder();
-        for (MaterialRow r : rows) {
+        List<MaterialRow> scan = allRows.isEmpty() ? rows : allRows;
+        for (MaterialRow r : scan) {
             if (!r.isSelected()) continue;
             checked++;
             String qs = r.getInputQuantity() == null ? "" : r.getInputQuantity().trim();
@@ -195,14 +213,37 @@ public class StockIoController {
         }
     }
 
-    /** 刷新物料列表填充 TableView */
+    /** 按当前筛选条件（编码+名称）刷新物料列表 */
+    @FXML
+    protected void onFilterClicked() {
+        onRefreshClicked();
+    }
+
+    /** 清空筛选条件 + 刷新 */
+    @FXML
+    protected void onResetFilter() {
+        if (tfFilterCode != null) tfFilterCode.clear();
+        if (tfFilterName != null) tfFilterName.clear();
+        onRefreshClicked();
+    }
+
+    /** 刷新物料列表填充 TableView（带可选编码/名称筛选） */
     @FXML
     protected void onRefreshClicked() {
-        lblStatus.setText("正在加载物料列表…");
+        String code = tfFilterCode == null || tfFilterCode.getText() == null ? "" : tfFilterCode.getText().trim();
+        String name = tfFilterName == null || tfFilterName.getText() == null ? "" : tfFilterName.getText().trim();
+        lblStatus.setText(code.isEmpty() && name.isEmpty()
+                ? "正在加载全部物料列表…"
+                : "正在按筛选条件加载物料…");
         Task<List<MaterialRow>> task = new Task<>() {
             @Override
             protected List<MaterialRow> call() throws Exception {
-                String json = ApiClient.get("/api/material/list");
+                String url = "/api/material/list";
+                Map<String, String> params = new LinkedHashMap<>();
+                if (!code.isEmpty()) params.put("materialCode", code);
+                if (!name.isEmpty()) params.put("materialName", name);
+                String json = params.isEmpty() ? ApiClient.get(url)
+                        : ApiClient.get(url, params);
                 JsonNode root = MAPPER.readTree(json);
                 JsonNode dataNode;
                 if (root.isArray()) {
@@ -221,8 +262,13 @@ public class StockIoController {
         };
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             List<MaterialRow> list = task.getValue();
-            rows.setAll(list);
-            lblStatus.setText("共 " + rows.size() + " 条物料，勾选需要操作的行，填写数量后点击「"
+            allRows = list;
+            total = list.size();
+            slicePage();
+            updatePageUI();
+            lblStatus.setText("共 " + total + " 条物料"
+                    + (code.isEmpty() && name.isEmpty() ? "" : "（已筛选）")
+                    + "，勾选需要操作的行，填写数量后点击「"
                     + (isInbound ? "进仓" : "出仓") + "」");
         }));
         task.setOnFailed(e -> Platform.runLater(() -> {
@@ -239,7 +285,7 @@ public class StockIoController {
         List<BatchItem> items = new ArrayList<>();
         List<String> errors = new ArrayList<>();
 
-        for (MaterialRow row : rows) {
+        for (MaterialRow row : allRows) {
             if (!row.isSelected()) continue;
             String qtyStr = row.getInputQuantity() == null ? "" : row.getInputQuantity().trim();
             if (qtyStr.isEmpty()) {
@@ -278,14 +324,26 @@ public class StockIoController {
             return;
         }
 
-        String remark = tfRemark.getText() == null ? "" : tfRemark.getText().trim();
-        String source  = tfSource  == null || tfSource.getText() == null ? "" : tfSource.getText().trim();
+        String remark = tfRemark == null || tfRemark.getText() == null ? "" : tfRemark.getText().trim();
+        String source  = tfSource   == null || tfSource.getText()   == null ? "" : tfSource.getText().trim();
+        String handler = tfHandler  == null || tfHandler.getText()  == null ? "" : tfHandler.getText().trim();
         boolean inbound = isInbound;
+
+        // 前端必填拦截
+        if (handler.isEmpty()) {
+            alert("经手人不能为空");
+            return;
+        }
+        if (source.isEmpty()) {
+            alert((inbound ? "入库来源" : "出库去向") + "不能为空");
+            return;
+        }
 
         // 构造单据请求体（新接口 order/create）
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("orderType", inbound ? 1 : 2);
-        if (inbound) body.put("source", source.isEmpty() ? null : source);
+        body.put("sourceTarget", source);
+        body.put("handler", handler);
         body.put("remark", remark.isEmpty() ? null : remark);
         body.put("items", items);
 
@@ -335,12 +393,13 @@ public class StockIoController {
                     + "\n可以到「单据查询」查看明细").showAndWait();
 
             // 清空数量输入 + 取消勾选 + 刷新
-            for (MaterialRow row : rows) {
+            for (MaterialRow row : allRows) {
                 row.setSelected(false);
                 row.setInputQuantity("");
             }
             tfRemark.clear();
             if (tfSource != null) tfSource.clear();
+            if (tfHandler != null) tfHandler.clear();
             refreshOrderPreview();
             onRefreshClicked();
         }));
@@ -356,6 +415,74 @@ public class StockIoController {
 
     private void alert(String msg) {
         Alerts.of(Alert.AlertType.WARNING, msg).showAndWait();
+    }
+
+    // ==================== 本地分页 ====================
+
+    /** 按 page/pageSize 从 allRows 切出当前页 → rows */
+    private void slicePage() {
+        if (allRows.isEmpty()) { rows.clear(); return; }
+        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
+        if (page > totalPages) page = totalPages;
+        int from = (page - 1) * pageSize;
+        int to = Math.min(from + pageSize, allRows.size());
+        rows.setAll(allRows.subList(from, to));
+    }
+
+    /** 更新分页 UI（页码显示 + 按钮禁用） */
+    private void updatePageUI() {
+        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
+        lblPage.setText(page + " / " + totalPages);
+        btnPrev.setDisable(page <= 1);
+        btnNext.setDisable(page >= totalPages);
+    }
+
+    @FXML
+    protected void onPrevPage() {
+        if (page > 1) { page--; slicePage(); updatePageUI(); }
+    }
+
+    @FXML
+    protected void onNextPage() {
+        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
+        if (page < totalPages) { page++; slicePage(); updatePageUI(); }
+    }
+
+    /** 每页条数钳位 1~50，默认 20 */
+    private int clampPs(int v) {
+        if (v < 1) return 20;
+        if (v > 50) return 50;
+        return v;
+    }
+
+    @FXML
+    protected void onApplyPageSize() {
+        try {
+            int v = Integer.parseInt(tfPageSize.getText().trim());
+            pageSize = clampPs(v);
+            tfPageSize.setText(String.valueOf(pageSize));
+            page = 1;
+            slicePage(); updatePageUI();
+        } catch (NumberFormatException ex) {
+            tfPageSize.setText("20"); pageSize = 20; page = 1;
+            slicePage(); updatePageUI();
+        }
+    }
+
+    @FXML
+    protected void onJumpPage() {
+        int totalPages = (int) Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
+        try {
+            int target = Integer.parseInt(tfJumpPage.getText().trim());
+            if (target < 1) target = 1;
+            if (target > totalPages) target = totalPages;
+            page = target;
+            tfJumpPage.setText(String.valueOf(target));
+            slicePage(); updatePageUI();
+        } catch (NumberFormatException ex) {
+            tfJumpPage.setText("1"); page = 1;
+            slicePage(); updatePageUI();
+        }
     }
 
     // ==================== 新增 / 编辑物料 ====================

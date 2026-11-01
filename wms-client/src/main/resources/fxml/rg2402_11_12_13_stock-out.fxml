@@ -7,18 +7,28 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.wms.wmsclient.controller.StockIoController">
 
     <top>
-        <HBox spacing="8" style="-fx-padding: 8px;">
-            <Label fx:id="lblTitle" text="出仓录入（多物料）" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-            <Label text="  ｜" style="-fx-text-fill: #999;"/>
-            <Button text="刷新物料" onAction="#onRefreshClicked"/>
-            <Button text="新增物料" onAction="#onAddMaterialClicked"/>
-            <Button text="编辑选中" onAction="#onEditMaterialClicked"/>
-        </HBox>
+        <VBox spacing="6" style="-fx-padding: 8px;">
+            <HBox spacing="8">
+                <Label fx:id="lblTitle" text="出仓录入（多物料）" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                <Label text="  ｜" style="-fx-text-fill: #999;"/>
+                <Label text="编码："/>
+                <TextField fx:id="tfFilterCode" prefWidth="120" promptText="物料编码"/>
+                <Label text="名称："/>
+                <TextField fx:id="tfFilterName" prefWidth="140" promptText="物料名称"/>
+                <Button text="查询" onAction="#onFilterClicked" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+                <Button text="重置" onAction="#onResetFilter"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="新增物料" onAction="#onAddMaterialClicked"/>
+                <Button text="编辑选中" onAction="#onEditMaterialClicked"/>
+            </HBox>
+        </VBox>
     </top>
 
     <center>
@@ -36,24 +46,34 @@
     </center>
 
     <bottom>
-        <BorderPane style="-fx-padding: 8px;">
-            <left>
-                <HBox spacing="6">
-                    <Label text="整单备注："/>
-                    <TextField fx:id="tfRemark" promptText="（可选）本批出仓备注" prefWidth="260"/>
-                </HBox>
-            </left>
-            <right>
-                <HBox spacing="8">
-                    <Button fx:id="btnSubmit" text="确认出仓" onAction="#onSubmitClicked"
-                            style="-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-padding: 6px 20px;"/>
-                </HBox>
-            </right>
-            <top>
-                <HBox>
-                    <Label fx:id="lblStatus" text="正在加载物料列表…" HBox.hgrow="ALWAYS"/>
-                </HBox>
-            </top>
-        </BorderPane>
+        <VBox spacing="4" style="-fx-padding: 6px 8px;">
+            <!-- 状态栏 + 分页 -->
+            <HBox spacing="8">
+                <Label fx:id="lblStatus" text="正在加载物料列表…" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnPrev" text="◀ 上一页" onAction="#onPrevPage"/>
+                <Label fx:id="lblPage" text="1 / 1"/>
+                <Button fx:id="btnNext" text="下一页 ▶" onAction="#onNextPage"/>
+                <Label text="每页"/>
+                <TextField fx:id="tfPageSize" prefWidth="50" promptText="20"/>
+                <Label text="条"/>
+                <Button text="应用" onAction="#onApplyPageSize"/>
+                <Label text="跳到"/>
+                <TextField fx:id="tfJumpPage" prefWidth="45" promptText="1"/>
+                <Label text="页"/>
+                <Button text="跳转" onAction="#onJumpPage"/>
+            </HBox>
+            <!-- 操作表单 + 提交按钮 -->
+            <HBox spacing="8">
+                <Label text="出库去向："/>
+                <TextField fx:id="tfSource" promptText="领用 / 调拨 / 报废" prefWidth="160"/>
+                <Label text="经手人*："/>
+                <TextField fx:id="tfHandler" promptText="必填" prefWidth="120"/>
+                <Label text="整单备注："/>
+                <TextField fx:id="tfRemark" promptText="（可选）本批出仓备注" prefWidth="220"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnSubmit" text="确认出仓" onAction="#onSubmitClicked"
+                        style="-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-padding: 6px 20px;"/>
+            </HBox>
+        </VBox>
     </bottom>
 </BorderPane>

@@ -35,6 +35,17 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     @Override
+    public List<Material> listFiltered(String materialCode, String materialName) {
+        var w = Wrappers.<Material>lambdaQuery()
+                .like(materialCode != null && !materialCode.isBlank(),
+                        Material::getMaterialCode, materialCode)
+                .like(materialName != null && !materialName.isBlank(),
+                        Material::getMaterialName, materialName)
+                .orderByAsc(Material::getId);
+        return materialMapper.selectList(w);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void stockIn(Long materialId, BigDecimal ioNum, String remark) {
         Material material = materialMapper.selectById(materialId);
