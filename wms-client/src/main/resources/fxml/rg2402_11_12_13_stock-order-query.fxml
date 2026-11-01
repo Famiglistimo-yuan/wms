@@ -42,6 +42,9 @@
             <Button fx:id="btnPrev" text="◀ 上一页" onAction="#onPrevPage"/>
             <Label fx:id="lblPage" text="1 / 1"/>
             <Button fx:id="btnNext" text="下一页 ▶" onAction="#onNextPage"/>
+            <Label text="跳到"/>
+            <TextField fx:id="tfJumpPage" promptText="页码" prefWidth="50" onAction="#onJumpPage"/>
+            <Label text="页"/>
             <Label fx:id="lblStatus" text="正在加载…" HBox.hgrow="ALWAYS"/>
         </HBox>
     </bottom>

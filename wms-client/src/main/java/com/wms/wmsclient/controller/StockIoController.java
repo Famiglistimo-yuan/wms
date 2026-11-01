@@ -28,17 +28,28 @@ import java.util.Map;
  * 进仓 / 出仓录入（FR-2，多物料一单：勾选 + 数量 → POST /api/stock/orders）。
  * <p>
  * 两个面板（rg2402_11_12_13_stock-in / stock-out）共用本 Controller，进/出模式由
- * PanelScene 注入的面板名决定。物料列表复用子系统1 GET /api/materials?keyword=；
+ * PanelScene 注入的面板名决定。物料列表复用子系统1 GET /api/materials?keyword=，
+ * 本地分页切片（与单据查询面板交互一致：回车触发、页码钳位回显）；
  * 经手人从人员档案下拉选择（GET /api/stock/person-options）；
  * 事务/乐观锁在服务端存储过程内，出库前端仅做库存预校验改善体验。
  */
 public class StockIoController {
 
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    /** 每页条数上限（本地切片保护） */
+    private static final int MAX_PAGE_SIZE = 50;
+
     private final App app;
     /** true=进仓（IN）false=出仓（OUT），由 FXML 面板名注入 */
     private final boolean isInbound;
 
+    /** 当前页切片（表格展示） */
     private final ObservableList<MaterialRow> rows = FXCollections.observableArrayList();
+    /** 全量数据：分页切片来源 + 提交/预校验跨页收集勾选 */
+    private List<MaterialRow> allRows = List.of();
+    private int page = 1;
+    private int pageSize = DEFAULT_PAGE_SIZE;
+
     /** 在途互斥：刷新/提交串行化，避免响应乱序覆盖 */
     private boolean loading;
     private boolean submitting;
@@ -50,6 +61,11 @@ public class StockIoController {
     @FXML private ComboBox<PersonOptionVO> cbHandler;
     @FXML private TextField tfRemark;
     @FXML private Button btnSubmit;
+    @FXML private Button btnPrev;
+    @FXML private Button btnNext;
+    @FXML private Label lblPage;
+    @FXML private TextField tfPageSize;
+    @FXML private TextField tfJumpPage;
 
     /** 双参构造器：PanelScene 按面板名注入进/出模式 */
     public StockIoController(App app, String fxmlName) {
@@ -61,6 +77,7 @@ public class StockIoController {
     protected void initialize() {
         lblTitle.setText(isInbound ? "进仓录入" : "出仓录入");
         btnSubmit.setText(isInbound ? "确认进仓" : "确认出仓");
+        tfPageSize.setText(String.valueOf(pageSize));
 
         tvMaterials.setItems(rows);
         tvMaterials.setEditable(true);
@@ -124,7 +141,7 @@ public class StockIoController {
                 ex -> lblStatus.setText("经手人列表加载失败：" + ex.getMessage()));
     }
 
-    /** 关键字过滤物料（复用子系统1 /api/materials），加载后保留未提交的勾选与数量 */
+    /** 关键字过滤物料（复用子系统1 /api/materials），加载后按 id 跨页保留勾选与数量 */
     @FXML
     protected void onRefreshClicked() {
         if (loading) return;
@@ -142,9 +159,9 @@ public class StockIoController {
                 },
                 list -> {
                     loading = false;
-                    // 保留旧行的勾选/数量（按物料 id 回填），换页/筛选不丢已填内容
+                    // 按物料 id 回填旧行的勾选/数量（跨页），换页/筛选/刷新不丢已填内容
                     Map<Long, MaterialRow> oldById = new LinkedHashMap<>();
-                    for (MaterialRow r : rows) oldById.put(r.id, r);
+                    for (MaterialRow r : allRows) oldById.put(r.id, r);
                     for (MaterialRow fresh : list) {
                         MaterialRow old = oldById.get(fresh.id);
                         if (old != null) {
@@ -152,8 +169,10 @@ public class StockIoController {
                             fresh.setInputQuantity(old.getInputQuantity());
                         }
                     }
-                    rows.setAll(list);
-                    lblStatus.setText("共 " + rows.size() + " 条物料"
+                    allRows = list;
+                    slicePage();
+                    updatePageUi();
+                    lblStatus.setText("共 " + allRows.size() + " 条物料"
                             + (keyword.isEmpty() ? "" : "（关键字「" + keyword + "」）")
                             + "，勾选并填写数量后提交");
                     TableState.empty(tvMaterials, keyword.isEmpty() ? null : "没有匹配「" + keyword + "」的物料");
@@ -167,12 +186,93 @@ public class StockIoController {
                 });
     }
 
-    /** 底部整单预览：已勾 N 条 · 合计 X（出仓附加库存不足预警） */
+    // ==================== 本地分页 ====================
+
+    /** 按 page/pageSize 从 allRows 切出当前页 → rows；页码越界贴边 */
+    private void slicePage() {
+        if (allRows.isEmpty()) {
+            rows.clear();
+            return;
+        }
+        int totalPages = (allRows.size() + pageSize - 1) / pageSize;
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        int from = (page - 1) * pageSize;
+        int to = Math.min(from + pageSize, allRows.size());
+        rows.setAll(allRows.subList(from, to));
+    }
+
+    private void updatePageUi() {
+        int totalPages = Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
+        lblPage.setText(page + " / " + totalPages);
+        btnPrev.setDisable(page <= 1);
+        btnNext.setDisable(page >= totalPages);
+    }
+
+    @FXML
+    protected void onPrevPage() {
+        if (page > 1) {
+            page--;
+            slicePage();
+            updatePageUi();
+        }
+    }
+
+    @FXML
+    protected void onNextPage() {
+        int totalPages = Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
+        if (page < totalPages) {
+            page++;
+            slicePage();
+            updatePageUi();
+        }
+    }
+
+    /** 每页条数（回车触发）：钳位 1~50，非法回退默认 20，回显实际生效值 */
+    @FXML
+    protected void onApplyPageSize() {
+        try {
+            pageSize = clampPageSize(Integer.parseInt(tfPageSize.getText().trim()));
+        } catch (NumberFormatException ex) {
+            pageSize = DEFAULT_PAGE_SIZE;
+        }
+        tfPageSize.setText(String.valueOf(pageSize));
+        page = 1;
+        slicePage();
+        updatePageUi();
+    }
+
+    /** 跳到指定页（回车触发，钳位 1~总页数；非法输入回退到第 1 页） */
+    @FXML
+    protected void onJumpPage() {
+        int totalPages = Math.max(1, (allRows.size() + pageSize - 1) / pageSize);
+        try {
+            int target = Integer.parseInt(tfJumpPage.getText().trim());
+            if (target < 1) target = 1;
+            if (target > totalPages) target = totalPages;
+            page = target;
+        } catch (NumberFormatException ex) {
+            page = 1;
+        }
+        tfJumpPage.setText(String.valueOf(page));
+        slicePage();
+        updatePageUi();
+    }
+
+    private int clampPageSize(int v) {
+        if (v < 1) return DEFAULT_PAGE_SIZE;
+        if (v > MAX_PAGE_SIZE) return MAX_PAGE_SIZE;
+        return v;
+    }
+
+    // ==================== 整单预览与提交 ====================
+
+    /** 底部整单预览：已勾 N 条 · 合计 X（出仓附加库存不足预警），扫描全量（跨页勾选） */
     private void refreshPreview() {
         int checked = 0;
         BigDecimal total = BigDecimal.ZERO;
         StringBuilder warn = new StringBuilder();
-        for (MaterialRow r : rows) {
+        for (MaterialRow r : allRows) {
             if (!r.isSelected()) continue;
             checked++;
             BigDecimal qty = r.parsedQuantity();
@@ -191,14 +291,14 @@ public class StockIoController {
         }
     }
 
-    /** 提交进出仓单：POST /api/stock/orders（事务在服务端 SP 内） */
+    /** 提交进出仓单：POST /api/stock/orders（事务在服务端 SP 内），跨页收集勾选明细 */
     @FXML
     protected void onSubmitClicked() {
         if (submitting) return;
         List<Map<String, Object>> items = new ArrayList<>();
         List<String> errors = new ArrayList<>();
 
-        for (MaterialRow r : rows) {
+        for (MaterialRow r : allRows) {
             if (!r.isSelected()) continue;
             BigDecimal qty = r.parsedQuantity();
             if (qty == null) {
@@ -255,8 +355,8 @@ public class StockIoController {
                     btnSubmit.setDisable(false);
                     lblStatus.setText("✅ " + modeLabel + "单 " + orderNo + " 创建成功");
                     Alerts.info(modeLabel + "单 " + orderNo + " 创建成功，共 " + items.size() + " 条明细。\n可到「进出仓单查询」查看详情。");
-                    // 清空勾选与数量、刷新库存显示
-                    for (MaterialRow r : rows) {
+                    // 清空全量行的勾选与数量、刷新库存显示
+                    for (MaterialRow r : allRows) {
                         r.setSelected(false);
                         r.setInputQuantity("");
                     }

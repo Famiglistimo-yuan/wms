@@ -35,8 +35,17 @@
                 <TextField fx:id="tfRemark" promptText="（可选）本批出仓备注" prefWidth="260"/>
                 <Button fx:id="btnSubmit" text="确认出仓" onAction="#onSubmitClicked"/>
             </HBox>
-            <HBox>
+            <HBox spacing="8">
                 <Label fx:id="lblStatus" text="正在加载物料列表…" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnPrev" text="◀ 上一页" onAction="#onPrevPage"/>
+                <Label fx:id="lblPage" text="1 / 1"/>
+                <Button fx:id="btnNext" text="下一页 ▶" onAction="#onNextPage"/>
+                <Label text="每页"/>
+                <TextField fx:id="tfPageSize" promptText="20" prefWidth="50" onAction="#onApplyPageSize"/>
+                <Label text="条"/>
+                <Label text="跳到"/>
+                <TextField fx:id="tfJumpPage" promptText="页码" prefWidth="50" onAction="#onJumpPage"/>
+                <Label text="页"/>
             </HBox>
         </VBox>
     </bottom>

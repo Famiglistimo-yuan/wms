@@ -47,6 +47,7 @@ public class StockOrderQueryController {
     @FXML private Button btnPrev;
     @FXML private Button btnNext;
     @FXML private Label lblPage;
+    @FXML private TextField tfJumpPage;
 
     /** App 注入构造器（PanelScene 的 ControllerFactory 要求，ADR-007）；标题文案在 FXML 内维护 */
     public StockOrderQueryController(App app) {
@@ -103,6 +104,22 @@ public class StockOrderQueryController {
             page++;
             loadPage();
         }
+    }
+
+    /** 跳到指定页（回车触发，钳位 1~总页数；非法输入回退到第 1 页） */
+    @FXML
+    protected void onJumpPage() {
+        long totalPages = Math.max(1, (total + PAGE_SIZE - 1) / PAGE_SIZE);
+        try {
+            long target = Long.parseLong(tfJumpPage.getText().trim());
+            if (target < 1) target = 1;
+            if (target > totalPages) target = totalPages;
+            page = target;
+        } catch (NumberFormatException ex) {
+            page = 1;
+        }
+        tfJumpPage.setText(String.valueOf(page));
+        loadPage();
     }
 
     /** 重置筛选条件并回到第 1 页 */
