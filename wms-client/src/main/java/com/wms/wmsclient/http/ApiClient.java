@@ -135,7 +135,7 @@ public final class ApiClient {
             // 文件接口的失败路径：全局异常处理返回的 Result JSON，401 触发统一回调
             Result<?> result = MAPPER.readValue(new String(response.body(), StandardCharsets.UTF_8), Result.class);
             fireOnUnauthorizedIf401(result.getCode());
-            throw new ApiException(result.getMessage());
+            throw new ApiException(result.getCode(), result.getMessage());
         }
         return response.body();
     }
@@ -195,11 +195,11 @@ public final class ApiClient {
         }
     }
 
-    /** code != 0：触发 401 回调（若注册）后抛 ApiException */
+    /** code != 0：触发 401 回调（若注册）后抛 ApiException（携带业务码供调用方分流） */
     private static void assertSuccess(Result<?> result) {
         if (result.getCode() != 0) {
             fireOnUnauthorizedIf401(result.getCode());
-            throw new ApiException(result.getMessage());
+            throw new ApiException(result.getCode(), result.getMessage());
         }
     }
 

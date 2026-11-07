@@ -112,7 +112,12 @@ public class AuthService {
     private String resolvePassword(LoginRequest req) {
         String enc = req.getEncryptedPassword();
         if (enc != null && !enc.isBlank()) {
-            return rsaKeyHolder.decrypt(enc);
+            try {
+                return rsaKeyHolder.decrypt(enc);
+            } catch (IllegalStateException e) {
+                // 服务端换钥等导致密文不可解：专属错误码，客户端据此刷新公钥自动重试（不再走 500 兜底）
+                throw new BusinessException(ErrorCode.DECRYPT_FAILED, "口令解密失败，请重试");
+            }
         }
         String plain = req.getPassword();
         if (plain == null || plain.isBlank()) {
