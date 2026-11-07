@@ -21,3 +21,8 @@ wms:
   jwt:
     secret: wms-local-dev-secret-12345678901234567890
     expire-hours: 24
+  # RSA 登录加密私钥（ADR-011）：生产建议配置固定 PKCS#8 Base64 私钥；
+  # 留空/不配则每次启动临时生成密钥对（重启换钥，客户端登录会自动刷新公钥重试）
+  # 生成示例：openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 | base64
+  rsa:
+    private-key-base64: ''

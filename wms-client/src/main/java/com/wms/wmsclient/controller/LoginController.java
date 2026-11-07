@@ -1,5 +1,6 @@
 package com.wms.wmsclient.controller;
 
+import com.wms.common.ErrorCode;
 import com.wms.common.RegexPatterns;
 import com.wms.common.dto.LoginRequest;
 import com.wms.common.dto.LoginResponse;
@@ -7,6 +8,7 @@ import com.wms.wmsclient.App;
 import com.wms.wmsclient.SessionContext;
 import com.wms.wmsclient.http.ApiClient;
 import com.wms.wmsclient.http.ApiException;
+import com.wms.wmsclient.http.RsaClient;
 import com.wms.wmsclient.panel.MorePanel;
 import com.wms.wmsclient.util.Alerts;
 import com.wms.wmsclient.util.ApiTasks;
@@ -49,14 +51,30 @@ public class LoginController {
             return;
         }
 
-        LoginRequest req = new LoginRequest();
-        req.setUsername(username);
-        req.setPassword(password);
+        attemptLogin(username, password, false);
+    }
 
+    /**
+     * 提交登录（后台线程）：公钥加密口令 → POST /api/auth/login → 成功进主界面。
+     *
+     * <p>isRetry=true 表示服务端换钥（422 解密失败）后已刷新公钥的自动重试，仅一次，
+     * 避免服务端重启换钥后客户端旧公钥缓存导致持续登录失败（ADR-011 自愈路径）。
+     */
+    private void attemptLogin(String username, String password, boolean isRetry) {
         // 防连点：请求期间禁用登录按钮，成功/失败回调里恢复
         btnLogin.setDisable(true);
         ApiTasks.run("login-task",
                 () -> {
+                    LoginRequest req = new LoginRequest();
+                    req.setUsername(username);
+                    try {
+                        // 用服务端公钥加密口令（RSA-2048/OAEP）；重试场景先强制刷新公钥（服务端已换钥）
+                        req.setEncryptedPassword(isRetry
+                                ? RsaClient.encryptWithFreshKey(password)
+                                : RsaClient.encryptPassword(password));
+                    } catch (Exception e) {
+                        throw new ApiException("加密口令失败：" + e.getMessage());
+                    }
                     String respJson = ApiClient.post("/api/auth/login", ApiClient.toJson(req));
                     return ApiClient.getResultData(respJson, LoginResponse.class);
                 },
@@ -73,6 +91,12 @@ public class LoginController {
                 },
                 t -> {
                     btnLogin.setDisable(false);
+                    // 服务端换钥导致解密失败（422）：刷新公钥自动重试一次，避免卡死到重启客户端
+                    if (!isRetry && t instanceof ApiException ae
+                            && ae.getCode() == ErrorCode.DECRYPT_FAILED) {
+                        attemptLogin(username, password, true);
+                        return;
+                    }
                     // ApiException 直显服务端文案（如"用户名或口令错误"），其余视为网络问题
                     Alerts.error(t instanceof ApiException ? t.getMessage() : "网络异常：" + t.getMessage());
                 });
