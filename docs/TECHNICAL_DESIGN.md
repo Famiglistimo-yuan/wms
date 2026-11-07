@@ -355,8 +355,10 @@
 | POST/PUT/DELETE | `/api/persons` `/api/persons/{id}` | 人员增删改；POST 支持可选 `createUser/username/password`，为 true 时同事务创建关联登录账号（FR-4-1） |
 | GET | `/api/materials?keyword=&page=&size=` | 物料分页模糊查询 |
 | POST/PUT/DELETE | `/api/materials` `/api/materials/{id}` | 物料增删改 |
-| POST | `/api/stock/orders` | 提交进出仓单（单物料/多物料同一接口，明细数组长度 ≥ 1） |
-| GET | `/api/stock/orders?dateFrom=&dateTo=&material=&operator=&remark=` | 单据组合查询 |
+| POST | `/api/stock/orders` | 提交进出仓单（单物料/多物料同一接口，明细数组长度 ≥ 1；进/出按 orderType 动态校验 menu.stock.in / menu.stock.out。事务与乐观锁在存储过程 `rg2402_11_12_13_order_create` 内（见 docs/sql/schema.sql SP 契约节），SP 出口码 409xx 映射 409，message 原样透传） |
+| GET | `/api/stock/orders?dateFrom=&dateTo=&material=&operator=&remark=&orderType=&page=&size=` | 单据组合查询（服务端分页，需 menu.stock.query） |
+| GET | `/api/stock/orders/{id}` | 单据详情：主表行 + 明细列表（含物料档案信息），需 menu.stock.query |
+| GET | `/api/stock/person-options` | 经手人下拉选项（进出仓面板共用；持有 menu.stock.in / menu.stock.out 任一即可加载） |
 | GET | `/api/stats/material-flow?from=&to=` | 物料流量统计（图表数据） |
 | GET | `/api/stats/material-options` | 物料选项列表（统计/账本面板下拉用，避开档案查询接口） |
 | GET | `/api/reports/monthly-orders/{yyyyMM}?format=excel\|word` | 导出月度进出仓单（Excel/Word，缺省 excel） |

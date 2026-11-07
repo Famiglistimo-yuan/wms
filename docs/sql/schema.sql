@@ -164,9 +164,9 @@ CREATE TABLE rg2402_11_12_13_op_log (
 -- 存储过程契约（FR-2-8 / FR-3-6 硬性要求：进出仓必须走 SP，
 -- 事务提交/回滚、物料存在与库存非负校验、乐观锁均在 SP 内，锁与事务不分离）
 --
--- 本节仅锁定签名与行为语义（签名-only 的 CREATE PROCEDURE 不可执行，
--- 故以注释承载）；事务体实现属 Phase 2（进出仓子系统），届时以完整
--- CREATE PROCEDURE 落盘（本文件此节或独立 docs/sp_orders.sql，由实现者定）。
+-- order_create（提交进出仓单）已随子系统2 以完整 CREATE PROCEDURE 落盘于本节下方，
+-- 事务/乐观锁/业务校验均在其内（FR-2-8 / FR-3-6 硬性要求：锁与事务不分离）；
+-- order_update / order_delete 属子系统3，仍以签名承载，届时同样落盘本节。
 --
 -- 统一出口：OUT p_code / p_message，Service 层将 409xx 映射为错误码 409（HTTP 状态恒 200），
 -- message 原样透传客户端弹窗：
@@ -179,7 +179,7 @@ CREATE TABLE rg2402_11_12_13_op_log (
 -- 明细入参统一 JSON 数组：[{"materialId":1,"quantity":10}, ...]
 --
 -- 1) 提交进出仓单（单物料=明细长度 1，多物料=长度 N，同一入口）
---    流程：锁 seq 生成单号 → 校验人员 → 逐条物料存在校验 +
+--    流程：校验人员 → 锁 seq 生成单号 → 逐条物料存在校验 +
 --    条件更新库存（OUT: stock=stock-qty WHERE stock>=qty，影响 0 行即失败）
 --    → 写主表+明细 → COMMIT；EXIT HANDLER 异常整体 ROLLBACK
 --    rg2402_11_12_13_order_create(
@@ -189,6 +189,140 @@ CREATE TABLE rg2402_11_12_13_op_log (
 --      OUT p_order_no   VARCHAR(20), OUT p_code    INT,
 --      OUT p_message    VARCHAR(200))
 --
+--    实现落盘（子系统2）。明细入参 p_items 为 JSON 数组
+--    [{"materialId":1,"quantity":10}, ...]；单号 = IN/OUT + yyyyMMdd + 4 位流水
+--    （order_seq 行锁自增，并发安全）；同单同物料重复整单驳回（uk 兜底）。
+DELIMITER ;;
+
+CREATE PROCEDURE rg2402_11_12_13_order_create(
+  IN  p_order_type  CHAR(3),
+  IN  p_order_date  DATE,
+  IN  p_operator_id BIGINT,
+  IN  p_handler_id  BIGINT,
+  IN  p_remark      VARCHAR(500),
+  IN  p_items       JSON,
+  OUT p_order_no    VARCHAR(20),
+  OUT p_code        INT,
+  OUT p_message    VARCHAR(200))
+proc: BEGIN
+  DECLARE v_len         INT;
+  DECLARE v_i           INT DEFAULT 1;
+  DECLARE v_qty         DECIMAL(12,3);
+  DECLARE v_seq         INT;
+  DECLARE v_material_id BIGINT;
+  DECLARE v_order_id    BIGINT;
+
+  -- 意外异常（并发撞 CHECK/外键等）：整体回滚，出口 40904 兜底
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN
+    ROLLBACK;
+    SET p_order_no = NULL;
+    SET p_code    = 40904;
+    SET p_message = '单据提交失败，已整体回滚';
+  END;
+
+  -- 1) 参数校验（40904）
+  IF p_order_type IS NULL OR p_order_type NOT IN ('IN', 'OUT') THEN
+    SET p_order_no = NULL, p_code = 40904, p_message = 'orderType 必须为 IN（进仓）或 OUT（出仓）';
+    LEAVE proc;
+  END IF;
+  IF p_order_date IS NULL THEN
+    SET p_order_no = NULL, p_code = 40904, p_message = '单据日期不能为空';
+    LEAVE proc;
+  END IF;
+  IF p_operator_id IS NULL OR p_handler_id IS NULL THEN
+    SET p_order_no = NULL, p_code = 40904, p_message = '操作人/经手人不能为空';
+    LEAVE proc;
+  END IF;
+  IF p_items IS NULL OR JSON_LENGTH(p_items) < 1 THEN
+    SET p_order_no = NULL, p_code = 40904, p_message = '单据明细不能为空';
+    LEAVE proc;
+  END IF;
+
+  -- 2) 明细数量逐条校验（40904）
+  SET v_len = JSON_LENGTH(p_items);
+  WHILE v_i <= v_len DO
+    SET v_qty = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i - 1, '].quantity')) AS DECIMAL(12,3));
+    IF v_qty IS NULL OR v_qty <= 0 THEN
+      SET p_order_no = NULL, p_code = 40904,
+          p_message = CONCAT('第 ', v_i, ' 条明细数量必须大于 0');
+      LEAVE proc;
+    END IF;
+    SET v_i = v_i + 1;
+  END WHILE;
+
+  -- 3) 操作人/经手人存在性校验（40903）
+  IF NOT EXISTS (SELECT 1 FROM rg2402_11_12_13_person WHERE id = p_operator_id)
+     OR NOT EXISTS (SELECT 1 FROM rg2402_11_12_13_person WHERE id = p_handler_id) THEN
+    SET p_order_no = NULL, p_code = 40903, p_message = '操作人或经手人不存在';
+    LEAVE proc;
+  END IF;
+
+  -- 4) 事务体：单号流水（INSERT IGNORE 建行 → UPDATE 取行锁自增 → 读值）
+  --    → 写主表 → 逐条条件更新库存 → 写明细 → COMMIT
+  START TRANSACTION;
+
+  INSERT IGNORE INTO rg2402_11_12_13_order_seq (seq_prefix, seq_date, current_seq)
+       VALUES (p_order_type, p_order_date, 0);
+  UPDATE rg2402_11_12_13_order_seq
+     SET current_seq = current_seq + 1
+   WHERE seq_prefix = p_order_type AND seq_date = p_order_date;
+  SELECT current_seq INTO v_seq FROM rg2402_11_12_13_order_seq
+   WHERE seq_prefix = p_order_type AND seq_date = p_order_date;
+  SET p_order_no = CONCAT(p_order_type, DATE_FORMAT(p_order_date, '%Y%m%d'), LPAD(v_seq, 4, '0'));
+
+  INSERT INTO rg2402_11_12_13_stock_order
+    (order_no, order_type, order_date, operator_id, handler_id, remark)
+  VALUES (p_order_no, p_order_type, p_order_date, p_operator_id, p_handler_id, p_remark);
+  SET v_order_id = LAST_INSERT_ID();
+
+  SET v_i = 1;
+  WHILE v_i <= v_len DO
+    SET v_material_id = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i - 1, '].materialId')) AS UNSIGNED);
+    SET v_qty = CAST(JSON_EXTRACT(p_items, CONCAT('$[', v_i - 1, '].quantity')) AS DECIMAL(12,3));
+
+    -- 同单同物料重复（uk_item_order_material 兜底，界面本应合并重复行）
+    IF EXISTS (SELECT 1 FROM rg2402_11_12_13_stock_order_item
+                WHERE order_id = v_order_id AND material_id = v_material_id) THEN
+      ROLLBACK;
+      SET p_order_no = NULL, p_code = 40904, p_message = '同一物料在同一单内重复录入';
+      LEAVE proc;
+    END IF;
+
+    IF p_order_type = 'IN' THEN
+      UPDATE rg2402_11_12_13_material SET stock = stock + v_qty WHERE id = v_material_id;
+      IF ROW_COUNT() = 0 THEN
+        ROLLBACK;
+        SET p_order_no = NULL, p_code = 40901, p_message = CONCAT('物料不存在（id=', v_material_id, '）');
+        LEAVE proc;
+      END IF;
+    ELSE
+      -- 乐观锁：条件更新扣库存，影响 0 行即库存不足（或物料不存在，下行区分）
+      UPDATE rg2402_11_12_13_material
+         SET stock = stock - v_qty
+       WHERE id = v_material_id AND stock >= v_qty;
+      IF ROW_COUNT() = 0 THEN
+        ROLLBACK;
+        IF NOT EXISTS (SELECT 1 FROM rg2402_11_12_13_material WHERE id = v_material_id) THEN
+          SET p_order_no = NULL, p_code = 40901, p_message = CONCAT('物料不存在（id=', v_material_id, '）');
+        ELSE
+          SET p_order_no = NULL, p_code = 40902, p_message = CONCAT('库存不足（物料 id=', v_material_id, '）');
+        END IF;
+        LEAVE proc;
+      END IF;
+    END IF;
+
+    INSERT INTO rg2402_11_12_13_stock_order_item (order_id, material_id, quantity)
+    VALUES (v_order_id, v_material_id, v_qty);
+    SET v_i = v_i + 1;
+  END WHILE;
+
+  COMMIT;
+  SET p_code = 0;
+  SET p_message = '成功';
+END proc;;
+
+DELIMITER ;
+
 -- 2) 修改进出仓单：整单替换明细（旧明细先冲正库存再按新明细重写；
 --    单号/类型/操作人不可改，保证 FR-3-4 同单一致性）
 --    rg2402_11_12_13_order_update(
