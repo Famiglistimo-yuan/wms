@@ -2,6 +2,7 @@ package com.wms.wmsclient;
 
 import com.wms.common.dto.LoginResponse;
 import com.wms.wmsclient.http.ApiClient;
+import com.wms.wmsclient.http.RsaClient;
 import com.wms.wmsclient.scene.HomeScene;
 import com.wms.wmsclient.scene.MenuScene;
 import com.wms.wmsclient.scene.PanelScene;
@@ -52,6 +53,15 @@ public class App extends Application {
     public void start(Stage primaryStage) throws IOException {
         // 主题注入（ADR-010）：按落盘偏好选浅/深，必须早于任何 vfx 组件创建（vfx Theme 仅可注入一次）
         ThemeManager.init();
+
+        // RSA 公钥预热（ADR-011）：异步拉取，失败静默——未预热时登录前会同步再拉
+        Thread.ofVirtual().name("rsa-prewarm").start(() -> {
+            try {
+                RsaClient.refresh();
+            } catch (Exception ignored) {
+                // 服务端未启动/网络不通时保持静默，不打扰启动流程
+            }
+        });
         homeScene = new HomeScene();
         menuScene = new MenuScene(this);
         vStage = new VStage(primaryStage, new VStageInitParams().setInitialScene(homeScene)) {
