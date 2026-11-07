@@ -5,6 +5,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -16,6 +18,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Base64;
@@ -38,6 +41,10 @@ import java.util.HexFormat;
 public class RsaKeyHolder {
 
     private static final String TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
+
+    /** 显式 OAEP 参数：摘要 SHA-256 + MGF1(SHA-256)，不依赖 provider 默认值（与 RsaUtil 加密侧一致） */
+    private static final OAEPParameterSpec OAEP_PARAMS = new OAEPParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
     /** 标准 RSA 公钥指数（KeyPairGenerator 默认值；用于从私钥 modulus 重建公钥） */
     private static final BigInteger PUBLIC_EXPONENT = BigInteger.valueOf(65537);
 
@@ -64,7 +71,7 @@ public class RsaKeyHolder {
     public String decrypt(String base64Cipher) {
         try {
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-            cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+            cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate(), OAEP_PARAMS);
             byte[] plain = cipher.doFinal(Base64.getDecoder().decode(base64Cipher));
             return new String(plain, StandardCharsets.UTF_8);
         } catch (GeneralSecurityException e) {

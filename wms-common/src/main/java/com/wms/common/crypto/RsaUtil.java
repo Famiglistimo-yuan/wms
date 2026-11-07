@@ -1,10 +1,13 @@
 package com.wms.common.crypto;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
+import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
@@ -25,6 +28,10 @@ public final class RsaUtil {
     private static final String TRANSFORMATION =
             "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
 
+    /** 显式 OAEP 参数：摘要 SHA-256 + MGF1(SHA-256)，不依赖 provider 默认值（与 RsaKeyHolder 解密侧一致） */
+    private static final OAEPParameterSpec OAEP_PARAMS = new OAEPParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
+
     private RsaUtil() {
     }
 
@@ -41,7 +48,7 @@ public final class RsaUtil {
             PublicKey publicKey = KeyFactory.getInstance("RSA")
                     .generatePublic(new X509EncodedKeySpec(keyBytes));
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey, OAEP_PARAMS);
             byte[] cipherBytes = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(cipherBytes);
         } catch (GeneralSecurityException e) {
